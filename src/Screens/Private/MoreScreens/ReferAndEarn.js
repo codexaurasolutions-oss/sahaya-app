@@ -5,6 +5,8 @@ import {
   Share,
   FlatList,
   ActivityIndicator,
+  TouchableOpacity,
+  Clipboard,
 } from 'react-native';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -59,6 +61,12 @@ const ReferAndEarn = ({ navigation }) => {
       error => {},
       () => {},
     );
+  };
+
+  const handleCopyCode = () => {
+    const code = referralData?.referral_code || '';
+    Clipboard.setString(code);
+    SimpleToast.show('Referral code copied!', SimpleToast.SHORT);
   };
 
   const handleShare = async () => {
@@ -148,11 +156,16 @@ const ReferAndEarn = ({ navigation }) => {
         <Typography type={Font?.Poppins_Regular} size={14} color="#8C8D8B">
           Your Referral Code
         </Typography>
-        <View style={styles.codeRow}>
+        <TouchableOpacity style={styles.codeRow} onPress={handleCopyCode} activeOpacity={0.7}>
           <Typography type={Font?.Poppins_SemiBold} size={28} color="#D98579">
             {referralData?.referral_code || '---'}
           </Typography>
-        </View>
+          <View style={styles.copyBadge}>
+            <Typography type={Font?.Poppins_Medium} size={11} color="#D98579">
+              Copy
+            </Typography>
+          </View>
+        </TouchableOpacity>
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Typography type={Font?.Poppins_SemiBold} size={20}>
@@ -268,6 +281,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 15,
+    gap: 10,
+  },
+  copyBadge: {
+    borderWidth: 1,
+    borderColor: '#D98579',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   statsRow: {
     flexDirection: 'row',

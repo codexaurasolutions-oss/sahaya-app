@@ -16,8 +16,8 @@ import Button from '../../../Component/Button';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import CommanView from '../../../Component/CommanView';
 import LocalizedStrings from '../../../Constants/localization';
-import { POST_WITH_TOKEN, API } from '../../../Backend/Backend';
-import { StaffGetAIData } from '../../../Backend/api_routes';
+import { POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
+import { StaffGetAIData, CATEGORY } from '../../../Backend/api_routes';
 
 const EXPERIENCE_OPTIONS = [
   { label: '0-1 Years', value: '0-1' },
@@ -62,7 +62,8 @@ const FindStaff = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [failedImages, setFailedImages] = useState({});
   const [errorMessage, setErrorMessage] = useState('');
-  const [showFilters, setShowFilters] = useState(false); // Filters collapsed by default
+  const [showFilters, setShowFilters] = useState(false);
+  const [roleOptions, setRoleOptions] = useState([]);
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterExperience, setFilterExperience] = useState(null);
@@ -79,7 +80,24 @@ const FindStaff = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchCandidates();
+    fetchRoleOptions();
   }, []);
+
+  const fetchRoleOptions = () => {
+    GET_WITH_TOKEN(
+      CATEGORY,
+      success => {
+        const data = success?.data || success?.roles || (Array.isArray(success) ? success : []);
+        const options = data.map(role => ({
+          label: role?.name || role?.title || role?.category_name || String(role),
+          value: role?.name || role?.title || role?.category_name || String(role),
+        })).filter(o => o.label);
+        setRoleOptions(options);
+      },
+      () => {},
+      () => {},
+    );
+  };
 
   const getImageUrl = (img) => {
     if (!img || img.includes('noimage')) return null;
@@ -176,15 +194,6 @@ const FindStaff = ({ navigation, route }) => {
     );
   };
 
-  const roleOptions = React.useMemo(() => {
-    const roles = new Set();
-    allCandidates.forEach(c => {
-      if (c.role && typeof c.role === 'string') {
-        c.role.split(', ').forEach(r => roles.add(r.trim()));
-      }
-    });
-    return [...roles].filter(Boolean).map(r => ({ label: r, value: r }));
-  }, [allCandidates]);
 
   const regionOptions = React.useMemo(() => {
     const regions = new Set();
