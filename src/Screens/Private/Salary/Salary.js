@@ -995,6 +995,16 @@ const StaffManagement = ({ navigation }) => {
               />
             </View>
 
+            {/* Advance Management quick-link */}
+            <TouchableOpacity
+              style={styles.advanceLinkCard}
+              onPress={() => navigation.navigate('AdvanceManagement')}
+              activeOpacity={0.8}
+            >
+              <Typography type={Font.Poppins_SemiBold} size={14}>💰 Manage Staff Advances</Typography>
+              <Typography type={Font.Poppins_Regular} size={12} color="#D98579">View & track → </Typography>
+            </TouchableOpacity>
+
             {filteredPayments.length > 0 && (
               <View>
                 <Typography
@@ -1412,6 +1422,16 @@ const styles = StyleSheet.create({
   bottomButton: {
     alignItems: 'center',
     marginVertical: 10,
+  },
+  advanceLinkCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF4F2',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginVertical: 8,
   },
   paymentHistoryIcon: {
     width: 20,
