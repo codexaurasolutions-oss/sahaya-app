@@ -169,15 +169,9 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const proceedToApp = () => {
-    // After plan selection:
-    // - Staff (role 2): Show referral screen first, then StaffStacks handles routing
-    // - Household (role 3): isAuth(true) → RootStack handles routing
-    const userRole = String(currentUserType || userTypeFromStore);
-    if (userRole === '2') {
-      navigation.navigate('ApplyReferral');
-    } else {
-      Dispatch(isAuth(true));
-    }
+    // After plan selection, show referral screen for ALL user types.
+    // ApplyReferral has a Skip button → on skip or success it calls Dispatch(isAuth(true))
+    navigation.navigate('ApplyReferral');
   };
 
   const handleSelectPlan = async subscription => {
