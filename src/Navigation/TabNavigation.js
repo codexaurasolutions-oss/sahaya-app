@@ -24,6 +24,7 @@ import More from '../Screens/Private/MoreScreens/More';
 import Staff from "../Screens/Private/Staff/Staff"
 import Salary from "../Screens/Private/Salary/Salary"
 import RecentSalaryList from "../Screens/Private/Salary/RecentSalaryList"
+import AdvanceManagement from "../Screens/Private/Salary/AdvanceManagement"
 import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
 
 const Stack = createStackNavigator();
@@ -75,6 +76,7 @@ const SalaryStack = ()=>{
     >
       <Stack.Screen name="Salary" component={Salary} />
       <Stack.Screen name="RecentSalaryList" component={RecentSalaryList} />
+      <Stack.Screen name="AdvanceManagement" component={AdvanceManagement} />
     </Stack.Navigator>
   )
 } 

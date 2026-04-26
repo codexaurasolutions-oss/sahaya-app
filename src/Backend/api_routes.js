@@ -93,6 +93,16 @@ export const SalaryAdvanceList = 'salary/advance/list';
 export const SalaryAdvanceApprove = 'salary/advance/approve';
 export const SalaryAdvanceReject = 'salary/advance/reject';
 export const AdvanceWithdraw = 'advance-withdraw';
+
+// ===========================================
+// ADVANCE & DEDUCTION MANAGEMENT
+// ===========================================
+export const AdvanceList          = 'advances';                        // GET  - employer list
+export const AdvanceStore         = 'advances';                        // POST - give advance
+export const AdvanceDetail        = 'advances';                        // GET  - single detail (append /{id})
+export const AdvanceDeduct        = 'advances';                        // POST - manual deduct (append /{id}/deduct)
+export const AdvancePending       = 'advances/pending-deduction';      // GET  - pending deduction (append /{staff_id})
+export const MyAdvances           = 'my-advances';                     // GET  - staff sees their advances
 export const SalaryBonusAdd = 'salary/bonus/add';
 export const SalaryEmiAdd = 'salary/emi/add';
 export const SalaryEmiList = 'salary/emi/list';
@@ -346,6 +356,12 @@ export default {
   SalaryEmiList,
   SalaryAdjustment,
   AdvanceWithdraw,
+  AdvanceList,
+  AdvanceStore,
+  AdvanceDetail,
+  AdvanceDeduct,
+  AdvancePending,
+  MyAdvances,
   SalaryConfirmReceipt,
   SalaryBreakdown,
 

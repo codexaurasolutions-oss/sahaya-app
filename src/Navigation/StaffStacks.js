@@ -13,6 +13,7 @@ import Notifications from './../Screens/Staff/Notifications';
 import StaffProfileMain from './../Screens/Staff/StaffProfileMain';
 import EarningSummary from './../Screens/Staff/EarningSummary';
 import StaffAttendance from './../Screens/Staff/StaffAttendance';
+import StaffAdvanceView from './../Screens/Staff/StaffAdvanceView';
 
 import JobListing from './../Screens/Staff/JobListing';
 import AIJobSearch from './../Screens/Staff/AIJobSearch';
@@ -150,6 +151,11 @@ const RootStack = () => {
       <Stack.Screen
         name="EarningSummary"
         component={EarningSummary}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="StaffAdvanceView"
+        component={StaffAdvanceView}
         options={{ ...commonOptions }}
       />
       <Stack.Screen
