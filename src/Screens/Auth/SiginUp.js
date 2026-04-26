@@ -76,7 +76,15 @@ const SiginUp = ({ navigation }) => {
         error => {
           console.log('Signup Error Response:', JSON.stringify(error, null, 2));
           setIsLoading(false);
-          if (error?.data?.message) {
+          
+          // Check if phone number already exists (422 error with phone_number validation)
+          if (error?.data?.errors?.phone_number) {
+            // Phone already registered - show error and suggest login
+            const errorMsg = Array.isArray(error.data.errors.phone_number) 
+              ? error.data.errors.phone_number[0] 
+              : error.data.errors.phone_number;
+            setMobileError(errorMsg + ' Please use Login instead.');
+          } else if (error?.data?.message) {
             setMobileError(error?.data?.message);
           } else if (error?.message) {
             setMobileError(error.message);
