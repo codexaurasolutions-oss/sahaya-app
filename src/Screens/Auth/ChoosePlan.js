@@ -66,8 +66,8 @@ const ChoosePlan = ({ navigation, route }) => {
         () => console.log('[ChoosePlan] Auto free-plan network fail'),
       );
     }
-    // Always navigate to referral screen for staff after signup
-    navigation.navigate('ApplyReferral');
+    // Always navigate to EditProfile for staff after signup to collect profile data
+    navigation.navigate('EditProfile', {isFirstTime: true});
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
@@ -169,9 +169,13 @@ const ChoosePlan = ({ navigation, route }) => {
   };
 
   const proceedToApp = () => {
-    // After plan selection, show referral screen for ALL user types.
-    // ApplyReferral has a Skip button → on skip or success it calls Dispatch(isAuth(true))
-    navigation.navigate('ApplyReferral');
+    // After plan selection, check if profile is complete
+    // If not, go to EditProfile first, then ApplyReferral, then Dashboard
+    const userRole = currentUserType;
+    
+    // For new signups, always go to EditProfile first to collect profile data
+    // EditProfile will then navigate to ApplyReferral after profile is saved
+    navigation.navigate('EditProfile', {isFirstTime: true});
   };
 
   const handleSelectPlan = async subscription => {
