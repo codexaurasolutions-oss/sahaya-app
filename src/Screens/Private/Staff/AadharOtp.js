@@ -45,6 +45,7 @@ const AadharOtp = ({ navigation, route }) => {
       AADHAR_SAVE,
       data,
       sucess => {
+        setOtpError(''); // Clear any previous errors
         setResendTimer(30);
         let timer = setInterval(() => {
           setResendTimer(prev => {
@@ -61,9 +62,11 @@ const AadharOtp = ({ navigation, route }) => {
           error?.data?.errors?.aadhar_number ? error.data.errors.aadhar_number[0] :
             error?.data?.message || 'Failed to resend OTP'
         );
+        console.log('Resend OTP Error:', error);
       },
       fail => {
-        console.log(fail);
+        setOtpError('Network error. Please try again.');
+        console.log('Resend OTP Failed:', fail);
       },
     );
   };
@@ -79,6 +82,10 @@ const AadharOtp = ({ navigation, route }) => {
     } else {
       let data = new FormData();
       data?.append('otp', otp);
+      // Add aadhar_number if available from route params
+      if (route?.params?.aadhar_number) {
+        data?.append('aadhar_number', route?.params?.aadhar_number);
+      }
       POST_FORM_DATA(
         AADHAR_VERFIY,
         data,
@@ -87,11 +94,21 @@ const AadharOtp = ({ navigation, route }) => {
           navigation?.navigate('StepFirst');
         },
         error => {
-          setOtpError(error?.data?.error);
-          console.log(error);
+          // Better error handling to show all possible error messages
+          if (error?.data?.message) {
+            setOtpError(error?.data?.message);
+          } else if (error?.data?.error) {
+            setOtpError(error?.data?.error);
+          } else if (error?.message) {
+            setOtpError(error.message);
+          } else {
+            setOtpError('Failed to verify OTP. Please try again.');
+          }
+          console.log('OTP Verification Error:', error);
         },
         fail => {
-          console.log(fail);
+          setOtpError('Network error. Please try again.');
+          console.log('OTP Verification Failed:', fail);
         },
       );
     }
