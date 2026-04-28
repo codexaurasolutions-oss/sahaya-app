@@ -234,7 +234,7 @@ const StaffManagement = ({ navigation }) => {
     };
 
     POST_WITH_TOKEN(
-      SalaryStore,
+      `${SalaryManagementStaff}/${leaveType?.value}`,
       body,
       success => {
         const savedData = success?.data;
@@ -525,7 +525,7 @@ const StaffManagement = ({ navigation }) => {
       status: isPaid ? 'paid' : 'pending',
     };
     POST_WITH_TOKEN(
-      SalaryStore,
+      `${SalaryManagementStaff}/${leaveType?.value}`,
       body,
       success => {
         setIsSubmitting(false);
