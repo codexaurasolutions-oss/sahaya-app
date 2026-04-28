@@ -86,6 +86,11 @@ const AadharOtp = ({ navigation, route }) => {
       if (route?.params?.aadhar_number) {
         data?.append('aadhar_number', route?.params?.aadhar_number);
       }
+      // Add user_id if available from route params
+      const userId = route?.params?.user_id;
+      if (userId) {
+        data?.append('user_id', userId);
+      }
       POST_FORM_DATA(
         AADHAR_VERFIY,
         data,

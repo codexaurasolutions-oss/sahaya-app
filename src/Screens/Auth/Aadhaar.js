@@ -44,7 +44,12 @@ const Aadhaar = ({ navigation }) => {
         sucess => {
           setIsLoading(false);
           SimpleToast.show(sucess?.message || 'OTP Sent', SimpleToast.SHORT);
-          navigation?.navigate('AadharOtp', { mobile: mobile });
+          const userId = sucess?.data?.user_id || sucess?.data?.id;
+          navigation?.navigate('AadharOtp', { 
+            mobile: mobile,
+            user_id: userId,
+            aadhar_number: mobile 
+          });
         },
         error => {
           setIsLoading(false);
