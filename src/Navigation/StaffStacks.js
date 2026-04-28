@@ -46,12 +46,12 @@ const RootStack = () => {
     GET_WITH_TOKEN(
       PROFILE,
       success => {
-        console.log('90909',success?.data);
-        
+        console.log('90909', success?.data);
+
         Dispatch(userDetails(success?.data));
       },
-      error => {},
-      fail => {},
+      error => { },
+      fail => { },
     );
   };
 
@@ -65,13 +65,13 @@ const RootStack = () => {
         headerShown: false,
       }}
       initialRouteName={
-        !userDetail
+        !userDetail || Object.keys(userDetail).length === 0
           ? 'TabNavigationForStaff'
-          : !userDetail?.aadhar__verify
-          ? 'Aadhaar'
-          : userDetail?.step < 5
-          ? 'StepFirst'
-          : 'TabNavigationForStaff'
+          : (userDetail?.aadhar__verify == 0 || userDetail?.aadhar__verify == null || userDetail?.aadhar__verify == false)
+            ? 'Aadhaar'
+            : userDetail?.step < 5
+              ? 'StepFirst'
+              : 'TabNavigationForStaff'
       }
     >
       <Stack.Screen

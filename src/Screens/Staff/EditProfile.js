@@ -776,21 +776,7 @@ const EditProfile = ({ navigation, route }) => {
         }
         setUpdating(false);
         fetchProfile(); // Refresh profile data
-        
-        // Check if this is first-time profile completion during signup
-        if (isFirstTime) {
-          // First time signup flow - go to referral screen
-          const userRole = userDetail?.role_id || userDetail?.user_role_id;
-          if (String(userRole) === '2' && firstName && firstName.trim() !== '' && firstName.trim().toLowerCase() !== 'user') {
-            navigation.replace('ApplyReferral');
-          } else {
-            // If not staff or invalid name, go to dashboard
-            navigation.navigate('ApplyReferral');
-          }
-        } else {
-          // Regular profile edit - just go back
-          navigation.goBack();
-        }
+        navigation.goBack();
       },
       error => {
         SimpleToast.show('Failed to update profile', SimpleToast.SHORT);

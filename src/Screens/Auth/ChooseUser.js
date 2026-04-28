@@ -9,8 +9,8 @@ import Button from '../../Component/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import { isAuth, userType } from '../../Redux/action';
 import LocalizedStrings from '../../Constants/localization';
-import { POST_FORM_DATA } from '../../Backend/Backend';
-import { PROFILE_UPDATE } from '../../Backend/api_routes';
+import { POST_FORM_DATA, POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
+import { PROFILE_UPDATE, SUBSCRIPTIONS, SUBSCRIPTION_USER_SUBSCRIBE } from '../../Backend/api_routes';
 
 const ChooseUser = ({ navigation }) => {
   const userTypes = useSelector(store => store?.userType);
@@ -23,9 +23,59 @@ const ChooseUser = ({ navigation }) => {
   // Staff (role 2) get autoFreeOnMount=true so they are auto-subscribed
   // to the free plan without needing to manually tap "Select Plan".
   const checkSubscriptionAndProceed = (roleId) => {
+    if (String(roleId) === '2') {
+      // For Staff, auto-subscribe to free plan and skip ChoosePlan screen
+      setIsLoading(true);
+
+      // First fetch subscriptions to find the free one for staff
+      GET_WITH_TOKEN(
+        SUBSCRIPTIONS,
+        success => {
+          const subscriptionData = success?.data;
+          if (subscriptionData && Array.isArray(subscriptionData)) {
+            // Find free plan for staff (role 2)
+            const freePlan = subscriptionData.find(plan => {
+              const planRole = plan?.role_id || plan?.user_role_id;
+              const isFree = !plan?.price || plan.price === '0' || plan.price === '0.00';
+              return isFree && String(planRole) === '2';
+            });
+
+            if (freePlan) {
+              // Auto-subscribe to the free plan
+              POST_WITH_TOKEN(
+                SUBSCRIPTIONS_USER_SUBSCRIBE,
+                { subscriptionId: freePlan.id, paymentId: null },
+                subSuccess => {
+                  setIsLoading(false);
+                  navigation.navigate('ApplyReferral', { isFirstTime: true });
+                },
+                subError => {
+                  setIsLoading(false);
+                  // Even if subscription fails, proceed to referral to avoid blocking
+                  navigation.navigate('ApplyReferral', { isFirstTime: true });
+                }
+              );
+            } else {
+              setIsLoading(false);
+              navigation.navigate('ApplyReferral', { isFirstTime: true });
+            }
+          } else {
+            setIsLoading(false);
+            navigation.navigate('ApplyReferral', { isFirstTime: true });
+          }
+        },
+        error => {
+          setIsLoading(false);
+          navigation.navigate('ApplyReferral', { isFirstTime: true });
+        }
+      );
+      return;
+    }
+
+    // For non-staff roles, go to ChoosePlan
     navigation.navigate('ChoosePlan', {
       userType: roleId,
-      autoFreeOnMount: String(roleId) === '2',
+      autoFreeOnMount: false,
     });
   };
 

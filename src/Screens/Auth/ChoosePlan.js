@@ -66,8 +66,8 @@ const ChoosePlan = ({ navigation, route }) => {
         () => console.log('[ChoosePlan] Auto free-plan network fail'),
       );
     }
-    // Always navigate to EditProfile for staff after signup to collect profile data
-    navigation.navigate('EditProfile', {isFirstTime: true});
+    // Always navigate to ApplyReferral for staff after signup to collect referral info
+    navigation.navigate('ApplyReferral', { isFirstTime: true });
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
@@ -172,10 +172,10 @@ const ChoosePlan = ({ navigation, route }) => {
     // After plan selection, check if profile is complete
     // If not, go to EditProfile first, then ApplyReferral, then Dashboard
     const userRole = currentUserType;
-    
-    // For new signups, always go to EditProfile first to collect profile data
-    // EditProfile will then navigate to ApplyReferral after profile is saved
-    navigation.navigate('EditProfile', {isFirstTime: true});
+
+    // For new signups, always go to ApplyReferral first to collect referral data
+    // ApplyReferral will then dispatch isAuth(true), and StaffStacks will handle next steps
+    navigation.navigate('ApplyReferral', { isFirstTime: true });
   };
 
   const handleSelectPlan = async subscription => {
