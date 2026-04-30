@@ -16,13 +16,13 @@ import { AttendanceStaff } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 
 const STATUS_COLORS = {
-  present: '#4CAF50',
-  on_leave: '#FFC107',
-  leave: '#FFC107',
-  holiday: '#2196F3',
-  absent: '#F44336',
-  weekend: '#9E9E9E',
-  late: '#4CAF50',
+  present: '#4CAF50',    // Green - Present
+  late: '#FF9800',       // Orange - Late (different from present!)
+  on_leave: '#FFC107',   // Yellow - On Leave
+  leave: '#FFC107',      // Yellow - Leave
+  holiday: '#2196F3',    // Blue - Holiday
+  absent: '#F44336',     // Red - Absent
+  weekend: '#9E9E9E',    // Grey - Weekend
 };
 
 const StaffAttendance = ({ navigation }) => {

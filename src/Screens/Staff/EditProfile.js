@@ -202,7 +202,7 @@ const EditProfile = ({ navigation, route }) => {
       });
     }
 
- 
+
 
     if (userDetail?.dob) {
       const parsedDate = moment(userDetail.dob).toDate();
@@ -277,11 +277,11 @@ const EditProfile = ({ navigation, route }) => {
       const skillsList = Array.isArray(workInfo.skills)
         ? workInfo.skills.filter(skill => skill)
         : typeof workInfo.skills === 'string'
-        ? workInfo.skills
+          ? workInfo.skills
             .split(',')
             .map(s => s.trim())
             .filter(s => s)
-        : [];
+          : [];
       setSkills(skillsList);
     }
     if (workInfo?.languages_spoken) setLanguage(workInfo.languages_spoken);
@@ -712,12 +712,12 @@ const EditProfile = ({ navigation, route }) => {
       const languages =
         typeof language === 'string'
           ? language
-              .split(',') 
-              .map(lang => lang.trim())
-              .filter(lang => lang)
+            .split(',')
+            .map(lang => lang.trim())
+            .filter(lang => lang)
           : Array.isArray(language)
-          ? language
-          : [language];
+            ? language
+            : [language];
 
       languages.forEach(lang => {
         formData.append('languages_spoken[]', lang);
