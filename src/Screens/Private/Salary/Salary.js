@@ -131,7 +131,7 @@ const StaffManagement = ({ navigation }) => {
         if (success?.data) {
           const leaveTypes = success?.data?.data?.map(item => ({
             value: item.id,
-            label: item.first_name,
+            label: `${item.first_name || ''} ${item.last_name || ''}`.trim() || item.name || 'Staff',
             upi_id: item.upi_id || '',
           }));
           setLeaveList(leaveTypes || []);
@@ -694,7 +694,7 @@ const StaffManagement = ({ navigation }) => {
             fontFamily: Font.Poppins_Regular,
           }}
           data={leaveList}
-          value={leaveType}
+          value={leaveType?.value}
           onChange={item => {
             setLeaveType(item);
             setPaymentType(null);
