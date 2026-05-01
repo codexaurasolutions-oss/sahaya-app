@@ -248,10 +248,16 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.profileCard}>
-          <Image
-            source={profileImageUrl ? { uri: profileImageUrl } : ImageConstant.user}
-            style={styles.profileImage}
-          />
+          <TouchableOpacity onPress={() => setPreviewImage(profileImageUrl)}>
+            <Image
+              source={profileImageUrl ? { uri: profileImageUrl } : ImageConstant.user}
+              style={styles.profileImage}
+            />
+            <View style={styles.enlargeHint}>
+              <Image source={ImageConstant.Zoom || ImageConstant.eye} style={styles.enlargeIcon} />
+              <Typography style={styles.enlargeText}>Tap to enlarge</Typography>
+            </View>
+          </TouchableOpacity>
           <Typography style={styles.name} size={22}>
             {fullName}
           </Typography>
@@ -382,7 +388,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               </View>
             )}
             {data?.user_work_info?.working_days && (
-              <View style={styles.row}>
+              <View style={styles.rowNoBorder}>
                 <Image source={ImageConstant.Calendar} style={styles.icon} />
                 <View style={styles.textBox}>
                   <Typography style={styles.label}>Working Days</Typography>
@@ -394,17 +400,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 </View>
               </View>
             )}
-            {data?.user_work_info?.joining_date && (
-              <View style={styles.rowNoBorder}>
-                <Image source={ImageConstant.Calendar} style={styles.icon} />
-                <View style={styles.textBox}>
-                  <Typography style={styles.label}>Joining Date</Typography>
-                  <Typography style={styles.value}>
-                    {data.user_work_info.joining_date}
-                  </Typography>
-                </View>
-              </View>
-            )}
+            {/* Joining Date removed - unwanted info */}
           </View>
         )}
 
@@ -785,6 +781,29 @@ const styles = StyleSheet.create({
     width: 90,
     borderRadius: 45,
     marginBottom: 10,
+  },
+  enlargeHint: {
+    position: 'absolute',
+    bottom: 5,
+    right: -25,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  enlargeIcon: {
+    height: 12,
+    width: 12,
+    resizeMode: 'contain',
+    tintColor: '#fff',
+    marginRight: 4,
+  },
+  enlargeText: {
+    fontFamily: Font.Poppins_Regular,
+    fontSize: 10,
+    color: '#fff',
   },
   name: {
     fontFamily: Font.Poppins_Bold,
