@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
+import moment from "moment";
 
 import CommanView from "../../Component/CommanView";
 import HeaderForUser from "../../Component/HeaderForUser";
@@ -46,6 +47,15 @@ const AttendanceScreen = ({ navigation, route }) => {
   const [markedDates, setMarkedDates] = useState({});
   const [summary, setSummary] = useState({ totalWorked: 0, absent: 0, leave: 0 });
   const [loading, setLoading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editingDate, setEditingDate] = useState(null);
+  const [editStatus, setEditStatus] = useState(null);
+  const statusOptions = [
+    { value: 'present', label: 'Present' },
+    { value: 'absent', label: 'Absent' },
+    { value: 'on_leave', label: 'On Leave' },
+    { value: 'late', label: 'Late' },
+  ];
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -196,6 +206,53 @@ const AttendanceScreen = ({ navigation, route }) => {
     setCurrentMonth(newMonth);
   };
 
+  const handleDatePress = (day) => {
+    setSelected(day.dateString);
+    if (editMode && selectedStaff) {
+      setEditingDate(day.dateString);
+      const currentStatus = markedDates[day.dateString]?.selectedColor;
+      const statusMap = {
+        [STATUS_COLORS.present]: 'present',
+        [STATUS_COLORS.absent]: 'absent',
+        [STATUS_COLORS.on_leave]: 'on_leave',
+        [STATUS_COLORS.late]: 'late',
+      };
+      setEditStatus(statusMap[currentStatus] || 'present');
+    }
+  };
+
+  const saveAttendanceEdit = () => {
+    if (!editingDate || !editStatus || !selectedStaff) {
+      SimpleToast.show("Please select a date and status", SimpleToast.SHORT);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("staff_id", selectedStaff.value);
+    formData.append("date", editingDate);
+    formData.append("status", editStatus);
+    formData.append("check_in_time", "09:00:00");
+    formData.append("description", "Manually updated");
+
+    POST_FORM_DATA(
+      "/api/attendance/store",
+      formData,
+      (success) => {
+        SimpleToast.show("Attendance updated successfully", SimpleToast.SHORT);
+        setEditingDate(null);
+        setEditStatus(null);
+        setEditMode(false);
+        fetchAttendance(selectedStaff.value, currentMonth);
+      },
+      (error) => {
+        SimpleToast.show("Failed to update attendance", SimpleToast.SHORT);
+      },
+      (fail) => {
+        SimpleToast.show("Network error. Please try again.", SimpleToast.SHORT);
+      }
+    );
+  };
+
   return (
     <CommanView>
       <HeaderForUser
@@ -233,12 +290,12 @@ const AttendanceScreen = ({ navigation, route }) => {
           monthFormat={"MMMM yyyy"}
           hideExtraDays={true}
           maxDate={new Date().toISOString().split("T")[0]}
-          onDayPress={(day) => setSelected(day.dateString)}
+          onDayPress={handleDatePress}
           onMonthChange={handleMonthChange}
           markedDates={{
             ...markedDates,
             ...(selected
-              ? { [selected]: { ...markedDates[selected], selected: true, selectedColor: "#000" } }
+              ? { [selected]: { ...markedDates[selected], selected: true, selectedColor: editMode ? "#000" : (markedDates[selected]?.selectedColor || "#000") } }
               : {}),
           }}
           theme={{
@@ -253,6 +310,56 @@ const AttendanceScreen = ({ navigation, route }) => {
             `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
           }
         />
+
+        {selectedStaff && (
+          <View style={styles.editButtonContainer}>
+            <TouchableOpacity
+              style={[styles.editButton, editMode && styles.editButtonActive]}
+              onPress={() => {
+                setEditMode(!editMode);
+                setEditingDate(null);
+                setEditStatus(null);
+              }}
+            >
+              <Typography type={Font.Poppins_Medium} size={14} color={editMode ? "#fff" : "#D98579"}>
+                {editMode ? "Cancel Edit" : "Edit Attendance"}
+              </Typography>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {editMode && editingDate && (
+          <View style={styles.editPanel}>
+            <Typography type={Font.Poppins_SemiBold} size={15} style={{ marginBottom: 10 }}>
+              Edit {moment(editingDate).format("DD MMM YYYY")}
+            </Typography>
+            <View style={styles.statusButtons}>
+              {statusOptions.map((status) => (
+                <TouchableOpacity
+                  key={status.value}
+                  style={[
+                    styles.statusButton,
+                    editStatus === status.value && styles.statusButtonActive,
+                  ]}
+                  onPress={() => setEditStatus(status.value)}
+                >
+                  <Typography
+                    type={Font.Poppins_Medium}
+                    size={13}
+                    color={editStatus === status.value ? "#fff" : "#666"}
+                  >
+                    {status.label}
+                  </Typography>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.saveButton} onPress={saveAttendanceEdit}>
+              <Typography type={Font.Poppins_SemiBold} size={14} color="#fff">
+                Save Changes
+              </Typography>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.summary}>
           <Typography size={16} type={Font.Poppins_Bold} style={styles.summaryTitle}>
@@ -373,4 +480,52 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dot: { width: 12, height: 12, borderRadius: 6, marginRight: 6 },
+  editButtonContainer: {
+    marginTop: 15,
+    alignItems: "center",
+  },
+  editButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#D98579",
+    backgroundColor: "#FFF5EE",
+  },
+  editButtonActive: {
+    backgroundColor: "#D98579",
+    borderColor: "#D98579",
+  },
+  editPanel: {
+    marginTop: 20,
+    backgroundColor: "#FAFAFB",
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#EEE",
+  },
+  statusButtons: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 15,
+  },
+  statusButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#F9F9F9",
+  },
+  statusButtonActive: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+  },
+  saveButton: {
+    backgroundColor: "#D98579",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
 });

@@ -60,9 +60,16 @@ const StaffManagement = ({ navigation }) => {
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [advanceHistory, setAdvanceHistory] = useState([]);
   const [paymentType, setPaymentType] = useState(null);
+  const [shouldDeductAdvance, setShouldDeductAdvance] = useState(true);
+  const [deductionMethod, setDeductionMethod] = useState(null);
   const paymentTypeData = [
     { value: 'payment', label: 'Payment' },
     { value: 'advance', label: 'Advance Payment' },
+  ];
+  const deductionMethodData = [
+    { value: 'monthly', label: 'Monthly Deduction' },
+    { value: 'one_time', label: 'One-Time Deduction (Next Salary)' },
+    { value: 'installments', label: 'Installments (Multiple Months)' },
   ];
   const getSanitizedValue = value =>
     Number.isNaN(value) || value === null ? '' : String(value);
@@ -280,20 +287,30 @@ const StaffManagement = ({ navigation }) => {
       SimpleToast.show('Please enter a valid amount', SimpleToast.SHORT);
       return;
     }
+    if (shouldDeductAdvance && !deductionMethod) {
+      SimpleToast.show('Please select a deduction method', SimpleToast.SHORT);
+      return;
+    }
     setAdvanceLoading(true);
     POST_WITH_TOKEN(
       AdvanceWithdraw,
       {
         user_id: String(leaveType?.value),
         amount: Number(advanceAmount),
+        should_deduct: shouldDeductAdvance,
+        deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
       },
       success => {
         setAdvanceLoading(false);
         setShowAdvanceModal(false);
         const paidAdvance = Number(advanceAmount) || 0;
         setAdvanceAmount('');
-        // Update advance locally so net salary recalculates immediately
-        setAdvance(prev => (Number(prev) || 0) + paidAdvance);
+        setShouldDeductAdvance(true);
+        setDeductionMethod(null);
+        // Update advance locally so net salary recalculates immediately (only if deducting)
+        if (shouldDeductAdvance) {
+          setAdvance(prev => (Number(prev) || 0) + paidAdvance);
+        }
         // Save advance payment to local storage
         const advanceRecord = {
           staff_id: leaveType?.value,
@@ -301,6 +318,8 @@ const StaffManagement = ({ navigation }) => {
           amount: paidAdvance,
           type: 'advance',
           date: new Date().toISOString(),
+          should_deduct: shouldDeductAdvance,
+          deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
         };
         savePaymentToLocal(advanceRecord).then(() => {
           loadAdvanceHistory(leaveType?.value);
@@ -611,7 +630,7 @@ const StaffManagement = ({ navigation }) => {
 
         <DropdownComponent
           title={LocalizedStrings.SalaryManagement.select_staff}
-          placeholder="Alice Smith"
+          placeholder="Select Staff Member"
           width={'100%'}
           style_dropdown={{ marginHorizontal: 0 }}
           selectedTextStyleNew={{
@@ -681,7 +700,7 @@ const StaffManagement = ({ navigation }) => {
                 color="#666"
                 style={{ marginBottom: 15 }}
               >
-                Give advance payment to {leaveType?.label || 'staff member'}. This will be deducted from their salary.
+                Give advance payment to {leaveType?.label || 'staff member'}.
               </Typography>
 
               <Typography
@@ -699,6 +718,76 @@ const StaffManagement = ({ navigation }) => {
                 onChangeText={text => setAdvanceAmount(text.replace(/[^0-9]/g, ''))}
                 keyboardType="numeric"
               />
+
+              <View style={{ marginTop: 20, marginBottom: 10 }}>
+                <Typography type={Font.Poppins_Medium} size={14} style={{ marginBottom: 10 }}>
+                  Deduct from Salary?
+                </Typography>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      shouldDeductAdvance && styles.toggleButtonActive,
+                    ]}
+                    onPress={() => {
+                      setShouldDeductAdvance(true);
+                      setDeductionMethod(null);
+                    }}
+                  >
+                    <Typography
+                      type={Font.Poppins_Medium}
+                      size={13}
+                      color={shouldDeductAdvance ? '#D98579' : '#666'}
+                    >
+                      Yes, Deduct
+                    </Typography>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggleButton,
+                      !shouldDeductAdvance && styles.toggleButtonActive,
+                    ]}
+                    onPress={() => {
+                      setShouldDeductAdvance(false);
+                      setDeductionMethod(null);
+                    }}
+                  >
+                    <Typography
+                      type={Font.Poppins_Medium}
+                      size={13}
+                      color={!shouldDeductAdvance ? '#D98579' : '#666'}
+                    >
+                      No, Don't Deduct
+                    </Typography>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {shouldDeductAdvance && (
+                <View style={{ marginTop: 10 }}>
+                  <Typography type={Font.Poppins_Medium} size={14} style={{ marginBottom: 5 }}>
+                    Deduction Method
+                  </Typography>
+                  <DropdownComponent
+                    title="Select Deduction Method"
+                    placeholder="Choose how to deduct"
+                    width={'100%'}
+                    style_dropdown={{ marginHorizontal: 0 }}
+                    selectedTextStyleNew={{
+                      marginLeft: 10,
+                      fontFamily: Font.Poppins_Regular,
+                    }}
+                    marginHorizontal={0}
+                    style_title={{
+                      textAlign: 'left',
+                      fontFamily: Font.Poppins_Regular,
+                    }}
+                    data={deductionMethodData}
+                    value={deductionMethod}
+                    onChange={item => setDeductionMethod(item)}
+                  />
+                </View>
+              )}
 
               <Button
                 title={advanceLoading ? 'Processing...' : 'Send Advance'}
@@ -739,6 +828,14 @@ const StaffManagement = ({ navigation }) => {
                       <Typography type={Font.Poppins_Regular} size={11} color="#999">
                         {moment(item.date).format('DD MMM YYYY, hh:mm A')}
                       </Typography>
+                      {item.deduction_method && (
+                        <Typography type={Font.Poppins_Regular} size={10} color="#666">
+                          {item.deduction_method === 'monthly' ? 'Monthly Deduction' : 
+                           item.deduction_method === 'one_time' ? 'One-Time Deduction' : 
+                           item.deduction_method === 'installments' ? 'Installments' : 
+                           item.should_deduct ? 'Will be deducted' : 'No deduction'}
+                        </Typography>
+                      )}
                     </View>
                     <View style={{
                       backgroundColor: '#FFF5EE',
@@ -758,9 +855,11 @@ const StaffManagement = ({ navigation }) => {
                 </Typography>
               )}
 
-              <Typography type={Font.Poppins_Regular} size={11} color="#999" style={{ marginTop: 10 }}>
-                This amount will be deducted from the monthly salary.
-              </Typography>
+              {shouldDeductAdvance && (
+                <Typography type={Font.Poppins_Regular} size={11} color="#999" style={{ marginTop: 10 }}>
+                  This amount will be deducted from the monthly salary.
+                </Typography>
+              )}
             </View>
           </View>
         )}
@@ -957,31 +1056,36 @@ const StaffManagement = ({ navigation }) => {
               {LocalizedStrings.SalaryManagement.select_payment_method}
             </Typography>
             <View style={styles.section}>
-              <View style={styles.paymentMethods}>
+              <View style={styles.paymentMethodsVertical}>
                 {paymentOptions.map(method => (
                   <TouchableOpacity
                     key={method.value}
                     style={[
-                      styles.paymentBox,
-                      selectedMethod === method.value && styles.selectedBox,
+                      styles.paymentBoxVertical,
+                      selectedMethod === method.value && styles.selectedBoxVertical,
                     ]}
                     onPress={() => setSelectedMethod(method.value)}
                   >
                     <Image
                       source={method.icon}
-                      style={styles.paymentIcon}
+                      style={styles.paymentIconVertical}
                       resizeMode="contain"
                     />
                     <Typography
                       type={Font.Poppins_Regular}
                       style={{
-                        textAlign: 'center',
-                        fontSize: 13,
-                        marginTop: 5,
+                        fontSize: 14,
+                        marginLeft: 12,
+                        flex: 1,
                       }}
                     >
                       {method.label}
                     </Typography>
+                    {selectedMethod === method.value && (
+                      <View style={styles.checkmark}>
+                        <Typography type={Font.Poppins_Bold} style={{ color: '#fff', fontSize: 12 }}>✓</Typography>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1369,6 +1473,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     gap: 10,
   },
+  paymentMethodsVertical: {
+    flexDirection: 'column',
+    marginTop: 10,
+    gap: 12,
+  },
   paymentBox: {
     width: '48%',
     height: 80,
@@ -1379,9 +1488,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  paymentBoxVertical: {
+    width: '100%',
+    height: 60,
+    borderWidth: 1.5,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    backgroundColor: '#F9F9F9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
   selectedBox: {
     borderColor: '#ff6600',
     backgroundColor: '#fff5ee',
+  },
+  selectedBoxVertical: {
+    borderColor: '#D98579',
+    backgroundColor: '#FFF5EE',
+    borderWidth: 2,
+  },
+  checkmark: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#D98579',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentIconVertical: {
+    width: 28,
+    height: 28,
   },
 
   rowBetween: {
@@ -1522,5 +1659,19 @@ const styles = StyleSheet.create({
   downloadText: {
     fontSize: 10,
     color: '#D98579',
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#ddd',
+    backgroundColor: '#F9F9F9',
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    borderColor: '#D98579',
+    backgroundColor: '#FFF5EE',
   },
 });
