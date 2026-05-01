@@ -62,6 +62,7 @@ const StaffManagement = ({ navigation }) => {
   const [paymentType, setPaymentType] = useState(null);
   const [shouldDeductAdvance, setShouldDeductAdvance] = useState(true);
   const [deductionMethod, setDeductionMethod] = useState(null);
+  const [advancePaymentMethod, setAdvancePaymentMethod] = useState('Cash');
   const paymentTypeData = [
     { value: 'payment', label: 'Payment' },
     { value: 'advance', label: 'Advance Payment' },
@@ -291,6 +292,42 @@ const StaffManagement = ({ navigation }) => {
       SimpleToast.show('Please select a deduction method', SimpleToast.SHORT);
       return;
     }
+
+    // If UPI is selected, handle UPI payment flow
+    if (advancePaymentMethod === 'UPI') {
+      if (leaveType?.upi_id) {
+        // UPI ID exists, directly open UPI app
+        const upiId = leaveType.upi_id.trim();
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${Number(advanceAmount).toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Advance payment - ${moment().format('DD MMM YYYY')}`)}`;
+        Linking.canOpenURL(upiUrl)
+          .then(supported => {
+            if (supported) {
+              Linking.openURL(upiUrl);
+              // After opening UPI app, proceed with API call
+              submitAdvancePayment();
+            } else {
+              SimpleToast.show(
+                'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+                SimpleToast.LONG,
+              );
+            }
+          })
+          .catch(() => {
+            SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+          });
+        return;
+      }
+      // No UPI ID found, show modal to enter one
+      setUpiInput('');
+      setShowUpiModal(true);
+      return;
+    }
+
+    // For Cash, directly submit
+    submitAdvancePayment();
+  };
+
+  const submitAdvancePayment = () => {
     setAdvanceLoading(true);
     POST_WITH_TOKEN(
       AdvanceWithdraw,
@@ -299,14 +336,15 @@ const StaffManagement = ({ navigation }) => {
         amount: Number(advanceAmount),
         should_deduct: shouldDeductAdvance,
         deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
+        payment_mode: advancePaymentMethod?.toLowerCase() || 'cash',
       },
       success => {
         setAdvanceLoading(false);
-        setShowAdvanceModal(false);
         const paidAdvance = Number(advanceAmount) || 0;
         setAdvanceAmount('');
         setShouldDeductAdvance(true);
         setDeductionMethod(null);
+        setAdvancePaymentMethod('Cash');
         // Update advance locally so net salary recalculates immediately (only if deducting)
         if (shouldDeductAdvance) {
           setAdvance(prev => (Number(prev) || 0) + paidAdvance);
@@ -320,6 +358,7 @@ const StaffManagement = ({ navigation }) => {
           date: new Date().toISOString(),
           should_deduct: shouldDeductAdvance,
           deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
+          payment_mode: advancePaymentMethod,
         };
         savePaymentToLocal(advanceRecord).then(() => {
           loadAdvanceHistory(leaveType?.value);
@@ -509,13 +548,25 @@ const StaffManagement = ({ navigation }) => {
 
     setShowUpiModal(false);
 
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${totalNet.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
+    // Check if this is for advance payment or regular salary
+    const isAdvancePayment = paymentType?.value === 'advance';
+    const amount = isAdvancePayment ? Number(advanceAmount) : totalNet;
+    const transactionNote = isAdvancePayment 
+      ? `Advance payment - ${moment().format('DD MMM YYYY')}`
+      : `Salary payment for ${moment().format('MMMM YYYY')}`;
+
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
 
     Linking.canOpenURL(upiUrl)
       .then(supported => {
         if (supported) {
           Linking.openURL(upiUrl);
-          submitSalaryPayment(null);
+          // Call appropriate submit function based on payment type
+          if (isAdvancePayment) {
+            submitAdvancePayment();
+          } else {
+            submitSalaryPayment(null);
+          }
         } else {
           SimpleToast.show(
             'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
@@ -789,6 +840,43 @@ const StaffManagement = ({ navigation }) => {
                 </View>
               )}
 
+              <Typography type={Font.Poppins_Medium} size={14} style={{ marginTop: 20, marginBottom: 10 }}>
+                Payment Method
+              </Typography>
+              <View style={styles.paymentMethodsVertical}>
+                {paymentOptions.map(method => (
+                  <TouchableOpacity
+                    key={method.value}
+                    style={[
+                      styles.paymentBoxVertical,
+                      advancePaymentMethod === method.value && styles.selectedBoxVertical,
+                    ]}
+                    onPress={() => setAdvancePaymentMethod(method.value)}
+                  >
+                    <Image
+                      source={method.icon}
+                      style={styles.paymentIconVertical}
+                      resizeMode="contain"
+                    />
+                    <Typography
+                      type={Font.Poppins_Regular}
+                      style={{
+                        fontSize: 14,
+                        marginLeft: 12,
+                        flex: 1,
+                      }}
+                    >
+                      {method.label}
+                    </Typography>
+                    {advancePaymentMethod === method.value && (
+                      <View style={styles.checkmark}>
+                        <Typography type={Font.Poppins_Bold} style={{ color: '#fff', fontSize: 12 }}>✓</Typography>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <Button
                 title={advanceLoading ? 'Processing...' : 'Send Advance'}
                 onPress={handleAdvanceWithdraw}
@@ -827,6 +915,9 @@ const StaffManagement = ({ navigation }) => {
                       </Typography>
                       <Typography type={Font.Poppins_Regular} size={11} color="#999">
                         {moment(item.date).format('DD MMM YYYY, hh:mm A')}
+                      </Typography>
+                      <Typography type={Font.Poppins_Regular} size={10} color="#666">
+                        {item.payment_mode ? (item.payment_mode === 'upi' ? 'UPI' : 'Cash') : 'Cash'}
                       </Typography>
                       {item.deduction_method && (
                         <Typography type={Font.Poppins_Regular} size={10} color="#666">
