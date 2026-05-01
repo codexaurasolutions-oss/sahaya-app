@@ -1,5 +1,6 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import React, { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import Voice from '@react-native-community/voice';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -11,6 +12,9 @@ import LocalizedStrings from '../../../Constants/localization';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
   const suggestions = [
     "Professional Housekeeper exp.",
     "Experienced Male Driver",
@@ -18,6 +22,71 @@ const AllStaff = ({navigation}) => {
     "Dog walker near me",
     "Chef with North Indian & South Indian Cuisine",
   ];
+
+  useEffect(() => {
+    // Voice recognition event handlers
+    Voice.onSpeechStart = onSpeechStart;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechError = onSpeechError;
+
+    return () => {
+      // Cleanup
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
+
+  const onSpeechStart = () => {
+    setIsRecording(true);
+    setIsProcessing(false);
+  };
+
+  const onSpeechEnd = () => {
+    setIsRecording(false);
+    setIsProcessing(true);
+  };
+
+  const onSpeechResults = (event) => {
+    if (event.value && event.value.length > 0) {
+      const spokenText = event.value[0];
+      setDescribe(spokenText);
+    }
+    setIsProcessing(false);
+  };
+
+  const onSpeechError = (error) => {
+    console.log('Speech recognition error:', error);
+    setIsRecording(false);
+    setIsProcessing(false);
+  };
+
+  const startVoiceRecognition = async () => {
+    try {
+      setIsRecording(true);
+      await Voice.start('en-US'); // You can change to 'hi-IN' for Hindi
+    } catch (error) {
+      console.log('Error starting voice recognition:', error);
+      setIsRecording(false);
+    }
+  };
+
+  const stopVoiceRecognition = async () => {
+    try {
+      await Voice.stop();
+      setIsRecording(false);
+    } catch (error) {
+      console.log('Error stopping voice recognition:', error);
+      setIsRecording(false);
+    }
+  };
+
+  const toggleVoiceRecognition = () => {
+    if (isRecording) {
+      stopVoiceRecognition();
+    } else {
+      startVoiceRecognition();
+    }
+  };
   return (
     <CommanView>
       <HeaderForUser
@@ -45,15 +114,44 @@ const AllStaff = ({navigation}) => {
             {LocalizedStrings.FindStaffAI.Welcome_Desc}
           </Typography>
 
-          <Input
-            mainStyle={{ width: '100%', marginTop: 20 }}
-            style_input={styles.inputText}
-            placeholder={LocalizedStrings.FindStaffAI.Describe_Requirements}
-            multiline={true}
-            value={Describe}
-            onChange={(text) => setDescribe(text)}
-            style_inputContainer={{ height: 120, alignItems: 'flex-start', paddingTop: 10 }}
-          />
+          <View style={{ position: 'relative', width: '100%', marginTop: 20 }}>
+            <Input
+              mainStyle={{ width: '100%' }}
+              style_input={styles.inputText}
+              placeholder={LocalizedStrings.FindStaffAI.Describe_Requirements}
+              multiline={true}
+              value={Describe}
+              onChange={(text) => setDescribe(text)}
+              style_inputContainer={{ height: 120, alignItems: 'flex-start', paddingTop: 10, paddingRight: 50 }}
+            />
+            
+            {/* Voice Input Button */}
+            <TouchableOpacity
+              style={[
+                styles.voiceButton,
+                isRecording && styles.voiceButtonActive,
+              ]}
+              onPress={toggleVoiceRecognition}
+              activeOpacity={0.7}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Typography size={20} color="#fff">
+                  🎤
+                </Typography>
+              )}
+            </TouchableOpacity>
+
+            {isRecording && (
+              <View style={styles.recordingIndicator}>
+                <View style={styles.recordingDot} />
+                <Typography size={12} color="#D98579" type={Font.Poppins_Medium}>
+                  Listening...
+                </Typography>
+              </View>
+            )}
+          </View>
 
           <View style={styles.suggestionContainer}>
             {suggestions.map((item, index) => (
@@ -138,5 +236,48 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingBottom: 15,
+  },
+  voiceButton: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#D98579',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  voiceButtonActive: {
+    backgroundColor: '#FF4444',
+  },
+  voiceIcon: {
+    width: 24,
+    height: 24,
+    tintColor: '#fff',
+  },
+  voiceIconActive: {
+    tintColor: '#fff',
+  },
+  recordingIndicator: {
+    position: 'absolute',
+    bottom: -30,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D98579',
+    marginRight: 6,
   },
 });
