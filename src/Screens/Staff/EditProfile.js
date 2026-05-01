@@ -5,8 +5,12 @@ import {
   Image,
   TouchableOpacity,
   Text,
+  Alert,
+  Platform,
+  Linking,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
+import Geolocation from '@react-native-community/geolocation';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
 import { ImageConstant } from '../../Constants/ImageConstant';
@@ -40,6 +44,7 @@ const EditProfile = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const userDetail = useSelector(store => store?.userDetails);
   const isFirstTime = route?.params?.isFirstTime || false;
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   // State for all form fields
   const [firstName, setFirstName] = useState('');
@@ -633,8 +638,97 @@ const EditProfile = ({ navigation, route }) => {
     return null;
   };
 
+  // Function to get location from coordinates using reverse geocoding
+  const getLocationFromCoordinates = async (latitude, longitude) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'SahayaaApp/1.0'
+          }
+        }
+      );
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const address = data.address;
+        const cityName = address.city || address.town || address.village || address.suburb || '';
+        const stateName = address.state || '';
+        const pincode = address.postcode || '';
+        
+        return {
+          city: cityName,
+          state: stateName,
+          pincode: pincode
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching location details:', error);
+      return null;
+    }
+  };
+
+  // Function to capture current location
+  const captureLocation = () => {
+    setLoadingLocation(true);
+    
+    Geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationDetails = await getLocationFromCoordinates(latitude, longitude);
+        
+        if (locationDetails) {
+          if (locationDetails.city) setCurrentCity(locationDetails.city);
+          if (locationDetails.state) setCurrentState(locationDetails.state);
+          if (locationDetails.pincode) setCurrentPincode(locationDetails.pincode);
+          Alert.alert('Success', 'Location captured successfully!');
+        } else {
+          Alert.alert('Error', 'Could not fetch location details. Please enter manually.');
+        }
+        setLoadingLocation(false);
+      },
+      (error) => {
+        console.error('Location error:', error);
+        setLoadingLocation(false);
+        
+        if (error.code === 1) {
+          Alert.alert(
+            'Location Permission Required',
+            'Please enable location permission in your device settings to use this feature.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Open Settings', 
+                onPress: () => {
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              }
+            ]
+          );
+        } else if (error.code === 2) {
+          Alert.alert('Error', 'Location service is unavailable. Please check your GPS settings.');
+        } else if (error.code === 3) {
+          Alert.alert('Error', 'Location request timed out. Please try again.');
+        } else {
+          Alert.alert('Error', 'Could not get your location. Please enter manually.');
+        }
+      },
+      { 
+        enableHighAccuracy: true, 
+        timeout: 15000, 
+        maximumAge: 10000 
+      }
+    );
+  };
+
   // Handle update profile
-  const handleUpdateProfile = () => {
+  const handleUpdateProfile = () {
     if (updating) return;
 
     setUpdating(true);
@@ -913,15 +1007,24 @@ const EditProfile = ({ navigation, route }) => {
         </View>
 
         <View style={styles.section}>
-          <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
-            Current Address
-          </Typography>
-          <Input
-            placeholder=""
-            title="Street"
-            value={currentStreet}
-            onChange={text => setCurrentStreet(text)}
-          />
+          <View style={styles.headerWithLocation}>
+            <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
+              Current Address
+            </Typography>
+            <TouchableOpacity 
+              onPress={captureLocation} 
+              style={styles.locationButton}
+              disabled={loadingLocation}
+            >
+              <Image 
+                source={ImageConstant?.Location} 
+                style={styles.locationIcon} 
+              />
+              <Typography color='rgba(217, 133, 121, 1)' size={12}>
+                {loadingLocation ? 'Getting location...' : 'Use my location'}
+              </Typography>
+            </TouchableOpacity>
+          </View>
           <View style={styles.row}>
             <View style={{ flex: 1, marginRight: 8 }}>
               <Input
@@ -940,6 +1043,12 @@ const EditProfile = ({ navigation, route }) => {
               />
             </View>
           </View>
+          <Input
+            placeholder=""
+            title="Street"
+            value={currentStreet}
+            onChange={text => setCurrentStreet(text)}
+          />
           <Input
             placeholder=""
             title="Pincode"
@@ -1407,5 +1516,28 @@ const styles = StyleSheet.create({
   },
   updateBtn: {
     marginTop: 30,
+  },
+  headerWithLocation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 133, 121, 0.3)',
+    backgroundColor: 'rgba(217, 133, 121, 0.05)',
+  },
+  locationIcon: {
+    height: 16,
+    width: 16,
+    resizeMode: 'contain',
+    marginRight: 5,
+    tintColor: 'rgba(217, 133, 121, 1)',
   },
 });

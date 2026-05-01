@@ -539,32 +539,36 @@ const NewStaffForm = ({ navigation, route }) => {
       hasError = true;
     }
 
-    // Validate Emergency Contact Name
-    const emergencyNameError = validators.checkAlphabet(
-      'Emergency Contact Name',
-      2,
-      50,
-      emergencyContactName,
-    );
-    if (emergencyNameError) {
-      newErrors.emergencyContactName = emergencyNameError;
-      hasError = true;
+    // Validate Emergency Contact Name (optional - only if provided)
+    if (emergencyContactName && emergencyContactName.trim()) {
+      const emergencyNameError = validators.checkAlphabet(
+        'Emergency Contact Name',
+        2,
+        50,
+        emergencyContactName,
+      );
+      if (emergencyNameError) {
+        newErrors.emergencyContactName = emergencyNameError;
+        hasError = true;
+      }
     }
 
-    // Validate Emergency Contact Number
-    const emergencyPhoneError = validators.checkFixPhoneNumber(
-      'Emergency Contact Number',
-      emergencyContactNumber,
-      10,
-      10,
-    );
-    if (emergencyPhoneError) {
-      newErrors.emergencyContactNumber = emergencyPhoneError;
-      hasError = true;
+    // Validate Emergency Contact Number (optional - only if provided)
+    if (emergencyContactNumber && emergencyContactNumber.trim()) {
+      const emergencyPhoneError = validators.checkFixPhoneNumber(
+        'Emergency Contact Number',
+        emergencyContactNumber,
+        10,
+        10,
+      );
+      if (emergencyPhoneError) {
+        newErrors.emergencyContactNumber = emergencyPhoneError;
+        hasError = true;
+      }
     }
 
-    // Validate Relation
-    if (!relation || (!relation?.value && !relation)) {
+    // Validate Relation (optional - only if emergency contact is provided)
+    if ((emergencyContactName || emergencyContactNumber) && (!relation || (!relation?.value && !relation))) {
       newErrors.relation = 'Please select relation';
       hasError = true;
     }
