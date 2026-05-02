@@ -728,7 +728,7 @@ const EditProfile = ({ navigation, route }) => {
   };
 
   // Handle update profile
-  const handleUpdateProfile = () {
+  const handleUpdateProfile = () => {
     if (updating) return;
 
     setUpdating(true);
