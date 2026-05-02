@@ -207,7 +207,7 @@ const StepLocation = React.forwardRef((props, ref) => {
             disabled={loadingLocation}
           >
             <Image 
-              source={ImageConstant?.Location || require('../../../Assets/Images/location.png')} 
+              source={ImageConstant?.Location} 
               style={styles.locationIcon} 
             />
             <Typography color='rgba(217, 133, 121, 1)' size={12}>
