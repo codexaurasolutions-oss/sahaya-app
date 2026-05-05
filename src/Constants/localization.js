@@ -2,10 +2,46 @@
 
 import LocalizedStrings from 'react-localization';
 
+// Pure JS LocalizedStrings replacement - no native module needed
+class SafeLocalizedStrings {
+  constructor(translations) {
+    this._translations = translations || {};
+    this._language = 'en';
+    // Copy all keys from default language to this object
+    this._applyLanguage('en');
+  }
+
+  _applyLanguage(lang) {
+    const data = this._translations[lang] || this._translations['en'] || {};
+    Object.keys(data).forEach(key => {
+      this[key] = data[key];
+    });
+  }
+
+  setLanguage(lang) {
+    this._language = lang;
+    this._applyLanguage(lang);
+  }
+
+  getLanguage() {
+    return this._language;
+  }
+
+  getAvailableLanguages() {
+    return Object.keys(this._translations);
+  }
+
+  getString(key, language) {
+    const lang = language || this._language;
+    const data = this._translations[lang] || this._translations['en'] || {};
+    return data[key] || key;
+  }
+}
+
 // Safe wrapper to prevent crashes if localization fails
 let _strings;
 try {
-  _strings = new LocalizedStrings({
+  _strings = new SafeLocalizedStrings({
   // English
   en: {
     Home: {
