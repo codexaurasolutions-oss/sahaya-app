@@ -10,7 +10,7 @@ import RootStack from './src/Navigation/RootStack';
 import StaffStacks from './src/Navigation/StaffStacks';
 import { getLanguage, setLanguage } from './src/Constants/AsyncStorage';
 import localization from './src/Constants/localization';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-get-random-values';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { fcmService } from './src/pushNotifacation/FMCService';
@@ -50,11 +50,13 @@ const App = () => {
   }
 
   return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <MainNavigation />
-      </PersistGate>
-    </Provider>
+    <SafeAreaProvider>
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          <MainNavigation />
+        </PersistGate>
+      </Provider>
+    </SafeAreaProvider>
   );
 };
 

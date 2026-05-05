@@ -8,7 +8,7 @@ import org.devio.rn.splashscreen.SplashScreen
 class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super.onCreate(null)
         SplashScreen.show(this, R.style.SplashScreenTheme, true)
     }
 
