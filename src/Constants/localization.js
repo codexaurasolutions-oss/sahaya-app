@@ -1,7 +1,5 @@
 
 
-import LocalizedStrings from 'react-localization';
-
 // Pure JS LocalizedStrings replacement - no native module needed
 class SafeLocalizedStrings {
   constructor(translations) {
