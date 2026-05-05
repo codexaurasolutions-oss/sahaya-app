@@ -25,13 +25,18 @@ const App = () => {
       if (storedLangCode) {
         setLangCode(storedLangCode);
         setLanguage(storedLangCode);
-        localization.setLanguage(storedLangCode);
+        if (localization && localization.setLanguage) {
+          localization.setLanguage(storedLangCode);
+        }
       } else {
         setLanguage('en');
         setLangCode('en');
-        localization.setLanguage('en');
+        if (localization && localization.setLanguage) {
+          localization.setLanguage('en');
+        }
       }
     } catch (e) {
+      console.warn('Language load error:', e);
       setLangCode('en');
     }
   };
