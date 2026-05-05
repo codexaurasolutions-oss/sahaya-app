@@ -208,6 +208,13 @@ const More = ({ navigation }) => {
           subtitle={LocalizedStrings.MoreOptions.membership_subtitle || 'View and manage your membership'}
           onPress={() => navigation.navigate('HouseholdManager')}
         />
+        <Option
+          Images={ImageConstant?.Location}
+          isBorder={true}
+          title={'My Addresses'}
+          subtitle={'Manage your saved addresses'}
+          onPress={() => navigation.navigate('HouseholdProfile')}
+        />
       </View>
 
       <Typography

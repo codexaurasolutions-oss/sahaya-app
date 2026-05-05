@@ -13,6 +13,7 @@ import { validators } from './../../Backend/Validator';
 import { isValidForm } from '../../Backend/Utility';
 import { SIGINUP } from './../../Backend/api_routes';
 import { POST } from '../../Backend/Backend';
+import SimpleToast from 'react-native-simple-toast';
 
 const SiginUp = ({ navigation }) => {
   const [mobile, setMobile] = useState('');
@@ -77,21 +78,30 @@ const SiginUp = ({ navigation }) => {
           console.log('Signup Error Response:', JSON.stringify(error, null, 2));
           setIsLoading(false);
           
-          // Check if phone number already exists (422 error with phone_number validation)
+          // Check if phone number already exists — redirect to Login
           if (error?.data?.errors?.phone_number) {
-            // Phone already registered - show error and suggest login
             const errorMsg = Array.isArray(error.data.errors.phone_number) 
               ? error.data.errors.phone_number[0] 
               : error.data.errors.phone_number;
-            setMobileError(errorMsg + ' Please use Login instead.');
+            // If already registered, go directly to Login
+            if (errorMsg.toLowerCase().includes('already') || errorMsg.toLowerCase().includes('taken')) {
+              SimpleToast.show('This number is already registered. Please login.', SimpleToast.LONG);
+              navigation.navigate('Login');
+              return;
+            }
+            setMobileError(errorMsg);
           } else if (error?.data?.message) {
-            setMobileError(error?.data?.message);
+            const msg = error.data.message;
+            if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('taken')) {
+              SimpleToast.show('This number is already registered. Please login.', SimpleToast.LONG);
+              navigation.navigate('Login');
+              return;
+            }
+            setMobileError(msg);
           } else if (error?.message) {
             setMobileError(error.message);
           } else {
-            setMobileError(
-              'Something went wrong. Please try again.'
-            );
+            setMobileError('Something went wrong. Please try again.');
           }
         },
         fail => {

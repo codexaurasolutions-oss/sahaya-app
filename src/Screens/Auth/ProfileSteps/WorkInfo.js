@@ -78,15 +78,14 @@ const LastWorkExperience = ({ navigation }) => {
             />
 
 
-            <DropdownComponent
+            <Input
                 title={LocalizedStrings.StaffProfile?.Experience || 'Total Experience'}
-                placeholder="5 Years"
-                width={'100%'}
-                style_dropdown={{ marginHorizontal: 0 }}
-                selectedTextStyleNew={{ marginLeft: 10 }}
-                marginHorizontal={0}
-                style_title={{ textAlign: 'left' }}
-                data={[{ label: '1 Year', value: '1' }, { label: '5 Years', value: '5' }]}
+                placeholder={'Enter years (max 10)'}
+                value=""
+                onChangeText={() => { }}
+                keyboardType="numeric"
+                maxLength={2}
+                style={styles.input}
             />
 
 
