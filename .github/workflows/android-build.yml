@@ -38,6 +38,7 @@ jobs:
           rm -rf node_modules/react-native-audio-record || true
           rm -rf node_modules/react-native-avoid-softinput || true
           rm -rf node_modules/react-native-localization || true
+          rm -rf node_modules/react-localization || true
 
       - name: Clear Metro bundler cache
         run: rm -rf $TMPDIR/metro-* $TMPDIR/haste-* || true
