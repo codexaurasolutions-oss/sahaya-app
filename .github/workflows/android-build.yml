@@ -40,6 +40,9 @@ jobs:
       - name: Reduce Gradle JVM memory for CI
         run: sed -i 's/-Xmx20048m/-Xmx4096m/' android/gradle.properties
 
+      - name: Disable New Architecture for compatibility
+        run: sed -i 's/newArchEnabled=true/newArchEnabled=false/' android/gradle.properties
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 

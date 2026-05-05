@@ -12,73 +12,42 @@ import { getLanguage, setLanguage } from './src/Constants/AsyncStorage';
 import localization from './src/Constants/localization';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import 'react-native-get-random-values';
-import { Alert, PermissionsAndroid, Platform, } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { fcmService } from './src/pushNotifacation/FMCService';
 import { localNotificationService } from './src/pushNotifacation/LocalNotificationService';
 
 const App = () => {
-  const [langCode, setLangCode] = useState('');
+  const [langCode, setLangCode] = useState(null);
+
   const loadLanguage = async () => {
-    const storedLangCode = await getLanguage();
-    if (storedLangCode) {
-      setLangCode(storedLangCode);
-      setLanguage(storedLangCode);
-      localization.setLanguage(storedLangCode);
-    } else {
-      setLanguage('en');
+    try {
+      const storedLangCode = await getLanguage();
+      if (storedLangCode) {
+        setLangCode(storedLangCode);
+        setLanguage(storedLangCode);
+        localization.setLanguage(storedLangCode);
+      } else {
+        setLanguage('en');
+        setLangCode('en');
+        localization.setLanguage('en');
+      }
+    } catch (e) {
       setLangCode('en');
-      localization.setLanguage('en');
     }
   };
+
   useEffect(() => {
     loadLanguage();
     const timer = setTimeout(() => {
       SplashScreen?.hide();
     }, 1000);
-
     return () => clearTimeout(timer);
   }, []);
 
+  // Wait until language is loaded
   if (langCode === null) {
     return null;
   }
-
-  const requestNotificationPermissions = async () => {
-    if (Platform.OS === 'ios') {
-      PushNotificationIOS.requestPermissions();
-    } else {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-      );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.warn('Notification permission denied');
-      }
-    }
-  };
-
-
-  useEffect(() => {
-    requestNotificationPermissions()
-    fcmService.registerAppWithFCM();
-    fcmService.register(onRegister, onNotification, onOpenNotification);
-
-    localNotificationService.configure(onOpenNotification);
-
-    function onRegister(token) { }
-
-    function onNotification(notify) {
-      localNotificationService.showlocalNotification(
-        'channel-id',
-        Platform.OS === 'ios' ? notify.message : notify.title,
-        notify.body,
-        notify,
-      );
-    }
-
-    function onOpenNotification(notify, data) {
-      console.log('[App] onOpenNotification: ', notify);
-    }
-  }, []);
 
   return (
     <Provider store={store}>
@@ -95,6 +64,30 @@ const MainNavigation = () => {
   const isAuth = useSelector(store => store?.isAuth);
   const userTypes = useSelector(store => store?.userType);
   const languageCode = useSelector(state => state.language_code);
+
+  useEffect(() => {
+    const requestNotificationPermissions = async () => {
+      try {
+        if (Platform.OS === 'android') {
+          await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          );
+        }
+      } catch (e) {
+        console.warn('Notification permission error:', e);
+      }
+    };
+
+    requestNotificationPermissions();
+
+    try {
+      fcmService.registerAppWithFCM();
+      fcmService.register();
+      localNotificationService.configure();
+    } catch (e) {
+      console.warn('FCM/Notification setup error:', e);
+    }
+  }, []);
 
   return (
     <NavigationContainer key={languageCode}>
