@@ -29,7 +29,10 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install
+
+      - name: Remove react-native-worklets (requires New Architecture)
+        run: rm -rf node_modules/react-native-worklets || true
 
       - name: Clear Metro bundler cache
         run: rm -rf $TMPDIR/metro-* $TMPDIR/haste-* || true
