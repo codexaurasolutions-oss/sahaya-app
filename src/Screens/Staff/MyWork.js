@@ -78,7 +78,7 @@ const MyWork = () => {
         setLoading(false);
         const jobApps = success?.jobApplications || success?.data?.jobApplications || success?.job_applications || success?.data?.job_applications || [];
         const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
-        setWorkData(success?.data || null);
+        setWorkData(success?.data || success || null);
         setJobApplications(jobAppsArr);
         setAttendanceSummary(Array.isArray(success?.attendanceSummary) ? success.attendanceSummary : []);
         setLeaveSummary(Array.isArray(success?.leaveSummary) ? success.leaveSummary : []);
@@ -86,12 +86,26 @@ const MyWork = () => {
         // Staff has an active job if:
         // 1. They have job applications with accepted/approved status, OR
         // 2. They have a job_id in any application (API only returns active ones), OR
-        // 3. The myWork API returned employer/houseowner data
+        // 3. The myWork API returned employer/houseowner data (owner directly added staff)
         const activeJob = jobAppsArr.find(app => {
           const status = (app?.status || app?.application_status || '').toLowerCase();
           return status === 'accepted' || status === 'approved' || status === 'active';
         });
-        const hasJob = !!activeJob || (jobAppsArr.length > 0 && !!jobAppsArr[0]?.job_id);
+
+        // Check if owner directly added this staff (no job application needed)
+        const myWorkData2 = success?.data;
+        const directlyAdded =
+          !!myWorkData2?.houseowner ||
+          !!myWorkData2?.employer_details ||
+          !!myWorkData2?.added_by_user ||
+          !!myWorkData2?.employer ||
+          !!myWorkData2?.workplace ||
+          !!success?.houseowner ||
+          !!success?.employer ||
+          !!success?.workplace ||
+          !!success?.current_employer;
+
+        const hasJob = !!activeJob || (jobAppsArr.length > 0 && !!jobAppsArr[0]?.job_id) || directlyAdded;
         setHasActiveJob(hasJob);
 
         // Try to extract employer name from myWork response
@@ -104,6 +118,9 @@ const MyWork = () => {
           buildName(myWorkData?.houseowner) ||
           buildName(myWorkData?.employer_details) ||
           buildName(myWorkData?.added_by_user) ||
+          buildName(success?.houseowner) ||
+          buildName(success?.employer) ||
+          buildName(success?.current_employer) ||
           buildName(jobAppsArr?.[0]?.job?.user) ||
           buildName(jobAppsArr?.[0]?.job?.houseowner) ||
           buildName(jobAppsArr?.[0]?.employer);
