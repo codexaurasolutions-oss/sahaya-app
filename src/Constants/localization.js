@@ -2,8 +2,10 @@
 
 import LocalizedStrings from 'react-localization';
 
-
-export default new LocalizedStrings({
+// Safe wrapper to prevent crashes if localization fails
+let _strings;
+try {
+  _strings = new LocalizedStrings({
   // English
   en: {
     Home: {
@@ -10361,3 +10363,10 @@ export default new LocalizedStrings({
   },
 
 });
+
+} catch(e) {
+  console.warn('LocalizedStrings init failed:', e);
+  _strings = { setLanguage: () => {}, getLanguage: () => 'en', getAvailableLanguages: () => ['en'] };
+}
+
+export default _strings;
