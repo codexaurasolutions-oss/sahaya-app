@@ -30,7 +30,6 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -40,7 +39,16 @@
                 android:value="AIzaSyCt8jw_uRbRfr9_8CBRdauiHY8rWCjV6WU"/>
         </activity>
 
-        <!-- react-native-push-notification required receivers -->
+        <!-- react-native-push-notification: Required service -->
+        <service
+            android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationListenerService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- react-native-push-notification: Required receivers -->
         <receiver
             android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationActions"
             android:exported="true">
@@ -60,15 +68,6 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
-
-        <!-- Firebase Messaging Service -->
-        <service
-            android:name="com.google.firebase.messaging.FirebaseMessagingService"
-            android:exported="false">
-            <intent-filter android:priority="-500">
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
 
     </application>
 </manifest>

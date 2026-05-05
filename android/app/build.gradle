@@ -109,9 +109,8 @@ android {
 }
 
 dependencies {
-    implementation project(':react-native-push-notification')
     // The version of react-native is set by the React Native Gradle Plugin
-     implementation 'com.google.android.gms:play-services-auth:20.4.0'
+    implementation 'com.google.android.gms:play-services-auth:20.4.0'
 
     // Razorpay - included via react-native-razorpay npm package
 
