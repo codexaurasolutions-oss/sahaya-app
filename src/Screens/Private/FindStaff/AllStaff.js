@@ -1,6 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
-import React, { useState, useEffect } from 'react';
-import Voice from '@react-native-community/voice';
+import React, { useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -9,6 +8,7 @@ import { Font } from '../../../Constants/Font';
 import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
+import SimpleToast from 'react-native-simple-toast';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
@@ -23,69 +23,9 @@ const AllStaff = ({navigation}) => {
     "Chef with North Indian & South Indian Cuisine",
   ];
 
-  useEffect(() => {
-    // Voice recognition event handlers
-    Voice.onSpeechStart = onSpeechStart;
-    Voice.onSpeechEnd = onSpeechEnd;
-    Voice.onSpeechResults = onSpeechResults;
-    Voice.onSpeechError = onSpeechError;
-
-    return () => {
-      // Cleanup
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, []);
-
-  const onSpeechStart = () => {
-    setIsRecording(true);
-    setIsProcessing(false);
-  };
-
-  const onSpeechEnd = () => {
-    setIsRecording(false);
-    setIsProcessing(true);
-  };
-
-  const onSpeechResults = (event) => {
-    if (event.value && event.value.length > 0) {
-      const spokenText = event.value[0];
-      setDescribe(spokenText);
-    }
-    setIsProcessing(false);
-  };
-
-  const onSpeechError = (error) => {
-    console.log('Speech recognition error:', error);
-    setIsRecording(false);
-    setIsProcessing(false);
-  };
-
-  const startVoiceRecognition = async () => {
-    try {
-      setIsRecording(true);
-      await Voice.start('en-US'); // You can change to 'hi-IN' for Hindi
-    } catch (error) {
-      console.log('Error starting voice recognition:', error);
-      setIsRecording(false);
-    }
-  };
-
-  const stopVoiceRecognition = async () => {
-    try {
-      await Voice.stop();
-      setIsRecording(false);
-    } catch (error) {
-      console.log('Error stopping voice recognition:', error);
-      setIsRecording(false);
-    }
-  };
-
   const toggleVoiceRecognition = () => {
-    if (isRecording) {
-      stopVoiceRecognition();
-    } else {
-      startVoiceRecognition();
-    }
+    // Voice recognition not available — show message
+    SimpleToast.show('Voice search coming soon. Please type your search.', SimpleToast.SHORT);
   };
   return (
     <CommanView>

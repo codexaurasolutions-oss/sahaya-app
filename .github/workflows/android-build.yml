@@ -31,8 +31,11 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
-      - name: Remove react-native-worklets (requires New Architecture)
-        run: rm -rf node_modules/react-native-worklets || true
+      - name: Remove incompatible native modules
+        run: |
+          rm -rf node_modules/react-native-worklets || true
+          rm -rf node_modules/@react-native-community/voice || true
+          rm -rf node_modules/react-native-audio-record || true
 
       - name: Clear Metro bundler cache
         run: rm -rf $TMPDIR/metro-* $TMPDIR/haste-* || true
