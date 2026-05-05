@@ -160,16 +160,46 @@ const FindStaff = ({ navigation, route }) => {
             pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || item?.zip || item?.postal_code || item?.address?.pincode || item?.current_address?.pincode || '',
             experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
             verified: item?.is_verified || false,
+            // Police verification is separate from Aadhaar — check kyc_information
+            policeVerified: !!(
+              item?.kyc_information?.police_verification_path ||
+              item?.kyc_information?.police_clearance_certificate_path ||
+              item?.kyc_information?.verification_certificate ||
+              item?.verification_certificate ||
+              item?.police_verified === true
+            ),
             gender: item?.gender || '',
             age: getAge(item?.dob),
             salaryNum: Number(workInfo?.salary) || 0,
             salary: formatSalary(workInfo?.salary),
             image: getImageUrl(item?.image),
+            // Only show staff who are seeking jobs (is_job_seeking = true or not set)
+            isJobSeeking: item?.is_job_seeking !== false,
             raw: item,
           };
-        });
-        setAllCandidates(mapped);
-        setCandidates(mapped);
+        // Filter out staff who are NOT seeking jobs
+        }).filter(c => c.isJobSeeking !== false);
+
+        // Extract location keywords from description for client-side filtering
+        const descLower = description.toLowerCase();
+        const locationKeywords = extractLocationFromQuery(descLower);
+
+        // If location mentioned in query, strictly filter by it
+        const locationFiltered = locationKeywords.length > 0
+          ? mapped.filter(c => {
+              const loc = (c.location || '').toLowerCase();
+              const state = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
+              return locationKeywords.some(kw =>
+                loc.includes(kw) || state.includes(kw)
+              );
+            })
+          : mapped;
+
+        // Use location-filtered if results exist, else show all (graceful fallback)
+        const finalList = locationFiltered.length > 0 ? locationFiltered : mapped;
+
+        setAllCandidates(finalList);
+        setCandidates(finalList);
         setIsLoading(false);
       },
       (error) => {
@@ -192,6 +222,16 @@ const FindStaff = ({ navigation, route }) => {
         setIsLoading(false);
       },
     );
+  };
+
+  // Extract location keywords from natural language query
+  const extractLocationFromQuery = (query) => {
+    // Common stop words to ignore
+    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking'];
+    const words = query.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
+    // Return words that are likely location names (not role keywords)
+    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher'];
+    return words.filter(w => !roleWords.includes(w));
   };
 
 
@@ -243,7 +283,7 @@ const FindStaff = ({ navigation, route }) => {
 
     if (filterVerification) {
       filtered = filtered.filter(c =>
-        filterVerification === 'verified' ? c.verified : !c.verified
+        filterVerification === 'verified' ? c.policeVerified : !c.policeVerified
       );
     }
 
@@ -531,8 +571,8 @@ const FindStaff = ({ navigation, route }) => {
                     <Image source={ImageConstant.Verify} style={styles.icon} />
                     <Typography margin={3} size={14}>
                       {LocalizedStrings.FindStaff.Police_Verification}:{' '}
-                      <Typography color={c.verified ? 'green' : 'red'}>
-                        {c.verified ? LocalizedStrings.FindStaff.Verified : LocalizedStrings.FindStaff.Unverified}
+                      <Typography color={c.policeVerified ? 'green' : '#FF9800'}>
+                        {c.policeVerified ? LocalizedStrings.FindStaff.Verified : 'Not Uploaded'}
                       </Typography>
                     </Typography>
                   </View>

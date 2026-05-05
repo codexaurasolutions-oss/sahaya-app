@@ -412,6 +412,12 @@ const StaffDashboard = ({ navigation }) => {
 
       <View style={{ marginTop: 10, paddingHorizontal: 15 }}>
         <Button
+          onPress={() => navigation.navigate('HireMe')}
+          linerColor={['#16A34A', '#15803D']}
+          title={'📢 Post Yourself for Hire'}
+          main_style={{ width: '100%', marginBottom: 10 }}
+        />
+        <Button
           onPress={() => navigation.navigate('AIJobSearch')}
           linerColor={['#D98579', '#C4706A']}
           title={'Find Job with AI'}

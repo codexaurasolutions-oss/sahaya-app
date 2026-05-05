@@ -14,6 +14,8 @@ import StaffProfileMain from './../Screens/Staff/StaffProfileMain';
 import EarningSummary from './../Screens/Staff/EarningSummary';
 import StaffAttendance from './../Screens/Staff/StaffAttendance';
 import StaffAdvanceView from './../Screens/Staff/StaffAdvanceView';
+import StaffPaymentHistory from './../Screens/Staff/StaffPaymentHistory';
+import HireMeScreen from './../Screens/Staff/HireMeScreen';
 
 import JobListing from './../Screens/Staff/JobListing';
 import AIJobSearch from './../Screens/Staff/AIJobSearch';
@@ -156,6 +158,16 @@ const RootStack = () => {
       <Stack.Screen
         name="StaffAdvanceView"
         component={StaffAdvanceView}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="StaffPaymentHistory"
+        component={StaffPaymentHistory}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="HireMe"
+        component={HireMeScreen}
         options={{ ...commonOptions }}
       />
       <Stack.Screen

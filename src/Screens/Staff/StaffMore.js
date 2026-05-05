@@ -1,5 +1,5 @@
-import { StyleSheet, View, Image, TouchableOpacity, Modal } from 'react-native';
-import React, { useState } from 'react';
+import { StyleSheet, View, Image, TouchableOpacity, Modal, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
@@ -7,8 +7,8 @@ import Typography from '../../Component/UI/Typography';
 import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import { isAuth, userDetails } from '../../Redux/action';
-import { POST_WITH_TOKEN } from '../../Backend/Backend';
-import { DELETE_ACCOUNT, LOGOUT } from '../../Backend/api_routes';
+import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
+import { DELETE_ACCOUNT, LOGOUT, StaffAvailabilityUpdate, StaffAvailabilityStatus } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 
@@ -18,6 +18,44 @@ const StaffMore = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isJobSeeking, setIsJobSeeking] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
+
+  useEffect(() => {
+    // Fetch current job seeking status
+    GET_WITH_TOKEN(
+      StaffAvailabilityStatus,
+      res => {
+        setIsJobSeeking(res?.data?.is_available === true || res?.data?.is_job_seeking === true || res?.is_available === true);
+      },
+      () => {},
+      () => {},
+    );
+  }, []);
+
+  const handleJobSeekingToggle = (value) => {
+    setToggleLoading(true);
+    POST_WITH_TOKEN(
+      StaffAvailabilityUpdate,
+      { is_available: value, is_job_seeking: value },
+      res => {
+        setToggleLoading(false);
+        setIsJobSeeking(value);
+        SimpleToast.show(
+          value ? 'You are now visible to employers' : 'You are now hidden from job search',
+          SimpleToast.SHORT,
+        );
+      },
+      err => {
+        setToggleLoading(false);
+        SimpleToast.show('Failed to update status. Try again.', SimpleToast.SHORT);
+      },
+      () => {
+        setToggleLoading(false);
+        SimpleToast.show('Network error. Try again.', SimpleToast.SHORT);
+      },
+    );
+  };
 
   // Get user image and name from userDetails
   const imgUrl = userDetail?.image?.toLowerCase() || '';
@@ -138,6 +176,27 @@ const StaffMore = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Job Seeking Toggle */}
+      <View style={styles.jobSeekingCard}>
+        <View style={{ flex: 1 }}>
+          <Typography type={Font?.Poppins_SemiBold} size={14}>
+            Looking for a Job
+          </Typography>
+          <Typography type={Font?.Poppins_Regular} size={12} color="#888">
+            {isJobSeeking
+              ? 'Visible to employers — they can find you'
+              : 'Hidden from job search — turn on to get hired'}
+          </Typography>
+        </View>
+        <Switch
+          value={isJobSeeking}
+          onValueChange={handleJobSeekingToggle}
+          disabled={toggleLoading}
+          trackColor={{ false: '#E0E0E0', true: '#D98579' }}
+          thumbColor={isJobSeeking ? '#fff' : '#fff'}
+        />
+      </View>
+
       {/* Options List */}
       <Typography
         style={{ marginTop: 30 }}
@@ -170,6 +229,13 @@ const StaffMore = ({ navigation }) => {
           onPress={() => navigation.navigate('JobListing')}
         />
         <Option
+          Images={ImageConstant?.Verify}
+          imageStyle={{tintColor:'#16A34A'}}
+          title="Post Yourself for Hire"
+          subtitle="Let employers find you — toggle your availability"
+          onPress={() => navigation.navigate('HireMe')}
+        />
+        <Option
           Images={ImageConstant?.Salary}
           title={LocalizedStrings.MoreOptions?.membership || "Membership"}
           imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
@@ -182,6 +248,13 @@ const StaffMore = ({ navigation }) => {
           imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
           subtitle="View advances received and deduction history"
           onPress={() => navigation.navigate('StaffAdvanceView')}
+        />
+        <Option
+          Images={ImageConstant?.lines}
+          title="Payment History"
+          imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
+          subtitle="View all salary payments and dates"
+          onPress={() => navigation.navigate('StaffPaymentHistory')}
         />
       </View>
 
@@ -459,6 +532,16 @@ const styles = StyleSheet.create({
   editBtn: {
     marginLeft: 'auto',
     paddingHorizontal: 8,
+  },
+  jobSeekingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#FFF9F8',
   },
   editText: {
     fontSize: 14,

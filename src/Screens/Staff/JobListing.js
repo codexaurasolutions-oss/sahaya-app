@@ -20,6 +20,7 @@ import { GET_WITH_TOKEN } from '../../Backend/Backend';
 import { ListJob } from '../../Backend/api_routes';
 import { useIsFocused } from '@react-navigation/native';
 import EmptyView from '../../Component/UI/EmptyView';
+import { useSelector } from 'react-redux';
 
 const SORT_OPTIONS = [
   { label: 'Default', value: 'default' },
@@ -33,6 +34,7 @@ const JobsList = ({ navigation }) => {
   const [jobData, setJobData] = useState([]);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
+  const userDetail = useSelector(state => state?.userDetails);
 
   const [searchText, setSearchText] = useState('');
   const [selectedSort, setSelectedSort] = useState('default');
@@ -40,6 +42,15 @@ const JobsList = ({ navigation }) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedLocations, setSelectedLocations] = useState([]);
   const [selectedCompTypes, setSelectedCompTypes] = useState([]);
+
+  // Get staff's primary role and location from profile
+  const staffRole = (() => {
+    const role = userDetail?.user_work_info?.primary_role;
+    if (Array.isArray(role)) return role[0] || '';
+    return role || '';
+  })();
+  const staffCity = userDetail?.addresses?.[0]?.city || userDetail?.city || '';
+  const staffState = userDetail?.addresses?.[0]?.state || userDetail?.state || '';
 
   useEffect(() => {
     if (isFocused) {
@@ -49,12 +60,43 @@ const JobsList = ({ navigation }) => {
 
   const JobList = () => {
     setLoading(true);
+
+    // Build query params for role + location based filtering
+    let route = ListJob;
+    const params = [];
+    if (staffRole) params.push(`role=${encodeURIComponent(staffRole)}`);
+    if (staffCity) params.push(`city=${encodeURIComponent(staffCity)}`);
+    if (staffState) params.push(`state=${encodeURIComponent(staffState)}`);
+    if (params.length > 0) route = `${ListJob}?${params.join('&')}`;
+
     GET_WITH_TOKEN(
-      ListJob,
+      route,
       success => {
         const rawData = success?.data;
         const jobs = Array.isArray(rawData) ? rawData : (rawData?.data || []);
-        setJobData(Array.isArray(jobs) ? jobs : []);
+        const allJobs = Array.isArray(jobs) ? jobs : [];
+
+        // Client-side fallback filter by role and location
+        const filtered = allJobs.filter(job => {
+          const jobTitle = (job?.title || job?.role || '').toLowerCase();
+          const jobCity = (job?.city || '').toLowerCase();
+          const jobState = (job?.state || '').toLowerCase();
+
+          const roleMatch = staffRole
+            ? jobTitle.includes(staffRole.toLowerCase()) || staffRole.toLowerCase().includes(jobTitle)
+            : true;
+          const locationMatch = (staffCity || staffState)
+            ? jobCity.includes(staffCity.toLowerCase()) ||
+              jobState.includes(staffState.toLowerCase()) ||
+              (staffCity && jobCity.includes(staffCity.toLowerCase())) ||
+              (staffState && jobState.includes(staffState.toLowerCase()))
+            : true;
+
+          return roleMatch || locationMatch;
+        });
+
+        // If filtered results exist use them, else show all (graceful fallback)
+        setJobData(filtered.length > 0 ? filtered : allJobs);
         setLoading(false);
       },
       error => {

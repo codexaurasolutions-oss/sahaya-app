@@ -26,6 +26,7 @@ import Step1 from '../Screens/Auth/ProfileSteps/Step1';
 import PolicyScreen from '../Component/PolicyScreen';
 import AppUpdate from '../Screens/Private/MoreScreens/AppUpdate';
 import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
+import RecentSalaryList from '../Screens/Private/Salary/RecentSalaryList';
 import { useSelector } from 'react-redux';
 
 const commonOptions = {
@@ -159,6 +160,11 @@ const RootStack = () => {
       <Stack.Screen
         name="ReferAndEarn"
         component={ReferAndEarn}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="RecentSalaryList"
+        component={RecentSalaryList}
         options={{ ...commonOptions }}
       />
     </Stack.Navigator>

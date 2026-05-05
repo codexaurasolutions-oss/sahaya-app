@@ -8,6 +8,7 @@ import { ImageConstant } from '../../Constants/ImageConstant';
 import { Colors } from '../../Constants/Colors';
 import { Font } from '../../Constants/Font';
 import { windowHeight } from '../../Constants/Dimensions';
+import { launchImageLibrary } from 'react-native-image-picker';
 
 
 
@@ -68,6 +69,38 @@ const ImageModal = ({
         .catch(err => {
           console.log('Gallery error:', err);
         });
+    }, 500);
+  };
+
+  const OpenFiles = () => {
+    close();
+    setTimeout(() => {
+      // Use launchImageLibrary with mixed type to access Files, Drive, etc.
+      launchImageLibrary(
+        {
+          mediaType: 'mixed',
+          includeBase64: false,
+          selectionLimit: 1,
+          presentationStyle: 'fullScreen',
+        },
+        response => {
+          if (response.didCancel) return;
+          if (response.errorCode) {
+            SimpleToast.show('Could not open files. Please try again.');
+            return;
+          }
+          if (response.assets && response.assets.length > 0) {
+            const asset = response.assets[0];
+            const fileObj = {
+              path: asset.uri,
+              uri: asset.uri,
+              mime: asset.type || 'image/jpeg',
+              filename: asset.fileName || `document_${Date.now()}.jpg`,
+            };
+            selected([fileObj], 'files');
+          }
+        },
+      );
     }, 500);
   };
 
@@ -242,7 +275,7 @@ const ImageModal = ({
             {document && (
               <TouchableOpacity
                 style={styles.checkView}
-                onPress={() => SimpleToast.show('Document Picker not implemented')}
+                onPress={OpenFiles}
               >
                 <View style={styles.iconContainer}>
                   <Image
@@ -258,7 +291,7 @@ const ImageModal = ({
                   fontFamily={Font.Inter_Medium}
                   style={{ marginLeft: 15 }}
                 >
-                  Documents
+                  Files / Drive
                 </Typography>
               </TouchableOpacity>
             )}

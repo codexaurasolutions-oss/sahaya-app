@@ -1312,6 +1312,7 @@ const EditProfile = ({ navigation, route }) => {
         title={'Upload Document'}
         close={() => setShowImageModal(false)}
         selected={handleImageSelected}
+        document={true}
       />
     </CommanView>
   );

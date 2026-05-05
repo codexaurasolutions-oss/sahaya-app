@@ -215,6 +215,13 @@ const More = ({ navigation }) => {
           subtitle={'Manage your saved addresses'}
           onPress={() => navigation.navigate('HouseholdProfile')}
         />
+        <Option
+          Images={ImageConstant?.lines}
+          isBorder={true}
+          title={'Payment History'}
+          subtitle={'View all salary payments and dates'}
+          onPress={() => navigation.navigate('RecentSalaryList')}
+        />
       </View>
 
       <Typography
