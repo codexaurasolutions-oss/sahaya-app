@@ -1,6 +1,6 @@
 
 
-import LocalizedStrings from 'react-native-localization';
+import LocalizedStrings from 'react-localization';
 
 
 export default new LocalizedStrings({
