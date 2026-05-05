@@ -36,6 +36,7 @@ jobs:
           rm -rf node_modules/react-native-worklets || true
           rm -rf node_modules/@react-native-community/voice || true
           rm -rf node_modules/react-native-audio-record || true
+          rm -rf node_modules/react-native-avoid-softinput || true
 
       - name: Clear Metro bundler cache
         run: rm -rf $TMPDIR/metro-* $TMPDIR/haste-* || true
