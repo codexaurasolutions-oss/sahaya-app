@@ -9,9 +9,8 @@
         tools:replace="android:maxSdkVersion" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".MainApplication"
@@ -30,6 +29,7 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -38,36 +38,5 @@
                 android:name="com.google.android.geo.API_KEY"
                 android:value="AIzaSyCt8jw_uRbRfr9_8CBRdauiHY8rWCjV6WU"/>
         </activity>
-
-        <!-- react-native-push-notification: Required service -->
-        <service
-            android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationListenerService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
-
-        <!-- react-native-push-notification: Required receivers -->
-        <receiver
-            android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationActions"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="${applicationId}.ACTION_NOTIFICATION_ACTION" />
-            </intent-filter>
-        </receiver>
-        <receiver
-            android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationPublisher"
-            android:exported="false" />
-        <receiver
-            android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationBootEventReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-        </receiver>
-
     </application>
 </manifest>

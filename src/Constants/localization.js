@@ -1,56 +1,9 @@
 
 
-// Pure JS LocalizedStrings replacement - no native module needed
-// This completely replaces react-native-localization to prevent 'S' property crash
+import LocalizedStrings from 'react-native-localization';
 
-// Mock react-native-localization so if it somehow gets bundled, it won't crash
-if (typeof global !== 'undefined') {
-  try {
-    const RN = require('react-native');
-    if (RN && RN.NativeModules && !RN.NativeModules.ReactLocalization) {
-      RN.NativeModules.ReactLocalization = { language: 'en-US' };
-    }
-  } catch(e) {}
-}
-class SafeLocalizedStrings {
-  constructor(translations) {
-    this._translations = translations || {};
-    this._language = 'en';
-    // Copy all keys from default language to this object
-    this._applyLanguage('en');
-  }
 
-  _applyLanguage(lang) {
-    const data = this._translations[lang] || this._translations['en'] || {};
-    Object.keys(data).forEach(key => {
-      this[key] = data[key];
-    });
-  }
-
-  setLanguage(lang) {
-    this._language = lang;
-    this._applyLanguage(lang);
-  }
-
-  getLanguage() {
-    return this._language;
-  }
-
-  getAvailableLanguages() {
-    return Object.keys(this._translations);
-  }
-
-  getString(key, language) {
-    const lang = language || this._language;
-    const data = this._translations[lang] || this._translations['en'] || {};
-    return data[key] || key;
-  }
-}
-
-// Safe wrapper to prevent crashes if localization fails
-let _strings;
-try {
-  _strings = new SafeLocalizedStrings({
+export default new LocalizedStrings({
   // English
   en: {
     Home: {
@@ -10408,10 +10361,3 @@ try {
   },
 
 });
-
-} catch(e) {
-  console.warn('LocalizedStrings init failed:', e);
-  _strings = { setLanguage: () => {}, getLanguage: () => 'en', getAvailableLanguages: () => ['en'] };
-}
-
-export default _strings;
