@@ -1,6 +1,17 @@
 
 
 // Pure JS LocalizedStrings replacement - no native module needed
+// This completely replaces react-native-localization to prevent 'S' property crash
+
+// Mock react-native-localization so if it somehow gets bundled, it won't crash
+if (typeof global !== 'undefined') {
+  try {
+    const RN = require('react-native');
+    if (RN && RN.NativeModules && !RN.NativeModules.ReactLocalization) {
+      RN.NativeModules.ReactLocalization = { language: 'en-US' };
+    }
+  } catch(e) {}
+}
 class SafeLocalizedStrings {
   constructor(translations) {
     this._translations = translations || {};

@@ -11,10 +11,10 @@ import StaffStacks from './src/Navigation/StaffStacks';
 import { getLanguage, setLanguage } from './src/Constants/AsyncStorage';
 import localization from './src/Constants/localization';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
-import 'react-native-get-random-values';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { fcmService } from './src/pushNotifacation/FMCService';
 import { localNotificationService } from './src/pushNotifacation/LocalNotificationService';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const App = () => {
   const [langCode, setLangCode] = useState(null);
@@ -55,13 +55,15 @@ const App = () => {
   }
 
   return (
-    <SafeAreaProvider>
-      <Provider store={store}>
-        <PersistGate loading={null} persistor={persistor}>
-          <MainNavigation />
-        </PersistGate>
-      </Provider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <Provider store={store}>
+          <PersistGate loading={null} persistor={persistor}>
+            <MainNavigation />
+          </PersistGate>
+        </Provider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 };
 
