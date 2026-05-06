@@ -80,10 +80,10 @@ android {
 
     namespace "com.sahayya"
     defaultConfig {
-        applicationId "com.sahayya.new"
+        applicationId "com.sahayya"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 100
+        versionCode 200
         versionName "1.0"
     }
     signingConfigs {
