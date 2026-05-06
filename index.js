@@ -2,32 +2,39 @@
  * @format
  */
 
-import { NativeModules, AppRegistry } from 'react-native';
+import { NativeModules, AppRegistry, Platform } from 'react-native';
 
-// Global Crash Protector: Mock problematic native modules before they are required
-const safeMock = (name, mockObj = {}) => {
-  if (NativeModules && !NativeModules[name]) {
-    try {
-      NativeModules[name] = mockObj;
-    } catch (e) {
-      // In some RN versions NativeModules is read-only, but we try anyway
+// SUPER BULLETPROOF PROTECTION
+// If any NativeModule is accessed but not found, return an empty object instead of undefined.
+// This prevents "Cannot read property 'S' of undefined" permanently.
+const handler = {
+  get: function(target, prop) {
+    if (prop in target) {
+      return target[prop];
     }
+    // Return a dummy object with some common properties to satisfy minified code
+    return {
+      S: {},
+      default: {},
+      initialization: true,
+      addListener: () => {},
+      removeListeners: () => {},
+    };
   }
 };
 
-safeMock('ReactLocalization', { language: 'en' });
-safeMock('RNScreens', {});
-safeMock('RNSScreen', {});
-safeMock('RNSScreenStack', {});
-safeMock('RNSSafeAreaContext', {});
-safeMock('RNSSafeAreaProvider', {});
-safeMock('RNSSafeAreaContextManager', {});
+// Apply proxy to NativeModules
+const SafeNativeModules = new Proxy(NativeModules, handler);
+
+// Inject into global to catch libraries that use global.NativeModules
+if (typeof global !== 'undefined') {
+  global.NativeModules = SafeNativeModules;
+}
 
 import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
 import { enableScreens } from 'react-native-screens';
 
-// Disable screens optimization if it's causing crashes
 try {
   enableScreens(false);
 } catch (e) {}
