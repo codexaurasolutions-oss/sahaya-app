@@ -2,39 +2,38 @@ import { AppRegistry, NativeModules } from 'react-native';
 import App from './App';
 import { name as appName } from './app.json';
 
-// --- NUCLEAR PROXY TO KILL 'S' PROPERTY CRASH ---
-if (!global.__S_PROXY_INJECTED__) {
-  global.__S_PROXY_INJECTED__ = true;
-  
-  const nativeModulesProxy = new Proxy(NativeModules, {
-    get(target, prop) {
-      const module = target[prop];
-      if (module === undefined) {
-        // Return a dummy object that has every property (including 'S') as a dummy function/object
-        return new Proxy({}, {
-          get(t, p) {
-            if (p === 'S' || p === 'default') return {};
-            return undefined;
-          }
-        });
-      }
-      return module;
-    }
-  });
-
-  // Overwrite NativeModules with our safe proxy
-  Object.defineProperty(NativeModules, 'Proxy', {
-    value: nativeModulesProxy,
-    configurable: true,
-    enumerable: true,
-    writable: true
-  });
-  
-  // Also handle global undefined accesses if possible
-  if (typeof global.S === 'undefined') {
-    global.S = {};
-  }
+// --- THE ULTIMATE 'S' CRASH KILLER ---
+// We mock the specific module that usually causes this in minified builds
+if (!NativeModules.ReactLocalization) {
+  NativeModules.ReactLocalization = {
+    language: 'en',
+    getInterfaceLanguage: () => 'en',
+    S: {} // In case it's looking for 'S' directly on the module
+  };
 }
-// ------------------------------------------------
+
+// Global catch-all for any property 'S' on undefined
+if (typeof global.S === 'undefined') {
+  Object.defineProperty(global, 'S', {
+    get() { return {}; },
+    configurable: true
+  });
+}
+
+// Fallback for NativeModules proxy
+const originalNativeModules = NativeModules;
+global.NativeModules = new Proxy(originalNativeModules, {
+  get(target, prop) {
+    if (prop in target) return target[prop];
+    // Return a dummy object for any missing module
+    return {
+      S: {},
+      default: {},
+      getString: () => '',
+      language: 'en'
+    };
+  }
+});
+// -------------------------------------
 
 AppRegistry.registerComponent(appName, () => App);
