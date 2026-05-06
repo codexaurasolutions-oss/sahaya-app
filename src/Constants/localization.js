@@ -1,7 +1,21 @@
 
 
-import LocalizedStrings from 'react-native-localization';
-
+// Pure JS replacement - react-native-localization crashes on RN 0.81
+// because NativeModules.ReactLocalization is not available
+class LocalizedStrings {
+  constructor(translations) {
+    this._translations = translations || {};
+    this._language = 'en';
+    this._applyLanguage('en');
+  }
+  _applyLanguage(lang) {
+    const data = this._translations[lang] || this._translations['en'] || {};
+    Object.keys(data).forEach(key => { this[key] = data[key]; });
+  }
+  setLanguage(lang) { this._language = lang; this._applyLanguage(lang); }
+  getLanguage() { return this._language; }
+  getAvailableLanguages() { return Object.keys(this._translations); }
+}
 
 export default new LocalizedStrings({
   // English
