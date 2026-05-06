@@ -38,6 +38,9 @@ jobs:
           rm -rf node_modules/@react-native-community/voice || true
           rm -rf node_modules/react-native-audio-record || true
           rm -rf node_modules/react-native-avoid-softinput || true
+          # Double check - find and destroy any remaining localization files
+          find node_modules -name "LocalizedStrings.js" -path "*/react-native-localization/*" -delete 2>/dev/null || true
+          find node_modules -name "LocalizedStrings.js" -path "*/react-localization/*" -delete 2>/dev/null || true
 
       - name: Clear Metro bundler cache
         run: rm -rf $TMPDIR/metro-* $TMPDIR/haste-* || true
