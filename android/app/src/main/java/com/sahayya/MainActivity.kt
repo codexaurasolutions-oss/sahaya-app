@@ -3,10 +3,12 @@ import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import org.devio.rn.splashscreen.SplashScreen
 
 class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    SplashScreen.show(this, R.style.SplashScreenTheme, true)
     super.onCreate(null)
   }
 
