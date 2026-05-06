@@ -27,8 +27,12 @@ jobs:
           distribution: zulu
           java-version: 17
 
-      - name: Install dependencies
-        run: yarn install --no-frozen-lockfile
+      - name: Force Fresh Install
+        run: |
+          rm -rf node_modules
+          rm -f yarn.lock
+          rm -f package-lock.json
+          npm install
 
       - name: Remove incompatible and crash-causing modules
         run: |
