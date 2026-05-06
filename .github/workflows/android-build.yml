@@ -34,17 +34,6 @@ jobs:
           rm -f package-lock.json
           npm install --legacy-peer-deps
 
-      - name: Remove incompatible and crash-causing modules
-        run: |
-          rm -rf node_modules/react-native-localization || true
-          rm -rf node_modules/react-localization || true
-          rm -rf node_modules/localized-strings || true
-          rm -rf node_modules/react-native-worklets || true
-          rm -rf node_modules/@react-native-community/voice || true
-          rm -rf node_modules/react-native-audio-record || true
-          rm -rf node_modules/react-native-avoid-softinput || true
-          find node_modules -name "LocalizedStrings.js" -delete 2>/dev/null || true
-
       - name: Clear Metro bundler cache
         run: rm -rf $TMPDIR/metro-* $TMPDIR/haste-* || true
 
@@ -54,8 +43,8 @@ jobs:
       - name: Reduce Gradle JVM memory for CI
         run: sed -i 's/-Xmx20048m/-Xmx4096m/' android/gradle.properties
 
-      - name: Disable New Architecture for compatibility
-        run: sed -i 's/newArchEnabled=true/newArchEnabled=false/' android/gradle.properties
+      - name: Enable New Architecture for compatibility
+        run: sed -i 's/newArchEnabled=false/newArchEnabled=true/' android/gradle.properties
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew

@@ -1,19 +1,20 @@
 package com.sahayya
-import android.os.Bundle
+import android.os.Bundle 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
-import org.devio.rn.splashscreen.SplashScreen
+import org.devio.rn.splashscreen.SplashScreen 
 
 class MainActivity : ReactActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    SplashScreen.show(this, R.style.SplashScreenTheme, true)
-    super.onCreate(null)
-  }
+        super.onCreate(savedInstanceState)
+        SplashScreen.show(this, R.style.SplashScreenTheme,true)
+    }
 
   override fun getMainComponentName(): String = "Sahayya"
 
   override fun createReactActivityDelegate(): ReactActivityDelegate =
-      DefaultReactActivityDelegate(this, mainComponentName, false)
+      DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 }
