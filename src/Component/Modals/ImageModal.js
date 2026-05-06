@@ -75,13 +75,16 @@ const ImageModal = ({
   const OpenFiles = () => {
     close();
     setTimeout(() => {
-      // Use launchImageLibrary with mixed type to access Files, Drive, etc.
+      // For Android, using mixed mediaType with launchImageLibrary 
+      // is the best we can do without react-native-document-picker.
+      // We'll use specific options to encourage the system file picker.
       launchImageLibrary(
         {
           mediaType: 'mixed',
           includeBase64: false,
           selectionLimit: 1,
           presentationStyle: 'fullScreen',
+          assetRepresentationMode: 'current',
         },
         response => {
           if (response.didCancel) return;
@@ -94,8 +97,8 @@ const ImageModal = ({
             const fileObj = {
               path: asset.uri,
               uri: asset.uri,
-              mime: asset.type || 'image/jpeg',
-              filename: asset.fileName || `document_${Date.now()}.jpg`,
+              mime: asset.type || (asset.uri?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+              filename: asset.fileName || `document_${Date.now()}.${asset.uri?.endsWith('.pdf') ? 'pdf' : 'jpg'}`,
             };
             selected([fileObj], 'files');
           }
@@ -221,12 +224,15 @@ const ImageModal = ({
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.modalHeader}>
-            <Typography fontFamily={Font.Inter_Bold} color={Colors.Black}>
-              {title}
-            </Typography>
-            <TouchableOpacity onPress={() => close()}>
-              <Image source={ImageConstant.close} style={{ height: 20, width: 20 }} />
-            </TouchableOpacity>
+            <View style={styles.headerBar} />
+            <View style={styles.headerTitleRow}>
+              <Typography size={18} fontFamily={Font.Inter_Bold} color={Colors.Black}>
+                {title || 'Upload Document'}
+              </Typography>
+              <TouchableOpacity onPress={() => close()} style={styles.closeCircle}>
+                <Image source={ImageConstant.close} style={{ height: 12, width: 12, tintColor: '#fff' }} />
+              </TouchableOpacity>
+            </View>
           </View>
           <View
             style={[
@@ -234,67 +240,45 @@ const ImageModal = ({
               { height: documents || deleteImage ? 220 : 200 },
             ]}
           >
-            <TouchableOpacity style={styles.checkView} onPress={checkCameraPermission}>
-              <View style={styles.iconContainer}>
-                <Image
-                  style={styles.icon}
-                  source={{
-                    uri: 'https://cdn-icons-png.flaticon.com/128/685/685655.png',
-                  }}
-                />
-              </View>
-              <Typography
-                size={16}
-                color={Colors.black}
-                style={{ marginLeft: 15 }}
-                fontFamily={Font.Inter_Medium}
-              >
-                {"Photo"}
-              </Typography>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.checkView} onPress={checkPhotoPermission}>
-              <View style={styles.iconContainer}>
-                <Image
-                  style={styles.icon}
-                  source={{
-                    uri: 'https://cdn-icons-png.flaticon.com/128/16025/16025439.png',
-                  }}
-                />
-              </View>
-              <Typography
-                size={16}
-                fontFamily={Font.Inter_Medium}
-                color={Colors.black}
-                style={{ marginLeft: 15 }}
-              >
-                {"Gallery"}
-              </Typography>
-            </TouchableOpacity>
-
-            {document && (
-              <TouchableOpacity
-                style={styles.checkView}
-                onPress={OpenFiles}
-              >
-                <View style={styles.iconContainer}>
+            <View style={styles.optionsGrid}>
+              <TouchableOpacity style={styles.optionBtn} onPress={checkCameraPermission}>
+                <View style={[styles.iconWrapper, { backgroundColor: '#E3F2FD' }]}>
                   <Image
-                    style={styles.icon}
-                    source={{
-                      uri: 'https://cdn-icons-png.flaticon.com/128/2991/2991112.png',
-                    }}
+                    style={styles.optionIcon}
+                    source={{ uri: 'https://cdn-icons-png.flaticon.com/128/685/685655.png' }}
                   />
                 </View>
-                <Typography
-                  size={16}
-                  color={Colors.black}
-                  fontFamily={Font.Inter_Medium}
-                  style={{ marginLeft: 15 }}
-                >
-                  Files / Drive
+                <Typography size={14} color={Colors.black} fontFamily={Font.Inter_Medium} style={styles.optionLabel}>
+                  {"Camera"}
                 </Typography>
               </TouchableOpacity>
-            )}
+  
+              <TouchableOpacity style={styles.optionBtn} onPress={checkPhotoPermission}>
+                <View style={[styles.iconWrapper, { backgroundColor: '#F3E5F5' }]}>
+                  <Image
+                    style={styles.optionIcon}
+                    source={{ uri: 'https://cdn-icons-png.flaticon.com/128/16025/16025439.png' }}
+                  />
+                </View>
+                <Typography size={14} fontFamily={Font.Inter_Medium} color={Colors.black} style={styles.optionLabel}>
+                  {"Gallery"}
+                </Typography>
+              </TouchableOpacity>
+  
+              {document && (
+                <TouchableOpacity style={styles.optionBtn} onPress={OpenFiles}>
+                  <View style={[styles.iconWrapper, { backgroundColor: '#E8F5E9' }]}>
+                    <Image
+                      style={styles.optionIcon}
+                      source={{ uri: 'https://cdn-icons-png.flaticon.com/128/2991/2991112.png' }}
+                    />
+                  </View>
+                  <Typography size={14} color={Colors.black} fontFamily={Font.Inter_Medium} style={styles.optionLabel}>
+                    Files / Drive
+                  </Typography>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </TouchableOpacity>
       </TouchableOpacity>
@@ -312,55 +296,80 @@ const styles = StyleSheet.create({
 
   },
   modalContent: {
-    borderWidth: 1,
-    borderColor: Colors.grey,
     backgroundColor: Colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     padding: 20,
-    height: windowHeight / 4,
+    paddingTop: 10,
     ...Platform.select({
       ios: {
         shadowColor: 'black',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 15,
+        elevation: 20,
       },
     }),
   },
-  modalHeader: {
-    padding: 8,
-    alignItems: 'flex-end',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.black,
-    paddingHorizontal: 10,
-    flexDirection: "row",
-    justifyContent: "space-between"
+  headerBar: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 15,
   },
-  checkView: {
-    alignItems: 'center',
+  headerTitleRow: {
     flexDirection: 'row',
-    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 10,
   },
-  modalView: {
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    marginTop: 20,
+  closeCircle: {
+    backgroundColor: '#D98579',
+    borderRadius: 20,
+    padding: 6,
   },
-  iconContainer: {
-    borderRadius: 50,
-    backgroundColor: Colors.bg_grey,
-    height: 45,
-    width: 45,
+  modalHeader: {
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 25,
+    paddingBottom: 20,
+  },
+  optionBtn: {
     alignItems: 'center',
-    justifyContent: 'center',
+    width: '30%',
   },
-  icon: {
-    height: 25,
-    width: 25,
+  iconWrapper: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    // Add subtle shadow for premium feel
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  optionIcon: {
+    height: 30,
+    width: 30,
+    resizeMode: 'contain',
+  },
+  optionLabel: {
+    textAlign: 'center',
+  },
+  modalView: {
+    marginTop: 10,
   },
 });

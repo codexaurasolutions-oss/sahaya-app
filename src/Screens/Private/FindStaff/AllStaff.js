@@ -9,6 +9,7 @@ import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
+import Voice from '@react-native-community/voice';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
@@ -23,9 +24,61 @@ const AllStaff = ({navigation}) => {
     "Chef with North Indian & South Indian Cuisine",
   ];
 
-  const toggleVoiceRecognition = () => {
-    // Voice recognition not available — show message
-    SimpleToast.show('Voice search coming soon. Please type your search.', SimpleToast.SHORT);
+  React.useEffect(() => {
+    Voice.onSpeechStart = onSpeechStart;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechError = onSpeechError;
+    Voice.onSpeechResults = onSpeechResults;
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
+
+  const onSpeechStart = (e) => {
+    console.log('onSpeechStart: ', e);
+    setIsRecording(true);
+  };
+
+  const onSpeechEnd = (e) => {
+    console.log('onSpeechEnd: ', e);
+    setIsRecording(false);
+  };
+
+  const onSpeechError = (e) => {
+    console.log('onSpeechError: ', e);
+    setIsRecording(false);
+    if (e?.error?.message?.includes('No recognition result matched')) {
+      // Ignore silent timeouts
+    } else {
+      SimpleToast.show('Speech error. Please try again.', SimpleToast.SHORT);
+    }
+  };
+
+  const onSpeechResults = (e) => {
+    console.log('onSpeechResults: ', e);
+    if (e.value && e.value.length > 0) {
+      setDescribe(e.value[0]);
+    }
+  };
+
+  const toggleVoiceRecognition = async () => {
+    if (isRecording) {
+      try {
+        await Voice.stop();
+        setIsRecording(false);
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      try {
+        setDescribe('');
+        await Voice.start('en-IN'); // Use Indian English for better accuracy
+      } catch (e) {
+        console.error(e);
+        SimpleToast.show('Could not start voice recognition.', SimpleToast.SHORT);
+      }
+    }
   };
   return (
     <CommanView>

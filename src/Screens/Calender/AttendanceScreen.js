@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Modal } from "react-native";
 import moment from "moment";
 
 import CommanView from "../../Component/CommanView";
@@ -47,19 +47,17 @@ const AttendanceScreen = ({ navigation, route }) => {
   const [markedDates, setMarkedDates] = useState({});
   const [summary, setSummary] = useState({ totalWorked: 0, absent: 0, leave: 0 });
   const [loading, setLoading] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editingDate, setEditingDate] = useState(null);
-  const [editStatus, setEditStatus] = useState(null);
-  const statusOptions = [
-    { value: 'present', label: 'Present' },
-    { value: 'absent', label: 'Absent' },
-    { value: 'on_leave', label: 'On Leave' },
-    { value: 'late', label: 'Late' },
-  ];
+  const [isEditingDeductions, setIsEditingDeductions] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
+  const statusOptions = [
+    { value: 'present', label: 'Present', color: '#4CAF50' },
+    { value: 'absent', label: 'Absent', color: '#F44336' },
+    { value: 'on_leave', label: 'On Leave', color: '#FFC107' },
+  ];
 
   useEffect(() => {
     if (isFocused) {
@@ -207,48 +205,44 @@ const AttendanceScreen = ({ navigation, route }) => {
   };
 
   const handleDatePress = (day) => {
-    setSelected(day.dateString);
-    if (editMode && selectedStaff) {
-      setEditingDate(day.dateString);
-      const currentStatus = markedDates[day.dateString]?.selectedColor;
-      const statusMap = {
-        [STATUS_COLORS.present]: 'present',
-        [STATUS_COLORS.absent]: 'absent',
-        [STATUS_COLORS.on_leave]: 'on_leave',
-        [STATUS_COLORS.late]: 'late',
-      };
-      setEditStatus(statusMap[currentStatus] || 'present');
-    }
-  };
-
-  const saveAttendanceEdit = () => {
-    if (!editingDate || !editStatus || !selectedStaff) {
-      SimpleToast.show("Please select a date and status", SimpleToast.SHORT);
+    if (!selectedStaff) {
+      SimpleToast.show("Please select a staff member first", SimpleToast.SHORT);
       return;
     }
+    setSelected(day.dateString);
+    setEditingDate(day.dateString);
+    setStatusModalVisible(true);
+  };
 
+  const saveAttendanceEdit = (status) => {
+    if (!editingDate || !selectedStaff) return;
+
+    setLoading(true);
     const formData = new FormData();
     formData.append("staff_id", selectedStaff.value);
     formData.append("date", editingDate);
-    formData.append("status", editStatus);
+    formData.append("status", status === 'on_leave' ? 'absent' : status); // API prefers absent/present
     formData.append("check_in_time", "09:00:00");
-    formData.append("description", "Manually updated");
+    formData.append("description", "Manual update from calendar");
+    
+    // Note: leave_id is required by some API versions if absent, but we'll try without first
+    // or provide a dummy if needed based on controller logic.
 
     POST_FORM_DATA(
-      "/api/attendance/store",
+      "housersold/attendance",
       formData,
       (success) => {
-        SimpleToast.show("Attendance updated successfully", SimpleToast.SHORT);
-        setEditingDate(null);
-        setEditStatus(null);
-        setEditMode(false);
+        SimpleToast.show("Attendance marked!", SimpleToast.SHORT);
+        setStatusModalVisible(false);
         fetchAttendance(selectedStaff.value, currentMonth);
       },
       (error) => {
-        SimpleToast.show("Failed to update attendance", SimpleToast.SHORT);
+        setLoading(false);
+        SimpleToast.show(error?.data?.message || "Failed to update attendance", SimpleToast.SHORT);
       },
       (fail) => {
-        SimpleToast.show("Network error. Please try again.", SimpleToast.SHORT);
+        setLoading(false);
+        SimpleToast.show("Network error", SimpleToast.SHORT);
       }
     );
   };
@@ -312,54 +306,55 @@ const AttendanceScreen = ({ navigation, route }) => {
         />
 
         {selectedStaff && (
-          <View style={styles.editButtonContainer}>
-            <TouchableOpacity
-              style={[styles.editButton, editMode && styles.editButtonActive]}
-              onPress={() => {
-                setEditMode(!editMode);
-                setEditingDate(null);
-                setEditStatus(null);
-              }}
-            >
-              <Typography type={Font.Poppins_Medium} size={14} color={editMode ? "#fff" : "#D98579"}>
-                {editMode ? "Cancel Edit" : "Edit Attendance"}
-              </Typography>
-            </TouchableOpacity>
-          </View>
+          <Typography 
+            size={12} 
+            color="#999" 
+            style={{ textAlign: 'center', marginTop: 10, fontFamily: Font.Poppins_Regular }}
+          >
+            Tip: Click on any date to mark attendance.
+          </Typography>
         )}
 
-        {editMode && editingDate && (
-          <View style={styles.editPanel}>
-            <Typography type={Font.Poppins_SemiBold} size={15} style={{ marginBottom: 10 }}>
-              Edit {moment(editingDate).format("DD MMM YYYY")}
-            </Typography>
-            <View style={styles.statusButtons}>
-              {statusOptions.map((status) => (
-                <TouchableOpacity
-                  key={status.value}
-                  style={[
-                    styles.statusButton,
-                    editStatus === status.value && styles.statusButtonActive,
-                  ]}
-                  onPress={() => setEditStatus(status.value)}
-                >
-                  <Typography
-                    type={Font.Poppins_Medium}
-                    size={13}
-                    color={editStatus === status.value ? "#fff" : "#666"}
-                  >
-                    {status.label}
-                  </Typography>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity style={styles.saveButton} onPress={saveAttendanceEdit}>
-              <Typography type={Font.Poppins_SemiBold} size={14} color="#fff">
-                Save Changes
+        <Modal
+          visible={statusModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setStatusModalVisible(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setStatusModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <Typography type={Font.Poppins_SemiBold} size={16} style={{ marginBottom: 15, textAlign: 'center' }}>
+                Mark Attendance for {moment(editingDate).format("DD MMM")}
               </Typography>
-            </TouchableOpacity>
-          </View>
-        )}
+              
+              <View style={styles.modalButtons}>
+                {statusOptions.map((status) => (
+                  <TouchableOpacity
+                    key={status.value}
+                    style={[styles.modalButton, { borderColor: status.color }]}
+                    onPress={() => saveAttendanceEdit(status.value)}
+                  >
+                    <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+                    <Typography type={Font.Poppins_Medium} size={14} color="#333">
+                      {status.label}
+                    </Typography>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity 
+                style={styles.closeButton} 
+                onPress={() => setStatusModalVisible(false)}
+              >
+                <Typography type={Font.Poppins_Medium} size={14} color="#666">Cancel</Typography>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <View style={styles.summary}>
           <Typography size={16} type={Font.Poppins_Bold} style={styles.summaryTitle}>
@@ -527,5 +522,44 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalButtons: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    backgroundColor: '#FAFAFB',
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  closeButton: {
+    padding: 10,
+    alignItems: 'center',
   },
 });

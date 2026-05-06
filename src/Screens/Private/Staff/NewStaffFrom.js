@@ -12,6 +12,7 @@ import Date_Picker from '../../../Component/Date_Picker';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../../Backend/Backend';
+import ImageModal from '../../../Component/Modals/ImageModal';
 import { validators } from '../../../Backend/Validator';
 import { fetchPincodeDetails } from '../../../Backend/Utility';
 import SimpleToast from 'react-native-simple-toast';
@@ -40,6 +41,8 @@ const NewStaffForm = ({ navigation, route }) => {
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactNumber, setEmergencyContactNumber] = useState('');
   const [relation, setRelation] = useState(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentPickerType, setCurrentPickerType] = useState(null);
 
   // Work Details States
   const [roleDesignation, setRoleDesignation] = useState(null);
@@ -354,39 +357,30 @@ const NewStaffForm = ({ navigation, route }) => {
 
   // Image picker handler
   const handleImagePicker = type => {
-    setLoading(false);
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    };
+    setCurrentPickerType(type);
+    setShowImageModal(true);
+  };
 
-    launchImageLibrary(options, response => {
-      if (response.didCancel) {
-        return;
-      } else if (response.errorMessage) {
-        SimpleToast.show('Error picking image', SimpleToast.SHORT);
-      } else if (response.assets && response.assets[0]) {
-        const asset = response.assets[0];
-        const imageData = {
-          uri: asset.uri,
-          type: asset.type || 'image/jpeg',
-          name: asset.fileName || `${type}_${Date.now()}.jpg`,
-          path: asset.uri,
-        };
+  const handleImageSelected = (images) => {
+    if (images && images.length > 0) {
+      const asset = images[0];
+      const imageData = {
+        uri: asset.uri || asset.path,
+        type: asset.type || asset.mime || 'image/jpeg',
+        name: asset.fileName || asset.filename || `${currentPickerType}_${Date.now()}.jpg`,
+        path: asset.path || asset.uri,
+      };
 
-        if (type === 'staffPhoto') {
-          setStaffPhoto(imageData);
-        } else if (type === 'policeClearance') {
-          setPoliceClearance(imageData);
-        } else if (type === 'aadharCard') {
-          setAadharCard(imageData);
-        } else if (type === 'aadharBack') {
-          setAadharBack(imageData);
-        }
+      if (currentPickerType === 'staffPhoto') {
+        setStaffPhoto(imageData);
+      } else if (currentPickerType === 'policeClearance') {
+        setPoliceClearance(imageData);
+      } else if (currentPickerType === 'aadharCard') {
+        setAadharCard(imageData);
+      } else if (currentPickerType === 'aadharBack') {
+        setAadharBack(imageData);
       }
-    });
+    }
   };
 
   // toggle working day for multi-select
@@ -1355,6 +1349,14 @@ const NewStaffForm = ({ navigation, route }) => {
           loader={loading}
         />
       </View>
+
+      <ImageModal
+        showModal={showImageModal}
+        title={'Upload Document'}
+        close={() => setShowImageModal(false)}
+        selected={handleImageSelected}
+        document={true}
+      />
     </CommanView>
   );
 };

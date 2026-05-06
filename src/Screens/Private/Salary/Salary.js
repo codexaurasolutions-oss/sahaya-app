@@ -52,8 +52,10 @@ const StaffManagement = ({ navigation }) => {
   const [upiInput, setUpiInput] = useState('');
   const [isEditingBaseSalary, setIsEditingBaseSalary] = useState(false);
   const [isEditingAdjustments, setIsEditingAdjustments] = useState(false);
+  const [isEditingDeductions, setIsEditingDeductions] = useState(false);
   const [isSavingAdjustments, setIsSavingAdjustments] = useState(false);
   const [isSavingBaseSalary, setIsSavingBaseSalary] = useState(false);
+  const [isSavingDeductions, setIsSavingDeductions] = useState(false);
   const [receiptPayment, setReceiptPayment] = useState(null);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [advanceLoading, setAdvanceLoading] = useState(false);
@@ -258,14 +260,17 @@ const StaffManagement = ({ navigation }) => {
         }
         setIsSavingBaseSalary(false);
         setIsSavingAdjustments(false);
+        setIsSavingDeductions(false);
         setIsEditingBaseSalary(false);
         setIsEditingAdjustments(false);
+        setIsEditingDeductions(false);
         SimpleToast.show('Salary updated successfully', SimpleToast.SHORT);
         GetSalaryList();
       },
       error => {
         setIsSavingBaseSalary(false);
         setIsSavingAdjustments(false);
+        setIsSavingDeductions(false);
         SimpleToast.show(
           error?.data?.message || 'Failed to update salary',
           SimpleToast.SHORT,
@@ -274,6 +279,7 @@ const StaffManagement = ({ navigation }) => {
       fail => {
         setIsSavingBaseSalary(false);
         setIsSavingAdjustments(false);
+        setIsSavingDeductions(false);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
@@ -1109,6 +1115,71 @@ const StaffManagement = ({ navigation }) => {
                 </TouchableOpacity>
               )}
             </View>
+
+            <View style={styles.section}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={styles.subTitle}
+                >
+                  Deductions
+                </Typography>
+                <TouchableOpacity
+                  onPress={() => setIsEditingDeductions(!isEditingDeductions)}
+                >
+                  <Image
+                    source={ImageConstant.pencle}
+                    style={styles.pencle}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.salaryRow}>
+                <Typography type={Font.Poppins_Regular} style={styles.label}>
+                  Advance Deduction
+                </Typography>
+                {isEditingDeductions ? (
+                  <TextInput
+                    style={[styles.amountInput, { color: '#D98579' }]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(advance)}
+                    onChangeText={handleAmountChange(setAdvance)}
+                    placeholder="0"
+                    placeholderTextColor="#D98579"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={{ color: '#D98579' }}
+                  >
+                    -{getSanitizedValue(advance) || '0'}
+                  </Typography>
+                )}
+              </View>
+
+              {isEditingDeductions && (
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={saveSalaryData}
+                  disabled={isSavingDeductions}
+                >
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.saveButtonText}
+                  >
+                    {isSavingDeductions ? 'Saving...' : 'Save'}
+                  </Typography>
+                </TouchableOpacity>
+              )}
+            </View>
+
             <View style={[styles.section]}>
               <Typography
                 type={Font.Poppins_SemiBold}

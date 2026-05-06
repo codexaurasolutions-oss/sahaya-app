@@ -341,6 +341,7 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
         title={
           LocalizedStrings.EditProfile?.upload_document || 'Upload Document'
         }
+        document={true}
         close={() => setShowImageModal(false)}
         selected={handleImageSelected}
       />

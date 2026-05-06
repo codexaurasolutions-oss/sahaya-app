@@ -196,7 +196,7 @@ const FindStaff = ({ navigation, route }) => {
           : mapped;
 
         // Use location-filtered if results exist, else show all (graceful fallback)
-        const finalList = locationFiltered.length > 0 ? locationFiltered : mapped;
+        const finalList = locationFiltered;
 
         setAllCandidates(finalList);
         setCandidates(finalList);

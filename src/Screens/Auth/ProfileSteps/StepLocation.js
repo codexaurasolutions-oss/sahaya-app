@@ -216,7 +216,19 @@ const StepLocation = React.forwardRef((props, ref) => {
           </TouchableOpacity>
         </View>
 
-        {/* City and State - FIRST */}
+        {/* Street - FIRST */}
+        <Input
+          title={LocalizedStrings.EditProfile?.Street || LocalizedStrings.StaffProfile?.Street || 'Street'}
+          placeholder="Enter street address"
+          value={street}
+          onChange={(text) => {
+            setStreet(text);
+            if (error?.street) setError({...error, street: null});
+          }}
+          error={error?.street}
+        />
+
+        {/* City and State - SECOND */}
         <View style={styles.row}>
           <View style={styles.cityContainer}>
             <Input 
@@ -243,18 +255,6 @@ const StepLocation = React.forwardRef((props, ref) => {
             />
           </View>
         </View>
-
-        {/* Street - SECOND */}
-        <Input
-          title={LocalizedStrings.EditProfile?.Street || LocalizedStrings.StaffProfile?.Street || 'Street'}
-          placeholder="Enter street address"
-          value={street}
-          onChange={(text) => {
-            setStreet(text);
-            if (error?.street) setError({...error, street: null});
-          }}
-          error={error?.street}
-        />
 
         {/* Pincode - THIRD */}
         <Input 
@@ -287,7 +287,19 @@ const StepLocation = React.forwardRef((props, ref) => {
             </TouchableOpacity>
           </View>
 
-          {/* City and State - FIRST */}
+          {/* Street - FIRST */}
+          <Input
+            title={LocalizedStrings.EditProfile?.Street || LocalizedStrings.StaffProfile?.Street || 'Street'}
+            placeholder={LocalizedStrings.EditProfile?.Street || 'Enter street address'}
+            value={street2}
+            onChange={(text) => {
+              setStreet2(text);
+              if (error?.street2) setError({...error, street2: null});
+            }}
+            error={error?.street2}
+          />
+
+          {/* City and State - SECOND */}
           <View style={styles.row}>
             <View style={styles.cityContainer}>
               <Input 
@@ -314,18 +326,6 @@ const StepLocation = React.forwardRef((props, ref) => {
               />
             </View>
           </View>
-
-          {/* Street - SECOND */}
-          <Input
-            title={LocalizedStrings.EditProfile?.Street || LocalizedStrings.StaffProfile?.Street || 'Street'}
-            placeholder={LocalizedStrings.EditProfile?.Street || 'Enter street address'}
-            value={street2}
-            onChange={(text) => {
-              setStreet2(text);
-              if (error?.street2) setError({...error, street2: null});
-            }}
-            error={error?.street2}
-          />
 
           {/* Pincode - THIRD */}
           <Input 

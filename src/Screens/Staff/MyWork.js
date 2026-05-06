@@ -39,7 +39,8 @@ const MyWork = () => {
     if (!obj) return null;
     const first = obj?.first_name || obj?.employer_first_name || obj?.fname || '';
     const last = obj?.last_name || obj?.employer_last_name || obj?.lname || '';
-    const full = `${first} ${last}`.trim();
+    const name = obj?.name || '';
+    const full = (first || last) ? `${first} ${last}`.trim() : name.trim();
     return full && full !== 'null' && full !== 'undefined' ? full : null;
   };
 
@@ -103,7 +104,8 @@ const MyWork = () => {
           !!success?.houseowner ||
           !!success?.employer ||
           !!success?.workplace ||
-          !!success?.current_employer;
+          !!success?.current_employer ||
+          !!userDetail?.added_by;
 
         const hasJob = !!activeJob || (jobAppsArr.length > 0 && !!jobAppsArr[0]?.job_id) || directlyAdded;
         setHasActiveJob(hasJob);
@@ -215,7 +217,7 @@ const MyWork = () => {
                 {LocalizedStrings.staffSection?.MyWork?.role || 'Role'}:{' '}
               </Typography>
               <Typography type={Font.Poppins_SemiBold} size={13}>
-                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || '--'}
+                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || myWorkData?.user_work_info?.primary_role || '--'}
               </Typography>
             </View>
             <View style={styles.rowInline}>

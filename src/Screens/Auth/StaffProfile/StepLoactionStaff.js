@@ -11,7 +11,9 @@ import Input from '../../../Component/Input';
 import Typography from '../../../Component/UI/Typography';
 import { POST_FORM_DATA } from '../../../Backend/Backend';
 import { ADDRESSES_UPDATE } from '../../../Backend/api_routes';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, Alert, Platform, Linking } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
+import { ImageConstant } from '../../../Constants/ImageConstant';
 import { validators } from '../../../Backend/Validator';
 import { isValidForm, fetchPincodeDetails } from '../../../Backend/Utility';
 import { useSelector } from 'react-redux';
@@ -35,6 +37,58 @@ const StepLoactionStaff = forwardRef((props, ref) => {
   // State for errors
   const [errors, setErrors] = useState({});
   const [loader, setLoader] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+
+  // Function to get location from coordinates using reverse geocoding
+  const getLocationFromCoordinates = async (latitude, longitude) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+        {
+          headers: { 'User-Agent': 'SahayaaApp/1.0' }
+        }
+      );
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const address = data.address;
+        const cityName = address.city || address.town || address.village || address.suburb || '';
+        const stateName = address.state || '';
+        const pincode = address.postcode || '';
+        
+        return { city: cityName, state: stateName, pincode: pincode };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching location details:', error);
+      return null;
+    }
+  };
+
+  const captureLocation = () => {
+    setLoadingLocation(true);
+    Geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationDetails = await getLocationFromCoordinates(latitude, longitude);
+        
+        if (locationDetails) {
+          if (locationDetails.city) setCurrentCity(locationDetails.city);
+          if (locationDetails.state) setCurrentState(locationDetails.state);
+          if (locationDetails.pincode) setCurrentPincode(locationDetails.pincode);
+          Alert.alert('Success', 'Location captured successfully!');
+        } else {
+          Alert.alert('Error', 'Could not fetch location details.');
+        }
+        setLoadingLocation(false);
+      },
+      (error) => {
+        setLoadingLocation(false);
+        Alert.alert('Error', 'Could not get your location. Please check permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  };
 
   const addressesString = useMemo(() => {
     return JSON.stringify(userDetail?.addresses || []);
@@ -260,9 +314,50 @@ const StepLoactionStaff = forwardRef((props, ref) => {
     <>
       <View style={{ flex: 1 }}>
         <View style={styles.wrap}>
-          <Typography type={Font?.Poppins_SemiBold} size={18}>
-            {LocalizedStrings.EditProfile?.Current_Address || 'Current Address'}
-          </Typography>
+          <View style={styles.headerWithLocation}>
+            <Typography type={Font?.Poppins_SemiBold} size={18}>
+              {LocalizedStrings.EditProfile?.Current_Address || 'Current Address'}
+            </Typography>
+            <TouchableOpacity 
+              onPress={captureLocation} 
+              style={styles.locationButton}
+              disabled={loadingLocation}
+            >
+              <Image source={ImageConstant?.Location} style={styles.locationIcon} />
+              <Typography color='rgba(217, 133, 121, 1)' size={12}>
+                {loadingLocation ? 'Detecting...' : 'Use my location'}
+              </Typography>
+            </TouchableOpacity>
+          </View>
+
+          {/* City and State - Always Visible */}
+          <View style={styles.row}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Input
+                title={LocalizedStrings.EditProfile?.City || 'City'}
+                placeholder={'Enter city'}
+                value={currentCity}
+                onChange={text => {
+                  setCurrentCity(text);
+                  if (errors.currentCity) setErrors({ ...errors, currentCity: null });
+                }}
+                error={errors.currentCity}
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Input
+                title={LocalizedStrings.EditProfile?.State || 'State'}
+                placeholder={'Enter state'}
+                value={currentState}
+                onChange={text => {
+                  setCurrentState(text);
+                  if (errors.currentState) setErrors({ ...errors, currentState: null });
+                }}
+                error={errors.currentState}
+              />
+            </View>
+          </View>
+
           <Input
             title={
               LocalizedStrings.EditProfile?.Street ||
@@ -297,52 +392,41 @@ const StepLoactionStaff = forwardRef((props, ref) => {
             error={errors.currentPincode}
             maxLength={6}
           />
-          {currentPincode.length === 6 && (
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Input
-                  title={
-                    LocalizedStrings.EditProfile?.City ||
-                    LocalizedStrings.StaffProfile?.City ||
-                    'City'
-                  }
-                  placeholder={''}
-                  value={currentCity}
-                  onChange={text => {
-                    setCurrentCity(text);
-                    if (errors.currentCity)
-                      setErrors({ ...errors, currentCity: null });
-                  }}
-                  error={errors.currentCity}
-                />
-              </View>
-              <View style={{ flex: 1, marginLeft: 8 }}>
-                <Input
-                  title={
-                    LocalizedStrings.EditProfile?.State ||
-                    LocalizedStrings.StaffProfile?.State ||
-                    'State'
-                  }
-                  placeholder={''}
-                  value={currentState}
-                  onChange={text => {
-                    setCurrentState(text);
-                    if (errors.currentState)
-                      setErrors({ ...errors, currentState: null });
-                  }}
-                  error={errors.currentState}
-                />
-              </View>
-            </View>
-          )}
         </View>
       </View>
       <View style={{ flex: 1 }}>
         <View style={styles.wrap}>
           <Typography type={Font?.Poppins_SemiBold} size={18}>
-            {LocalizedStrings.EditProfile?.Permanent_Address ||
-              'Permanent Address'}
+            {LocalizedStrings.EditProfile?.Permanent_Address || 'Permanent Address'}
           </Typography>
+
+          {/* City and State for Permanent - Always Visible */}
+          <View style={styles.row}>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <Input
+                title={LocalizedStrings.EditProfile?.City || 'City'}
+                placeholder={'Enter city'}
+                value={permanentCity}
+                onChange={text => {
+                  setPermanentCity(text);
+                  if (errors.permanentCity) setErrors({ ...errors, permanentCity: null });
+                }}
+                error={errors.permanentCity}
+              />
+            </View>
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Input
+                title={LocalizedStrings.EditProfile?.State || 'State'}
+                placeholder={'Enter state'}
+                value={permanentState}
+                onChange={text => {
+                  setPermanentState(text);
+                  if (errors.permanentState) setErrors({ ...errors, permanentState: null });
+                }}
+                error={errors.permanentState}
+              />
+            </View>
+          </View>
           <Input
             title={
               LocalizedStrings.EditProfile?.Street ||
@@ -439,5 +523,28 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     marginTop: 20,
+  },
+  headerWithLocation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 133, 121, 0.3)',
+    backgroundColor: 'rgba(217, 133, 121, 0.05)',
+  },
+  locationIcon: {
+    height: 16,
+    width: 16,
+    resizeMode: 'contain',
+    marginRight: 5,
+    tintColor: 'rgba(217, 133, 121, 1)',
   },
 });

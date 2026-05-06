@@ -92,7 +92,7 @@ const JobsList = ({ navigation }) => {
               (staffState && jobState.includes(staffState.toLowerCase()))
             : true;
 
-          return roleMatch || locationMatch;
+          return roleMatch && locationMatch;
         });
 
         // If filtered results exist use them, else show all (graceful fallback)

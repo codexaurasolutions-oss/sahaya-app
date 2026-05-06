@@ -6,8 +6,12 @@ import {
   TouchableOpacity,
   Text,
   Switch,
+  Alert,
+  Platform,
+  Linking,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
+import Geolocation from '@react-native-community/geolocation';
 import { useDispatch, useSelector } from 'react-redux';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -77,6 +81,60 @@ const HouseholdProfile = ({ navigation }) => {
   // Auto Present state
   const [autoPresent, setAutoPresent] = useState(false);
   const [autoPresentLoading, setAutoPresentLoading] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+
+  // Function to get location from coordinates using reverse geocoding
+  const getLocationFromCoordinates = async (latitude, longitude) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+        {
+          headers: { 'User-Agent': 'SahayaaApp/1.0' }
+        }
+      );
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const address = data.address;
+        const cityName = address.city || address.town || address.village || address.suburb || '';
+        const stateName = address.state || '';
+        const pincode = address.postcode || '';
+        
+        return { city: cityName, state: stateName, pincode: pincode };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching location details:', error);
+      return null;
+    }
+  };
+
+  const captureLocationForAddress = (index) => {
+    setLoadingLocation(true);
+    Geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationDetails = await getLocationFromCoordinates(latitude, longitude);
+        
+        if (locationDetails) {
+          const newAddresses = [...addresses];
+          if (locationDetails.city) newAddresses[index].city = locationDetails.city;
+          if (locationDetails.state) newAddresses[index].state = locationDetails.state;
+          if (locationDetails.pincode) newAddresses[index].pincode = locationDetails.pincode;
+          setAddresses(newAddresses);
+          Alert.alert('Success', 'Location captured successfully!');
+        } else {
+          Alert.alert('Error', 'Could not fetch location details.');
+        }
+        setLoadingLocation(false);
+      },
+      (error) => {
+        setLoadingLocation(false);
+        Alert.alert('Error', 'Could not get your location. Please check permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  };
 
   // Language selection state
   const [selectedLanguage, setSelectedLanguage] = useState(null);
@@ -624,14 +682,25 @@ const HouseholdProfile = ({ navigation }) => {
             {LocalizedStrings.EditProfile.Home_Address || 'Home Address'}
           </Typography>
 
-          {addresses.map((address, index) => (
-            <View key={index} style={[styles.addressBox, { marginBottom: 10 }]}>
-              <Typography
-                type={Font?.Poppins_SemiBold}
-                style={styles.sectionTitle}
-              >
-                Address {index + 1}
-              </Typography>
+          {addresses.map((address, index) => (            <View key={index} style={[styles.addressBox, { marginBottom: 10 }]}>
+              <View style={styles.headerWithLocation}>
+                <Typography
+                  type={Font?.Poppins_SemiBold}
+                  style={styles.sectionTitle}
+                >
+                  Address {index + 1}
+                </Typography>
+                <TouchableOpacity 
+                  onPress={() => captureLocationForAddress(index)} 
+                  style={styles.locationButton}
+                  disabled={loadingLocation}
+                >
+                  <Image source={ImageConstant?.Location} style={styles.locationIcon} />
+                  <Typography color='rgba(217, 133, 121, 1)' size={12}>
+                    {loadingLocation ? 'Detecting...' : 'Use my location'}
+                  </Typography>
+                </TouchableOpacity>
+              </View>
 
               <Input
                 title={LocalizedStrings.EditProfile.Street || 'Street'}
@@ -659,6 +728,7 @@ const HouseholdProfile = ({ navigation }) => {
                   />
                 </View>
               </View>
+
               <Input
                 title={LocalizedStrings.EditProfile.Pincode || 'Pincode'}
                 keyboardType="number-pad"
@@ -1017,6 +1087,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     width: '80%',
+  },
+  headerWithLocation: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 133, 121, 0.3)',
+    backgroundColor: 'rgba(217, 133, 121, 0.05)',
+  },
+  locationIcon: {
+    height: 14,
+    width: 14,
+    resizeMode: 'contain',
+    marginRight: 5,
+    tintColor: 'rgba(217, 133, 121, 1)',
   },
   loadingContainer: {
     paddingVertical: 20,
