@@ -17,7 +17,11 @@ const safeMock = (name, mockObj = {}) => {
 
 safeMock('ReactLocalization', { language: 'en' });
 safeMock('RNScreens', {});
+safeMock('RNSScreen', {});
+safeMock('RNSScreenStack', {});
 safeMock('RNSSafeAreaContext', {});
+safeMock('RNSSafeAreaProvider', {});
+safeMock('RNSSafeAreaContextManager', {});
 
 import 'react-native-gesture-handler';
 import 'react-native-get-random-values';
