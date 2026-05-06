@@ -80,7 +80,7 @@ android {
 
     namespace "com.sahayya"
     defaultConfig {
-        applicationId "com.sahayya"
+        applicationId "com.sahayya.new"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 100
