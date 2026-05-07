@@ -65,32 +65,45 @@ const AllStaff = ({navigation}) => {
   };
 
   const toggleVoiceRecognition = async () => {
-    if (isRecording) {
-      try {
+    try {
+      if (isRecording) {
         await Voice.stop();
         setIsRecording(false);
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      try {
-        // Check permissions on Android
-        if (Platform.OS === 'android') {
-          const result = await request(PERMISSIONS.ANDROID.RECORD_AUDIO);
-          if (result !== RESULTS.GRANTED) {
-            SimpleToast.show('Microphone permission is required for voice search.', SimpleToast.LONG);
+      } else {
+        // Request permissions first
+        const permission = Platform.OS === 'android' 
+          ? PERMISSIONS.ANDROID.RECORD_AUDIO 
+          : PERMISSIONS.IOS.MICROPHONE;
+          
+        const res = await check(permission);
+        if (res !== RESULTS.GRANTED) {
+          const requestRes = await request(permission);
+          if (requestRes !== RESULTS.GRANTED) {
+            SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
             return;
           }
         }
-        
+
+        // Clean up any previous session before starting
+        try {
+          await Voice.destroy();
+        } catch (e) {
+          console.log('Voice destroy error (safe to ignore):', e);
+        }
+
         setDescribe('');
-        await Voice.start('en-US'); // Fallback to en-US which is more universally supported
-      } catch (e) {
-        console.error(e);
-        SimpleToast.show('Could not start voice recognition.', SimpleToast.SHORT);
+        setIsRecording(true);
+        
+        // Start recognition
+        await Voice.start('en-US'); 
       }
+    } catch (e) {
+      console.error('Voice Toggle Error:', e);
+      setIsRecording(false);
+      SimpleToast.show('Speech recognition failed to start. Please try again.', SimpleToast.SHORT);
     }
   };
+
   return (
     <CommanView>
       <HeaderForUser

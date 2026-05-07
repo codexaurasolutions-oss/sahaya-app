@@ -213,7 +213,7 @@ const More = ({ navigation }) => {
           isBorder={true}
           title={'My Addresses'}
           subtitle={'Manage your saved addresses'}
-          onPress={() => navigation.navigate('HouseholdProfile', { focusSection: 'address' })}
+          onPress={() => navigation.navigate('ManageAddresses')}
         />
         <Option
           Images={ImageConstant?.lines}
