@@ -10,7 +10,7 @@ import {
   Platform,
   Linking,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Geolocation from '@react-native-community/geolocation';
 import { useDispatch, useSelector } from 'react-redux';
 import CommanView from '../../../Component/CommanView';
@@ -32,8 +32,11 @@ import LocalizedStrings from '../../../Constants/localization';
 import { formatDateWithDashes } from '../../../Backend/Utility';
 import { setLanguage } from '../../../Constants/AsyncStorage';
 
-const HouseholdProfile = ({ navigation }) => {
+const HouseholdProfile = ({ navigation, route }) => {
   const dispatch = useDispatch();
+  const scrollRef = useRef(null);
+  const addressSectionRef = useRef(null);
+  const [addressY, setAddressY] = useState(0);
   // Basic Information State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -340,6 +343,15 @@ const HouseholdProfile = ({ navigation }) => {
     };
     Profile();
   }, [dispatch]);
+  
+  // Handle focus section scrolling
+  useEffect(() => {
+    if (route?.params?.focusSection === 'address' && addressY > 0) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: addressY, animated: true });
+      }, 500);
+    }
+  }, [route?.params?.focusSection, addressY]);
 
   // Handle language change
   const handleLanguageChange = async item => {
@@ -533,7 +545,10 @@ const HouseholdProfile = ({ navigation }) => {
           navigation?.goBack();
         }}
       />
-      <View>
+      <ScrollView 
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.profileContainer}>
           <View
             style={{
@@ -677,7 +692,13 @@ const HouseholdProfile = ({ navigation }) => {
           />
         </View> */}
 
-        <View style={styles.section}>
+        <View 
+          style={styles.section}
+          onLayout={(event) => {
+            const layout = event.nativeEvent.layout;
+            setAddressY(layout.y);
+          }}
+        >
           <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
             {LocalizedStrings.EditProfile.Home_Address || 'Home Address'}
           </Typography>
@@ -968,6 +989,7 @@ const HouseholdProfile = ({ navigation }) => {
         close={() => setShowImageModal(false)}
         selected={handleImageSelect}
       />
+    </ScrollView>
     </CommanView>
   );
 };

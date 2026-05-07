@@ -10,6 +10,8 @@ import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
 import Voice from '@react-native-community/voice';
+import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { Platform } from 'react-native';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
@@ -72,6 +74,15 @@ const AllStaff = ({navigation}) => {
       }
     } else {
       try {
+        // Check permissions on Android
+        if (Platform.OS === 'android') {
+          const result = await request(PERMISSIONS.ANDROID.RECORD_AUDIO);
+          if (result !== RESULTS.GRANTED) {
+            SimpleToast.show('Microphone permission is required for voice search.', SimpleToast.LONG);
+            return;
+          }
+        }
+        
         setDescribe('');
         await Voice.start('en-IN'); // Use Indian English for better accuracy
       } catch (e) {

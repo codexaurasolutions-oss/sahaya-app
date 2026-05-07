@@ -227,7 +227,7 @@ const FindStaff = ({ navigation, route }) => {
   // Extract location keywords from natural language query
   const extractLocationFromQuery = (query) => {
     // Common stop words to ignore
-    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking'];
+    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female'];
     const words = query.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
     // Return words that are likely location names (not role keywords)
     const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher'];
