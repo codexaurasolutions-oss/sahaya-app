@@ -10,7 +10,7 @@ import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
 import Voice from '@react-native-community/voice';
-import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import { request, check, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import { Platform } from 'react-native';
 
 const AllStaff = ({navigation}) => {
