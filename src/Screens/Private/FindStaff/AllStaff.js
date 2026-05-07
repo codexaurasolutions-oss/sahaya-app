@@ -106,8 +106,7 @@ const AllStaff = ({navigation}) => {
         setIsRecording(true);
         
         // Start recognition with broader locale
-        // 'en-US' is good, but on some devices 'en' or letting it default works better
-        await Voice.start('en-US'); 
+        await Voice.start('en'); 
       }
     } catch (e) {
       console.error('Voice Toggle Error:', e);
