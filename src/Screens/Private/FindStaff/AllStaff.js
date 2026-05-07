@@ -84,7 +84,7 @@ const AllStaff = ({navigation}) => {
         }
         
         setDescribe('');
-        await Voice.start('en-IN'); // Use Indian English for better accuracy
+        await Voice.start('en-US'); // Fallback to en-US which is more universally supported
       } catch (e) {
         console.error(e);
         SimpleToast.show('Could not start voice recognition.', SimpleToast.SHORT);

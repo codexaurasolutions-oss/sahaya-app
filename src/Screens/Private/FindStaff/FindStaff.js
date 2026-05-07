@@ -132,7 +132,7 @@ const FindStaff = ({ navigation, route }) => {
 
     POST_WITH_TOKEN(
       StaffGetAIData,
-      { query: description },
+      { query_text: description },
       (response) => {
 
         if (response?.success === false) {
