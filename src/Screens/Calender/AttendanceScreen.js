@@ -227,6 +227,12 @@ const AttendanceScreen = ({ navigation, route }) => {
     formData.append("check_in_time", "09:00:00");
     formData.append("description", "Manual update from calendar");
     
+    console.log('SENDING ATTENDANCE:', {
+      staff_id: selectedStaff.value,
+      date: editingDate,
+      status: status === 'on_leave' ? 'absent' : status
+    });
+    
     // Note: leave_id is required by some API versions if absent, but we'll try without first
     // or provide a dummy if needed based on controller logic.
 
