@@ -946,7 +946,6 @@ const HouseholdProfile = ({ navigation, route }) => {
           />
         </View>
 
-      </View>
 
       <View style={styles.section}>
         <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
