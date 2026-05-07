@@ -49,6 +49,8 @@ const AttendanceScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [isEditingDeductions, setIsEditingDeductions] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [editingDate, setEditingDate] = useState(null);
+  const [editMode, setEditMode] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -289,7 +291,7 @@ const AttendanceScreen = ({ navigation, route }) => {
           markedDates={{
             ...markedDates,
             ...(selected
-              ? { [selected]: { ...markedDates[selected], selected: true, selectedColor: editMode ? "#000" : (markedDates[selected]?.selectedColor || "#000") } }
+              ? { [selected]: { ...(markedDates[selected] || {}), selected: true, selectedColor: editMode ? "#000" : (markedDates[selected]?.selectedColor || "#000") } }
               : {}),
           }}
           theme={{
@@ -328,7 +330,7 @@ const AttendanceScreen = ({ navigation, route }) => {
           >
             <View style={styles.modalContent}>
               <Typography type={Font.Poppins_SemiBold} size={16} style={{ marginBottom: 15, textAlign: 'center' }}>
-                Mark Attendance for {moment(editingDate).format("DD MMM")}
+                Mark Attendance for {editingDate ? moment(editingDate).format("DD MMM") : ""}
               </Typography>
               
               <View style={styles.modalButtons}>
