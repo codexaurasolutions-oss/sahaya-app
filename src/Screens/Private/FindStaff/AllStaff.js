@@ -91,16 +91,30 @@ const AllStaff = ({navigation}) => {
           console.log('Voice destroy error (safe to ignore):', e);
         }
 
+        // Check if voice is available
+        try {
+          const isAvailable = await Voice.isAvailable();
+          if (!isAvailable) {
+             SimpleToast.show('Voice recognition is not available on this device.', SimpleToast.SHORT);
+             return;
+          }
+        } catch (e) {
+           console.log('Availability check failed:', e);
+        }
+
         setDescribe('');
         setIsRecording(true);
         
-        // Start recognition
+        // Start recognition with broader locale
+        // 'en-US' is good, but on some devices 'en' or letting it default works better
         await Voice.start('en-US'); 
       }
     } catch (e) {
       console.error('Voice Toggle Error:', e);
       setIsRecording(false);
-      SimpleToast.show('Speech recognition failed to start. Please try again.', SimpleToast.SHORT);
+      // Give more specific feedback
+      const errorMsg = e?.message || 'Failed to start';
+      SimpleToast.show(`Voice Error: ${errorMsg}. Please check internet/Google settings.`, SimpleToast.LONG);
     }
   };
 
