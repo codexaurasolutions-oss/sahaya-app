@@ -231,7 +231,7 @@ const AttendanceScreen = ({ navigation, route }) => {
     // or provide a dummy if needed based on controller logic.
 
     POST_FORM_DATA(
-      "housersold/attendance",
+      "admin/housersold/attendance",
       formData,
       (success) => {
         SimpleToast.show("Attendance marked!", SimpleToast.SHORT);
