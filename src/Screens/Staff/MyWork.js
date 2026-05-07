@@ -217,7 +217,7 @@ const MyWork = () => {
                 {LocalizedStrings.staffSection?.MyWork?.role || 'Role'}:{' '}
               </Typography>
               <Typography type={Font.Poppins_SemiBold} size={13}>
-                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || myWorkData?.user_work_info?.primary_role || '--'}
+                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || workData?.user_work_info?.primary_role || '--'}
               </Typography>
             </View>
             <View style={styles.rowInline}>
@@ -378,7 +378,7 @@ const MyWork = () => {
                   Leave Requests
                 </Typography>
               </View>
-              {workData.leave_requests.map((leave) => (
+              {Array.isArray(workData?.leave_requests) && workData.leave_requests.map((leave) => (
                 <View key={leave.id} style={styles.leaveItem}>
                   <View style={{ flex: 1 }}>
                     <Typography type={Font.Poppins_Medium} size={13}>

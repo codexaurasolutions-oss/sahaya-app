@@ -152,10 +152,10 @@ const StaffDashboard = ({ navigation }) => {
     imgUrl.includes('no-image') ||
     imgUrl.includes('default') ||
     imgUrl.includes('placeholder');
-  const userImage = isDefaultImage ? null : userDetail.image;
+  const userImage = isDefaultImage ? null : userDetail?.image;
   const userName =
     userDetail?.first_name && userDetail?.last_name
-      ? `${userDetail.first_name} ${userDetail.last_name}`
+      ? `${userDetail?.first_name} ${userDetail?.last_name}`
       : userDetail?.first_name || userDetail?.name || 'User';
   return (
     <CommanView>
