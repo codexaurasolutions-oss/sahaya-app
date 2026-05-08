@@ -1,5 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator, NativeModules, NativeEventEmitter, Platform, PermissionsAndroid } from 'react-native';
-import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator, Platform, PermissionsAndroid } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -9,12 +9,12 @@ import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
+import Voice from '@react-native-voice/voice';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const recognizerRef = useRef(null);
   
   const suggestions = [
     "Professional Housekeeper exp.",
@@ -24,54 +24,56 @@ const AllStaff = ({navigation}) => {
     "Chef with North Indian & South Indian Cuisine",
   ];
 
+  useEffect(() => {
+    Voice.onSpeechStart = () => setIsRecording(true);
+    Voice.onSpeechEnd = () => { setIsRecording(false); setIsProcessing(false); };
+    Voice.onSpeechError = (e) => {
+      setIsRecording(false);
+      setIsProcessing(false);
+      console.log('Voice error:', e);
+    };
+    Voice.onSpeechResults = (e) => {
+      setIsProcessing(false);
+      if (e?.value?.[0]) setDescribe(e.value[0]);
+    };
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners).catch(() => {});
+    };
+  }, []);
+
   const requestMicPermission = async () => {
     if (Platform.OS === 'android') {
       try {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          { title: 'Microphone Permission', message: 'App needs microphone for voice search' }
+          { title: 'Microphone', message: 'App needs microphone for voice search' }
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (e) {
-        return false;
-      }
+      } catch (e) { return false; }
     }
     return true;
   };
 
   const toggleVoiceRecognition = async () => {
-    if (isRecording) {
-      setIsRecording(false);
-      return;
-    }
-
-    const hasPermission = await requestMicPermission();
-    if (!hasPermission) {
-      SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
-      return;
-    }
-
     try {
-      // Use Android's built-in SpeechRecognizer via Intent
-      const { SpeechRecognizer } = NativeModules;
-      
-      if (SpeechRecognizer && SpeechRecognizer.startListening) {
-        setIsRecording(true);
-        setDescribe('');
-        SpeechRecognizer.startListening('en-US', (result) => {
-          setIsRecording(false);
-          if (result) setDescribe(result);
-        }, (error) => {
-          setIsRecording(false);
-          SimpleToast.show('Voice not available. Please type your search.', SimpleToast.SHORT);
-        });
-      } else {
-        // Fallback — show message
-        SimpleToast.show('Voice search not available on this device. Please type your search.', SimpleToast.SHORT);
+      if (isRecording) {
+        await Voice.stop();
+        setIsRecording(false);
+        return;
       }
+      const hasPermission = await requestMicPermission();
+      if (!hasPermission) {
+        SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
+        return;
+      }
+      try { await Voice.destroy(); } catch (e) {}
+      setDescribe('');
+      setIsProcessing(true);
+      await Voice.start('en-IN');
     } catch (e) {
       setIsRecording(false);
-      SimpleToast.show('Voice search not available. Please type your search.', SimpleToast.SHORT);
+      setIsProcessing(false);
+      SimpleToast.show('Voice search not available. Please type.', SimpleToast.SHORT);
     }
   };
 
