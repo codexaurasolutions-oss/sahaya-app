@@ -76,16 +76,15 @@ const ImageModal = ({
     close();
     setTimeout(async () => {
       try {
-        const DocumentPicker = require('react-native-document-picker').default;
-        const res = await DocumentPicker.pick({
-          type: [DocumentPicker.types.allFiles],
-          copyTo: 'cachesDirectory',
+        const { pick, isCancel } = require('@react-native-documents/picker');
+        const res = await pick({
+          type: ['*/*'],
         });
 
         if (res && res.length > 0) {
           const file = res[0];
           const fileObj = {
-            path: file.fileCopyUri || file.uri,
+            path: file.uri,
             uri: file.uri,
             mime: file.type || 'application/octet-stream',
             filename: file.name || `file_${Date.now()}`,
@@ -94,11 +93,11 @@ const ImageModal = ({
           selected([fileObj], 'files');
         }
       } catch (err) {
-        const DocumentPicker = require('react-native-document-picker').default;
-        if (DocumentPicker.isCancel(err)) {
+        const { isCancel } = require('@react-native-documents/picker');
+        if (isCancel(err)) {
           console.log('User cancelled the picker');
         } else {
-          console.log('DocumentPicker Error:', err);
+          console.log('Picker Error:', err);
           SimpleToast.show('Failed to pick file. Please try again.');
         }
       }
