@@ -242,7 +242,7 @@ const HireMeScreen = ({ navigation }) => {
               onPress={handlePause}
               disabled={saving}
               loader={saving}
-              main_style={{ backgroundColor: '#FF9800' }}
+              linerColor={['#FF9800', '#FF9800']}
             />
             <TouchableOpacity style={styles.deactivateBtn} onPress={handleDeactivate} disabled={saving}>
               <Typography type={Font?.Poppins_Medium} size={14} color="#F44336">
