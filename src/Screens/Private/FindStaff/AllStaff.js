@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator, Platform, PermissionsAndroid } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator, Platform, PermissionsAndroid, NativeModules, DeviceEventEmitter } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -63,30 +63,56 @@ const AllStaff = ({navigation}) => {
   };
 
   const toggleVoiceRecognition = async () => {
-    if (!Voice) {
-      SimpleToast.show('Voice search not available on this build. Please type.', SimpleToast.SHORT);
-      return;
-    }
-    try {
-      if (isRecording) {
-        await Voice.stop();
+    // Try @react-native-voice/voice first
+    if (Voice) {
+      try {
+        if (isRecording) {
+          await Voice.stop();
+          setIsRecording(false);
+          return;
+        }
+        const hasPermission = await requestMicPermission();
+        if (!hasPermission) {
+          SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
+          return;
+        }
+        try { await Voice.destroy(); } catch (e) {}
+        setDescribe('');
+        setIsProcessing(true);
+        await Voice.start('en-IN');
+        return;
+      } catch (e) {
+        console.log('Voice.start failed, trying fallback:', e.message);
         setIsRecording(false);
-        return;
+        setIsProcessing(false);
       }
-      const hasPermission = await requestMicPermission();
-      if (!hasPermission) {
-        SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
-        return;
-      }
-      try { await Voice.destroy(); } catch (e) {}
-      setDescribe('');
-      setIsProcessing(true);
-      await Voice.start('en-IN');
-    } catch (e) {
-      setIsRecording(false);
-      setIsProcessing(false);
-      SimpleToast.show('Voice search failed. Please type your search.', SimpleToast.SHORT);
     }
+
+    // Fallback — use Android SpeechRecognizer via NativeModules if available
+    try {
+      const { RNVoice } = NativeModules;
+      if (RNVoice && RNVoice.startSpeech) {
+        const hasPermission = await requestMicPermission();
+        if (!hasPermission) {
+          SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
+          return;
+        }
+        setIsRecording(true);
+        setDescribe('');
+        RNVoice.startSpeech('en-IN', (error) => {
+          setIsRecording(false);
+          if (error) SimpleToast.show('Voice failed. Please type.', SimpleToast.SHORT);
+        }, (result) => {
+          setIsRecording(false);
+          if (result) setDescribe(result);
+        });
+        return;
+      }
+    } catch (e) {
+      console.log('RNVoice fallback failed:', e);
+    }
+
+    SimpleToast.show('Voice search not available on this device. Please type.', SimpleToast.SHORT);
   };
 
   return (
