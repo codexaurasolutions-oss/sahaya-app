@@ -131,8 +131,7 @@ export default new LocalizedStrings({
       Active_staf: 'Active Staff',
       Present: 'Present',
       Absent: 'Absent',
-      Late: 'Late',
-      find_staf: 'Find Staff with AI'
+      find_staf: 'Find Staff'
     },
     Dashboard_model: {
       Mark_Absent: "Mark Absent",
@@ -262,11 +261,11 @@ export default new LocalizedStrings({
     },
 
     FindStaffAI: {
-      title: 'Find Staff with AI',
+      title: 'Find Staff',
       JD: 'JD',
-      Welcome_Title: 'Welcome to the future of staff search',
+      Welcome_Title: 'Find Staff',
       Welcome_Desc:
-        'Explore staff profiles by describing what you want. Try including skills, roles, gender, age group, cities or languages.',
+        'Explore staff profiles by describing what you want.',
       Describe_Requirements: 'Describe the Staff Requirements',
       Placeholder_Examples: {
         Example1: 'Professional Housekeeper with 2 years experience near me',
@@ -956,9 +955,7 @@ export default new LocalizedStrings({
       title: 'डैशबोर्ड',
       Active_staf: 'सक्रिय स्टाफ',
       Present: 'हाजिर',
-      Absent: 'अनुपस्थित',
-      Late: 'देर से',
-      find_staf: 'AI के साथ स्टाफ खोजें'
+      find_staf: 'स्टाफ खोजें'
     },
     Dashboard_model: {
       Mark_Absent: "अनुपस्थित चिह्नित करें",
@@ -1088,11 +1085,11 @@ export default new LocalizedStrings({
     },
 
     FindStaffAI: {
-      title: 'AI के साथ स्टाफ खोजें',
+      title: 'स्टाफ खोजें',
       JD: 'JD',
-      Welcome_Title: 'स्टाफ खोज के भविष्य का स्वागत है',
+      Welcome_Title: 'स्टाफ खोजें',
       Welcome_Desc:
-        'जो आप चाहते हैं उसे वर्णन करके स्टाफ प्रोफ़ाइल एक्सप्लोर करें। कौशल, भूमिकाएँ, लिंग, आयु समूह, शहर या भाषाएँ शामिल करने का प्रयास करें।',
+        'स्टाफ प्रोफाइल खोजने के लिए अपनी आवश्यकता का वर्णन करें।',
       Describe_Requirements: 'स्टाफ आवश्यकताओं का वर्णन करें',
       Placeholder_Examples: {
         Example1: 'मेरे पास 2 वर्ष अनुभव वाला पेशेवर हाउसकीपर',

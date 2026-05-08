@@ -1,5 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator, Platform, PermissionsAndroid, NativeModules, DeviceEventEmitter } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -8,16 +8,9 @@ import { Font } from '../../../Constants/Font';
 import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
-import SimpleToast from 'react-native-simple-toast';
-
-// Safely import Voice
-import VoiceModule from '@react-native-voice/voice';
-const Voice = VoiceModule?.default || VoiceModule;
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   
   const suggestions = [
     "Professional Housekeeper exp.",
@@ -27,92 +20,10 @@ const AllStaff = ({navigation}) => {
     "Chef with North Indian & South Indian Cuisine",
   ];
 
-  useEffect(() => {
-    if (!Voice) return;
-    Voice.onSpeechStart = () => {
-      console.log('onSpeechStart');
-      setIsRecording(true);
-    };
-    Voice.onSpeechEnd = () => { 
-      console.log('onSpeechEnd');
-      setIsRecording(false); 
-      setIsProcessing(false); 
-    };
-    Voice.onSpeechError = (e) => {
-      console.log('onSpeechError:', e);
-      setIsRecording(false);
-      setIsProcessing(false);
-      SimpleToast.show(`Voice Error: ${e?.error?.message || 'Speech error'}`, SimpleToast.SHORT);
-    };
-    Voice.onSpeechResults = (e) => {
-      console.log('onSpeechResults:', e);
-      setIsProcessing(false);
-      if (e?.value?.[0]) setDescribe(e.value[0]);
-    };
-    return () => {
-      if (Voice) {
-        Voice.destroy().then(Voice.removeAllListeners).catch((e) => console.log('Destroy error:', e));
-      }
-    };
-  }, []);
-
-  const requestMicPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          { title: 'Microphone', message: 'App needs microphone for voice search' }
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (e) { return false; }
-    }
-    return true;
-  };
-
-  const toggleVoiceRecognition = async () => {
-    if (!Voice) {
-      SimpleToast.show('Voice module not found in this build.', SimpleToast.SHORT);
-      return;
-    }
-
-    try {
-      if (isRecording) {
-        await Voice.stop();
-        setIsRecording(false);
-        return;
-      }
-
-      const hasPermission = await requestMicPermission();
-      if (!hasPermission) {
-        SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
-        return;
-      }
-
-      // Cleanup previous sessions
-      try { await Voice.destroy(); } catch (e) {}
-
-      setDescribe('');
-      setIsProcessing(true);
-      
-      // Try en-IN first, then fallback to en
-      try {
-        await Voice.start('en-IN');
-      } catch (e) {
-        console.log('Voice.start en-IN failed, trying en:', e);
-        await Voice.start('en');
-      }
-    } catch (e) {
-      console.log('toggleVoiceRecognition full failure:', e);
-      setIsRecording(false);
-      setIsProcessing(false);
-      SimpleToast.show(`Failed to start: ${e.message || 'Unknown error'}`, SimpleToast.LONG);
-    }
-  };
-
   return (
     <CommanView>
       <HeaderForUser
-        title={LocalizedStrings.FindStaffAI.title}
+        title={LocalizedStrings.FindStaff.title}
         source_arrow={ImageConstant?.BackArrow}
         onPressLeftIcon={() => navigation.goBack()}
         style_title={{ fontSize: 18 }}
@@ -125,7 +36,7 @@ const AllStaff = ({navigation}) => {
             size={24}
             style={styles.heading}
           >
-            {LocalizedStrings.FindStaffAI.Welcome_Title}
+            {LocalizedStrings.FindStaff.title}
           </Typography>
           <Typography
             type={Font?.Poppins_Regular}
@@ -144,35 +55,8 @@ const AllStaff = ({navigation}) => {
               multiline={true}
               value={Describe}
               onChange={(text) => setDescribe(text)}
-              style_inputContainer={{ height: 120, alignItems: 'flex-start', paddingTop: 10, paddingRight: 50 }}
+              style_inputContainer={{ height: 120, alignItems: 'flex-start', paddingTop: 10, paddingRight: 10 }}
             />
-            
-            {/* Voice Input Button */}
-            <TouchableOpacity
-              style={[
-                styles.voiceButton,
-                isRecording && styles.voiceButtonActive,
-              ]}
-              onPress={toggleVoiceRecognition}
-              activeOpacity={0.7}
-            >
-              {isProcessing ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Typography size={20} color="#fff">
-                  🎤
-                </Typography>
-              )}
-            </TouchableOpacity>
-
-            {isRecording && (
-              <View style={styles.recordingIndicator}>
-                <View style={styles.recordingDot} />
-                <Typography size={12} color="#D98579" type={Font.Poppins_Medium}>
-                  Listening...
-                </Typography>
-              </View>
-            )}
           </View>
 
           <View style={styles.suggestionContainer}>
@@ -258,48 +142,5 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingBottom: 15,
-  },
-  voiceButton: {
-    position: 'absolute',
-    right: 10,
-    top: 10,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#D98579',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  voiceButtonActive: {
-    backgroundColor: '#FF4444',
-  },
-  voiceIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#fff',
-  },
-  voiceIconActive: {
-    tintColor: '#fff',
-  },
-  recordingIndicator: {
-    position: 'absolute',
-    bottom: -30,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recordingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D98579',
-    marginRight: 6,
   },
 });

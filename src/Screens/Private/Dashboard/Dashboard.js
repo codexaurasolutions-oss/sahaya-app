@@ -604,7 +604,7 @@ const Dashboard = ({ navigation }) => {
     <View style={{ position: 'absolute', bottom: 75, left: 20, right: 20 }}>
       <Button
         onPress={() => {
-          navigation.navigate('AllStaff');
+          navigation.navigate('FindStaff', { description: '' });
         }}
         linerColor={['#D98579', '#C4706A']}
         title={LocalizedStrings.Dashboard.find_staf}
