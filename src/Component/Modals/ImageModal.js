@@ -74,36 +74,34 @@ const ImageModal = ({
 
   const OpenFiles = () => {
     close();
-    setTimeout(() => {
-      // For Android, using mixed mediaType with launchImageLibrary 
-      // is the best we can do without react-native-document-picker.
-      // We'll use specific options to encourage the system file picker.
-      launchImageLibrary(
-        {
-          mediaType: 'mixed',
-          includeBase64: false,
-          selectionLimit: 1,
-          presentationStyle: 'fullScreen',
-          assetRepresentationMode: 'current',
-        },
-        response => {
-          if (response.didCancel) return;
-          if (response.errorCode) {
-            SimpleToast.show('Could not open files. Please try again.');
-            return;
-          }
-          if (response.assets && response.assets.length > 0) {
-            const asset = response.assets[0];
-            const fileObj = {
-              path: asset.uri,
-              uri: asset.uri,
-              mime: asset.type || (asset.uri?.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
-              filename: asset.fileName || `document_${Date.now()}.${asset.uri?.endsWith('.pdf') ? 'pdf' : 'jpg'}`,
-            };
-            selected([fileObj], 'files');
-          }
-        },
-      );
+    setTimeout(async () => {
+      try {
+        const DocumentPicker = require('react-native-document-picker').default;
+        const res = await DocumentPicker.pick({
+          type: [DocumentPicker.types.allFiles],
+          copyTo: 'cachesDirectory',
+        });
+
+        if (res && res.length > 0) {
+          const file = res[0];
+          const fileObj = {
+            path: file.fileCopyUri || file.uri,
+            uri: file.uri,
+            mime: file.type || 'application/octet-stream',
+            filename: file.name || `file_${Date.now()}`,
+            size: file.size,
+          };
+          selected([fileObj], 'files');
+        }
+      } catch (err) {
+        const DocumentPicker = require('react-native-document-picker').default;
+        if (DocumentPicker.isCancel(err)) {
+          console.log('User cancelled the picker');
+        } else {
+          console.log('DocumentPicker Error:', err);
+          SimpleToast.show('Failed to pick file. Please try again.');
+        }
+      }
     }, 500);
   };
 
