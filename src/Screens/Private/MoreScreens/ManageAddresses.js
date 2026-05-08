@@ -166,38 +166,38 @@ const ManageAddresses = ({ navigation }) => {
                 </View>
 
                 <Input
-                  label="Street / Landmark"
+                  title="Street / Landmark"
                   placeholder="e.g. 123 Main St, Apartment 4B"
                   value={address.street}
-                  onChangeText={(val) => updateAddress(index, 'street', val)}
+                  onChange={(val) => updateAddress(index, 'street', val)}
                 />
                 
                 <View style={styles.row}>
                   <View style={{ flex: 1, marginRight: 10 }}>
                     <Input
-                      label="City"
+                      title="City"
                       placeholder="City"
                       value={address.city}
-                      onChangeText={(val) => updateAddress(index, 'city', val)}
+                      onChange={(val) => updateAddress(index, 'city', val)}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="State"
+                      title="State"
                       placeholder="State"
                       value={address.state}
-                      onChangeText={(val) => updateAddress(index, 'state', val)}
+                      onChange={(val) => updateAddress(index, 'state', val)}
                     />
                   </View>
                 </View>
 
                 <Input
-                  label="Pincode"
+                  title="Pincode"
                   placeholder="6-digit Pincode"
                   value={address.pincode}
                   keyboardType="numeric"
                   maxLength={6}
-                  onChangeText={(val) => updateAddress(index, 'pincode', val)}
+                  onChange={(val) => updateAddress(index, 'pincode', val)}
                 />
               </View>
             ))}
