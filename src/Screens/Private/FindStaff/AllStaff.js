@@ -9,7 +9,14 @@ import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
-import Voice from '@react-native-voice/voice';
+
+// Safely import Voice — may not be available on all builds
+let Voice = null;
+try {
+  Voice = require('@react-native-voice/voice').default;
+} catch (e) {
+  console.log('Voice module not available:', e.message);
+}
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
@@ -25,6 +32,7 @@ const AllStaff = ({navigation}) => {
   ];
 
   useEffect(() => {
+    if (!Voice) return;
     Voice.onSpeechStart = () => setIsRecording(true);
     Voice.onSpeechEnd = () => { setIsRecording(false); setIsProcessing(false); };
     Voice.onSpeechError = (e) => {
@@ -37,7 +45,7 @@ const AllStaff = ({navigation}) => {
       if (e?.value?.[0]) setDescribe(e.value[0]);
     };
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners).catch(() => {});
+      if (Voice) Voice.destroy().then(Voice.removeAllListeners).catch(() => {});
     };
   }, []);
 
@@ -55,6 +63,10 @@ const AllStaff = ({navigation}) => {
   };
 
   const toggleVoiceRecognition = async () => {
+    if (!Voice) {
+      SimpleToast.show('Voice search not available on this build. Please type.', SimpleToast.SHORT);
+      return;
+    }
     try {
       if (isRecording) {
         await Voice.stop();
@@ -73,7 +85,7 @@ const AllStaff = ({navigation}) => {
     } catch (e) {
       setIsRecording(false);
       setIsProcessing(false);
-      SimpleToast.show('Voice search not available. Please type.', SimpleToast.SHORT);
+      SimpleToast.show('Voice search failed. Please type your search.', SimpleToast.SHORT);
     }
   };
 
