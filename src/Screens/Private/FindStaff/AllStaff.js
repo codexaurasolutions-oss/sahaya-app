@@ -1,5 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
-import React, { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator, NativeModules, NativeEventEmitter, Platform, PermissionsAndroid } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -9,14 +9,12 @@ import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
-import Voice from '@react-native-community/voice';
-import { request, check, PERMISSIONS, RESULTS } from 'react-native-permissions';
-import { Platform } from 'react-native';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const recognizerRef = useRef(null);
   
   const suggestions = [
     "Professional Housekeeper exp.",
@@ -26,94 +24,54 @@ const AllStaff = ({navigation}) => {
     "Chef with North Indian & South Indian Cuisine",
   ];
 
-  React.useEffect(() => {
-    Voice.onSpeechStart = onSpeechStart;
-    Voice.onSpeechEnd = onSpeechEnd;
-    Voice.onSpeechError = onSpeechError;
-    Voice.onSpeechResults = onSpeechResults;
-
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, []);
-
-  const onSpeechStart = (e) => {
-    console.log('onSpeechStart: ', e);
-    setIsRecording(true);
-  };
-
-  const onSpeechEnd = (e) => {
-    console.log('onSpeechEnd: ', e);
-    setIsRecording(false);
-  };
-
-  const onSpeechError = (e) => {
-    console.log('onSpeechError: ', e);
-    setIsRecording(false);
-    if (e?.error?.message?.includes('No recognition result matched')) {
-      // Ignore silent timeouts
-    } else {
-      SimpleToast.show('Speech error. Please try again.', SimpleToast.SHORT);
+  const requestMicPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          { title: 'Microphone Permission', message: 'App needs microphone for voice search' }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (e) {
+        return false;
+      }
     }
-  };
-
-  const onSpeechResults = (e) => {
-    console.log('onSpeechResults: ', e);
-    if (e.value && e.value.length > 0) {
-      setDescribe(e.value[0]);
-    }
+    return true;
   };
 
   const toggleVoiceRecognition = async () => {
+    if (isRecording) {
+      setIsRecording(false);
+      return;
+    }
+
+    const hasPermission = await requestMicPermission();
+    if (!hasPermission) {
+      SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
+      return;
+    }
+
     try {
-      if (isRecording) {
-        await Voice.stop();
-        setIsRecording(false);
-      } else {
-        // Request permissions first
-        const permission = Platform.OS === 'android' 
-          ? PERMISSIONS.ANDROID.RECORD_AUDIO 
-          : PERMISSIONS.IOS.MICROPHONE;
-          
-        const res = await check(permission);
-        if (res !== RESULTS.GRANTED) {
-          const requestRes = await request(permission);
-          if (requestRes !== RESULTS.GRANTED) {
-            SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
-            return;
-          }
-        }
-
-        // Clean up any previous session before starting
-        try {
-          await Voice.destroy();
-        } catch (e) {
-          console.log('Voice destroy error (safe to ignore):', e);
-        }
-
-        // Check if voice is available
-        try {
-          const isAvailable = await Voice.isAvailable();
-          if (!isAvailable) {
-             SimpleToast.show('Voice recognition is not available on this device.', SimpleToast.SHORT);
-             return;
-          }
-        } catch (e) {
-           console.log('Availability check failed:', e);
-        }
-
-        setDescribe('');
+      // Use Android's built-in SpeechRecognizer via Intent
+      const { SpeechRecognizer } = NativeModules;
+      
+      if (SpeechRecognizer && SpeechRecognizer.startListening) {
         setIsRecording(true);
-        
-        // Start recognition with broader locale
-        await Voice.start('en'); 
+        setDescribe('');
+        SpeechRecognizer.startListening('en-US', (result) => {
+          setIsRecording(false);
+          if (result) setDescribe(result);
+        }, (error) => {
+          setIsRecording(false);
+          SimpleToast.show('Voice not available. Please type your search.', SimpleToast.SHORT);
+        });
+      } else {
+        // Fallback — show message
+        SimpleToast.show('Voice search not available on this device. Please type your search.', SimpleToast.SHORT);
       }
     } catch (e) {
-      console.error('Voice Toggle Error:', e);
       setIsRecording(false);
-      // Give more specific feedback
-      const errorMsg = e?.message || 'Failed to start';
-      SimpleToast.show(`Voice Error: ${errorMsg}. Please check internet/Google settings.`, SimpleToast.LONG);
+      SimpleToast.show('Voice search not available. Please type your search.', SimpleToast.SHORT);
     }
   };
 

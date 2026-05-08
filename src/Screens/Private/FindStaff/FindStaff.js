@@ -132,7 +132,7 @@ const FindStaff = ({ navigation, route }) => {
 
     POST_WITH_TOKEN(
       StaffGetAIData,
-      { query_text: description },
+      { query: description, query_text: description },
       (response) => {
 
         if (response?.success === false) {
@@ -143,11 +143,6 @@ const FindStaff = ({ navigation, route }) => {
         }
         const data = response?.data || [];
         const list = Array.isArray(data) ? data : [];
-        if (list.length > 0) {
-          console.log('FindStaff AI first item:', JSON.stringify(list[0]));
-          console.log('FindStaff AI first item addresses:', JSON.stringify(list[0]?.addresses));
-          console.log('FindStaff AI first item keys:', Object.keys(list[0]));
-        }
 
         const mapped = list.map((item) => {
           const workInfo = item?.user_work_info || {};
@@ -157,10 +152,9 @@ const FindStaff = ({ navigation, route }) => {
             role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : (workInfo?.primary_role || ''),
             tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
             location: item?.addresses?.[0]?.city || item?.location || item?.city || item?.address?.city || item?.current_address?.city || item?.region || '',
-            pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || item?.zip || item?.postal_code || item?.address?.pincode || item?.current_address?.pincode || '',
+            pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || '',
             experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
             verified: item?.is_verified || false,
-            // Police verification is separate from Aadhaar — check kyc_information
             policeVerified: !!(
               item?.kyc_information?.police_verification_path ||
               item?.kyc_information?.police_clearance_certificate_path ||
@@ -173,30 +167,38 @@ const FindStaff = ({ navigation, route }) => {
             salaryNum: Number(workInfo?.salary) || 0,
             salary: formatSalary(workInfo?.salary),
             image: getImageUrl(item?.image),
-            // Only show staff who are seeking jobs (is_job_seeking = true or not set)
             isJobSeeking: item?.is_job_seeking !== false,
             raw: item,
           };
-        // Filter out staff who are NOT seeking jobs
         }).filter(c => c.isJobSeeking !== false);
 
-        // Extract location keywords from description for client-side filtering
         const descLower = description.toLowerCase();
+
+        // Extract role keywords from query
+        const roleKeywords = extractRoleFromQuery(descLower);
+        // Extract location keywords from query
         const locationKeywords = extractLocationFromQuery(descLower);
 
-        // If location mentioned in query, strictly filter by it
-        const locationFiltered = locationKeywords.length > 0
-          ? mapped.filter(c => {
-              const loc = (c.location || '').toLowerCase();
-              const state = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
-              return locationKeywords.some(kw =>
-                loc.includes(kw) || state.includes(kw)
-              );
-            })
-          : mapped;
+        let finalList = mapped;
 
-        // Use location-filtered if results exist, else show all (graceful fallback)
-        const finalList = locationFiltered;
+        // Strict role filter — if role mentioned, only show matching staff
+        if (roleKeywords.length > 0) {
+          const roleFiltered = mapped.filter(c => {
+            const role = (c.role || '').toLowerCase();
+            return roleKeywords.some(kw => role.includes(kw) || kw.includes(role.split('/')[0].trim()));
+          });
+          if (roleFiltered.length > 0) finalList = roleFiltered;
+        }
+
+        // Location filter on top of role filter
+        if (locationKeywords.length > 0) {
+          const locFiltered = finalList.filter(c => {
+            const loc = (c.location || '').toLowerCase();
+            const state = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
+            return locationKeywords.some(kw => loc.includes(kw) || state.includes(kw));
+          });
+          if (locFiltered.length > 0) finalList = locFiltered;
+        }
 
         setAllCandidates(finalList);
         setCandidates(finalList);
@@ -226,12 +228,33 @@ const FindStaff = ({ navigation, route }) => {
 
   // Extract location keywords from natural language query
   const extractLocationFromQuery = (query) => {
-    // Common stop words to ignore
-    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female'];
-    const words = query.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w));
-    // Return words that are likely location names (not role keywords)
-    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher'];
-    return words.filter(w => !roleWords.includes(w));
+    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female', 'show', 'dikhao', 'chahiye'];
+    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher', 'driving'];
+    const words = query.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w) && !roleWords.includes(w));
+    return words;
+  };
+
+  // Extract role keywords from natural language query
+  const extractRoleFromQuery = (query) => {
+    const roleMap = {
+      'driver': ['driver', 'driving'],
+      'cook': ['cook', 'chef', 'cooking'],
+      'maid': ['maid', 'house cleaner', 'housecleaner', 'cleaner', 'cleaning'],
+      'nanny': ['nanny', 'babysitter', 'baby sitter', 'childcare'],
+      'housekeeper': ['housekeeper', 'housekeeping'],
+      'gardener': ['gardener', 'gardening'],
+      'security': ['security', 'guard', 'watchman'],
+      'nurse': ['nurse', 'nursing', 'caretaker'],
+      'tutor': ['tutor', 'teacher', 'teaching'],
+    };
+    const found = [];
+    Object.entries(roleMap).forEach(([role, keywords]) => {
+      if (keywords.some(kw => query.includes(kw))) {
+        found.push(role);
+        keywords.forEach(kw => found.push(kw));
+      }
+    });
+    return found;
   };
 
 
