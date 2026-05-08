@@ -33,6 +33,9 @@ jobs:
           rm -f package-lock.json
           npm install --legacy-peer-deps
 
+      - name: Remove duplicate voice package
+        run: rm -rf node_modules/@react-native-community/voice || true
+
       - name: Clear Metro bundler cache
         run: rm -rf $TMPDIR/metro-* $TMPDIR/haste-* || true
 
