@@ -167,10 +167,10 @@ const FindStaff = ({ navigation, route }) => {
             salaryNum: Number(workInfo?.salary) || 0,
             salary: formatSalary(workInfo?.salary),
             image: getImageUrl(item?.image),
-            isJobSeeking: item?.is_job_seeking !== false,
+            isJobSeeking: (item?.is_job_seeking === true || item?.is_job_seeking === 1 || item?.is_available === true || item?.is_available === 1),
             raw: item,
           };
-        }).filter(c => c.isJobSeeking !== false);
+        }).filter(c => c.isJobSeeking);
 
         const descLower = description.toLowerCase();
 
@@ -184,11 +184,18 @@ const FindStaff = ({ navigation, route }) => {
         // Strict role filter — if role mentioned, only show matching staff
         if (roleKeywords.length > 0) {
           const roleFiltered = mapped.filter(c => {
-            const role = (c.role || '').toLowerCase();
-            return roleKeywords.some(kw => role.includes(kw) || kw.includes(role.split('/')[0].trim()));
+            const role = (c.role || '').toLowerCase().trim();
+            if (!role) return false; // Don't match empty roles
+            return roleKeywords.some(kw => 
+              role.includes(kw.toLowerCase()) || 
+              kw.toLowerCase().includes(role.split('/')[0].trim())
+            );
           });
           if (roleFiltered.length > 0) finalList = roleFiltered;
         }
+
+        // Filter out completely empty/junk profiles (no role and no location)
+        finalList = finalList.filter(c => c.role || c.location);
 
         // Location filter on top of role filter
         if (locationKeywords.length > 0) {
