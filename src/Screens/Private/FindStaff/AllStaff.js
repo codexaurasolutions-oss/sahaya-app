@@ -85,6 +85,14 @@ const AllStaff = ({navigation}) => {
             title={LocalizedStrings.FindStaffAI.Find_Staff}
             main_style={{ width: '100%' }}
           />
+          <TouchableOpacity 
+            onPress={() => navigation.navigate("FindStaff", { description: '' })}
+            style={styles.secondaryBtn}
+          >
+            <Typography type={Font?.Poppins_Medium} size={14} color="#D98579">
+              {LocalizedStrings.FindStaff.Matching_Candidates || "View Staff in My Area"}
+            </Typography>
+          </TouchableOpacity>
         </View>
       </View>
     </CommanView>
@@ -142,5 +150,10 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingBottom: 15,
+  },
+  secondaryBtn: {
+    marginTop: 15,
+    alignItems: 'center',
+    paddingVertical: 10,
   },
 });
