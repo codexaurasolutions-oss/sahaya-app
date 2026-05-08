@@ -237,7 +237,7 @@ const FindStaff = ({ navigation, route }) => {
   // Extract role keywords from natural language query
   const extractRoleFromQuery = (query) => {
     const roleMap = {
-      'driver': ['driver', 'driving'],
+      'driver': ['driver', 'driving', 'chauffeur'],
       'cook': ['cook', 'chef', 'cooking'],
       'maid': ['maid', 'house cleaner', 'housecleaner', 'cleaner', 'cleaning'],
       'nanny': ['nanny', 'babysitter', 'baby sitter', 'childcare'],
@@ -246,6 +246,15 @@ const FindStaff = ({ navigation, route }) => {
       'security': ['security', 'guard', 'watchman'],
       'nurse': ['nurse', 'nursing', 'caretaker'],
       'tutor': ['tutor', 'teacher', 'teaching'],
+      'plumber': ['plumber', 'plumbing'],
+      'electrician': ['electrician', 'electrical'],
+      'carpenter': ['carpenter', 'carpentry'],
+      'painter': ['painter', 'painting'],
+      'sweeper': ['sweeper', 'sweeping'],
+      'laundry': ['laundry', 'washing', 'ironing'],
+      'dog walker': ['dog walker', 'pet walker', 'dog walking'],
+      'physiotherapist': ['physiotherapist', 'physiotherapy'],
+      'attendant': ['attendant', 'helper', 'assistant'],
     };
     const found = [];
     Object.entries(roleMap).forEach(([role, keywords]) => {
