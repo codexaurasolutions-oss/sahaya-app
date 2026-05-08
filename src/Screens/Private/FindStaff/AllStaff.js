@@ -10,13 +10,9 @@ import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
 
-// Safely import Voice — may not be available on all builds
-let Voice = null;
-try {
-  Voice = require('@react-native-voice/voice').default;
-} catch (e) {
-  console.log('Voice module not available:', e.message);
-}
+// Safely import Voice
+import VoiceModule from '@react-native-voice/voice';
+const Voice = VoiceModule?.default || VoiceModule;
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
@@ -33,19 +29,30 @@ const AllStaff = ({navigation}) => {
 
   useEffect(() => {
     if (!Voice) return;
-    Voice.onSpeechStart = () => setIsRecording(true);
-    Voice.onSpeechEnd = () => { setIsRecording(false); setIsProcessing(false); };
+    Voice.onSpeechStart = () => {
+      console.log('onSpeechStart');
+      setIsRecording(true);
+    };
+    Voice.onSpeechEnd = () => { 
+      console.log('onSpeechEnd');
+      setIsRecording(false); 
+      setIsProcessing(false); 
+    };
     Voice.onSpeechError = (e) => {
+      console.log('onSpeechError:', e);
       setIsRecording(false);
       setIsProcessing(false);
-      console.log('Voice error:', e);
+      SimpleToast.show(`Voice Error: ${e?.error?.message || 'Speech error'}`, SimpleToast.SHORT);
     };
     Voice.onSpeechResults = (e) => {
+      console.log('onSpeechResults:', e);
       setIsProcessing(false);
       if (e?.value?.[0]) setDescribe(e.value[0]);
     };
     return () => {
-      if (Voice) Voice.destroy().then(Voice.removeAllListeners).catch(() => {});
+      if (Voice) {
+        Voice.destroy().then(Voice.removeAllListeners).catch((e) => console.log('Destroy error:', e));
+      }
     };
   }, []);
 
@@ -63,56 +70,43 @@ const AllStaff = ({navigation}) => {
   };
 
   const toggleVoiceRecognition = async () => {
-    // Try @react-native-voice/voice first
-    if (Voice) {
-      try {
-        if (isRecording) {
-          await Voice.stop();
-          setIsRecording(false);
-          return;
-        }
-        const hasPermission = await requestMicPermission();
-        if (!hasPermission) {
-          SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
-          return;
-        }
-        try { await Voice.destroy(); } catch (e) {}
-        setDescribe('');
-        setIsProcessing(true);
-        await Voice.start('en-IN');
-        return;
-      } catch (e) {
-        console.log('Voice.start failed, trying fallback:', e.message);
-        setIsRecording(false);
-        setIsProcessing(false);
-      }
+    if (!Voice) {
+      SimpleToast.show('Voice module not found in this build.', SimpleToast.SHORT);
+      return;
     }
 
-    // Fallback — use Android SpeechRecognizer via NativeModules if available
     try {
-      const { RNVoice } = NativeModules;
-      if (RNVoice && RNVoice.startSpeech) {
-        const hasPermission = await requestMicPermission();
-        if (!hasPermission) {
-          SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
-          return;
-        }
-        setIsRecording(true);
-        setDescribe('');
-        RNVoice.startSpeech('en-IN', (error) => {
-          setIsRecording(false);
-          if (error) SimpleToast.show('Voice failed. Please type.', SimpleToast.SHORT);
-        }, (result) => {
-          setIsRecording(false);
-          if (result) setDescribe(result);
-        });
+      if (isRecording) {
+        await Voice.stop();
+        setIsRecording(false);
         return;
+      }
+
+      const hasPermission = await requestMicPermission();
+      if (!hasPermission) {
+        SimpleToast.show('Microphone permission denied', SimpleToast.SHORT);
+        return;
+      }
+
+      // Cleanup previous sessions
+      try { await Voice.destroy(); } catch (e) {}
+
+      setDescribe('');
+      setIsProcessing(true);
+      
+      // Try en-IN first, then fallback to en
+      try {
+        await Voice.start('en-IN');
+      } catch (e) {
+        console.log('Voice.start en-IN failed, trying en:', e);
+        await Voice.start('en');
       }
     } catch (e) {
-      console.log('RNVoice fallback failed:', e);
+      console.log('toggleVoiceRecognition full failure:', e);
+      setIsRecording(false);
+      setIsProcessing(false);
+      SimpleToast.show(`Failed to start: ${e.message || 'Unknown error'}`, SimpleToast.LONG);
     }
-
-    SimpleToast.show('Voice search not available on this device. Please type.', SimpleToast.SHORT);
   };
 
   return (
