@@ -235,9 +235,9 @@ const FindStaff = ({ navigation, route }) => {
 
   // Extract location keywords from natural language query
   const extractLocationFromQuery = (query) => {
-    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female', 'show', 'dikhao', 'chahiye'];
-    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher', 'driving'];
-    const words = query.split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w) && !roleWords.includes(w));
+    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female', 'show', 'dikhao', 'chahiye', 'near me', 'nearby'];
+    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher', 'driving', 'plumber', 'electrician', 'carpenter', 'painter', 'sweeper', 'laundry', 'walker', 'attendant', 'dog', 'pet'];
+    const words = query.replace('near me', '').replace('nearby', '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w) && !roleWords.includes(w));
     return words;
   };
 
