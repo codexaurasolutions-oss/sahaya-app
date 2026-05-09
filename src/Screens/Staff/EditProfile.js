@@ -832,27 +832,36 @@ const EditProfile = ({ navigation, route }) => {
     }
     if (salary) formData.append('salary', salary);
 
-    // KYC Documents (only if new images selected)
-    if (policeVerification && policeVerification.path) {
+    // KYC Documents (only if new images selected - check both path and uri for local files)
+    const isLocalFile = (fileObj) => {
+      const uri = fileObj?.path || fileObj?.uri || '';
+      return typeof uri === 'string' && (
+        uri.startsWith('file://') ||
+        uri.startsWith('content://') ||
+        uri.startsWith('/') ||
+        uri.startsWith('ph://')
+      );
+    };
+
+    if (policeVerification && isLocalFile(policeVerification)) {
       formData.append('verification_certificate', {
         uri: policeVerification.path || policeVerification.uri,
-        name:
-          policeVerification.name || `verification_certificate_${Date.now()}.jpg`,
-        type: policeVerification.type || 'image/jpeg',
+        name: policeVerification.name || policeVerification.filename || `verification_certificate_${Date.now()}.jpg`,
+        type: policeVerification.type || policeVerification.mime || 'image/jpeg',
       });
     }
-    if (aadhaarFront && aadhaarFront.path) {
+    if (aadhaarFront && isLocalFile(aadhaarFront)) {
       formData.append('aadhar_front', {
         uri: aadhaarFront.path || aadhaarFront.uri,
-        name: aadhaarFront.name || `aadhar_front_${Date.now()}.jpg`,
-        type: aadhaarFront.type || 'image/jpeg',
+        name: aadhaarFront.name || aadhaarFront.filename || `aadhar_front_${Date.now()}.jpg`,
+        type: aadhaarFront.type || aadhaarFront.mime || 'image/jpeg',
       });
     }
-    if (aadhaarBack && aadhaarBack.path) {
+    if (aadhaarBack && isLocalFile(aadhaarBack)) {
       formData.append('aadhar_back', {
         uri: aadhaarBack.path || aadhaarBack.uri,
-        name: aadhaarBack.name || `aadhar_back_${Date.now()}.jpg`,
-        type: aadhaarBack.type || 'image/jpeg',
+        name: aadhaarBack.name || aadhaarBack.filename || `aadhar_back_${Date.now()}.jpg`,
+        type: aadhaarBack.type || aadhaarBack.mime || 'image/jpeg',
       });
     }
 
