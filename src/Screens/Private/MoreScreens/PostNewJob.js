@@ -26,6 +26,7 @@ import {
   AddJob,
   ApplicantsList,
   ListJob,
+  CATEGORY,
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import DatePicker from 'react-native-date-picker';
@@ -75,6 +76,25 @@ const PostNewJob = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
 
   const [availableSkills, setAvailableSkills] = useState([]);
+
+  // Role options from database
+  const [roleOptions, setRoleOptions] = useState([]);
+
+  useEffect(() => {
+    GET_WITH_TOKEN(
+      CATEGORY,
+      success => {
+        const data = success?.data || (Array.isArray(success) ? success : []);
+        const opts = data.map(r => ({
+          label: r?.name || r?.category_name || String(r),
+          value: r?.name || r?.category_name || String(r),
+        })).filter(o => o.label);
+        setRoleOptions(opts);
+      },
+      () => {},
+      () => {},
+    );
+  }, []);
 
   // Add new skill modal state
   const [isAddSkillVisible, setIsAddSkillVisible] = useState(false);
@@ -836,12 +856,15 @@ const PostNewJob = ({ navigation, route }) => {
             icon={ImageConstant?.Briefcase}
             title={LocalizedStrings.PostNewJob.job_details}
           />
-          <Input
-            // placeholder="Enter job role/title"
+          <DropdownComponent
             title={LocalizedStrings.PostNewJob.job_role_title}
+            placeholder={LocalizedStrings.PostNewJob.job_role_placeholder || "Select Role"}
+            data={roleOptions}
             value={title}
-            onChange={handleTitleChange}
+            onChange={item => handleTitleChange(item?.value || item)}
             error={errors.title}
+            marginHorizontal={0}
+            MainBoxStyle={{ width: '100%' }}
           />
           <Input
             style_input={styles.inputText}

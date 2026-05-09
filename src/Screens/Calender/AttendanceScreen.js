@@ -58,7 +58,7 @@ const AttendanceScreen = ({ navigation, route }) => {
   const statusOptions = [
     { value: 'present', label: 'Present', color: '#4CAF50' },
     { value: 'absent', label: 'Absent', color: '#F44336' },
-    { value: 'on_leave', label: 'On Leave', color: '#FFC107' },
+    { value: 'on_leave', label: 'Late', color: '#FFC107' },
   ];
 
   useEffect(() => {
@@ -412,7 +412,7 @@ const AttendanceScreen = ({ navigation, route }) => {
             <View style={styles.legendItem}>
               <View style={[styles.dot, { backgroundColor: "#FFC107" }]} />
               <Typography size={14} type={Font.Poppins_Regular}>
-                {LocalizedStrings.Dashboard?.On_Leave || "On Leave"}
+                Late
               </Typography>
             </View>
 

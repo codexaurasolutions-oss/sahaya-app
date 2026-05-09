@@ -456,6 +456,8 @@ const StaffManagement = ({ navigation }) => {
       return;
     }
 
+    setIsSubmitting(true);
+
     // // If Razorpay is selected, process payment first
     // if (selectedMethod === 'Razorpay') {
     //   Alert.alert(
@@ -586,7 +588,6 @@ const StaffManagement = ({ navigation }) => {
   };
 
   const submitSalaryPayment = (paymentResult) => {
-    setIsSubmitting(true);
     const paymentMode = selectedMethod?.toLowerCase() || 'cash';
     const isPaid = paymentResult || paymentMode === 'cash';
     const body = {
