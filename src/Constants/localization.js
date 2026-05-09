@@ -131,6 +131,7 @@ export default new LocalizedStrings({
       Active_staf: 'Active Staff',
       Present: 'Present',
       Absent: 'Absent',
+      Late: 'Late',
       find_staf: 'Find Staff'
     },
     Dashboard_model: {
@@ -955,6 +956,8 @@ export default new LocalizedStrings({
       title: 'डैशबोर्ड',
       Active_staf: 'सक्रिय स्टाफ',
       Present: 'हाजिर',
+      Absent: 'गैर-हाजिर',
+      Late: 'देर से',
       find_staf: 'स्टाफ खोजें'
     },
     Dashboard_model: {
