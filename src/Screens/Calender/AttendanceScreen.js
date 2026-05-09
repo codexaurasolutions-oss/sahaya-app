@@ -297,7 +297,7 @@ const AttendanceScreen = ({ navigation, route }) => {
           markedDates={{
             ...markedDates,
             ...(selected
-              ? { [selected]: { ...(markedDates[selected] || {}), selected: true, selectedColor: editMode ? "#000" : (markedDates[selected]?.selectedColor || "#000") } }
+              ? { [selected]: { ...(markedDates[selected] || {}), selected: true, selectedColor: (markedDates[selected]?.selectedColor || "#379AE6") } }
               : {}),
           }}
           theme={{
