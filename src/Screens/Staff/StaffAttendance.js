@@ -168,7 +168,7 @@ const StaffAttendance = ({ navigation }) => {
             markedDates={{
               ...markedDates,
               ...(selected
-                ? { [selected]: { ...(markedDates[selected] || {}), selected: true, selectedColor: '#000' } }
+                ? { [selected]: { ...(markedDates[selected] || {}), selected: true, selectedColor: '#D98579' } }
                 : {}),
             }}
             theme={{

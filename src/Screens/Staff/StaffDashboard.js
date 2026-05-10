@@ -484,19 +484,19 @@ const StaffDashboard = ({ navigation }) => {
         </View>
       </View>
       */}
-      <View style={{ height: 100 }} />
+      <View style={{ marginTop: 20, marginBottom: 40 }}>
+        <Button
+          onPress={() => {
+            navigation.navigate('AIJobSearch');
+          }}
+          linerColor={['#D98579', '#C4706A']}
+          title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
+          main_style={{ width: '100%' }}
+        />
+      </View>
+      <View style={{ height: 40 }} />
     </CommanView>
-    <View style={{ position: 'absolute', bottom: 100, left: 20, right: 20 }}>
-      <Button
-        onPress={() => {
-          navigation.navigate('AIJobSearch');
-        }}
-        linerColor={['#D98579', '#C4706A']}
-        title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
-        main_style={{ width: '100%' }}
-      />
-    </View>
-    </View>
+  </View>
   );
 };
 
