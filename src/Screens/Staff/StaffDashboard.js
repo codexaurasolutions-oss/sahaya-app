@@ -484,18 +484,17 @@ const StaffDashboard = ({ navigation }) => {
         </View>
       </View>
       */}
-      <View style={{ marginTop: 20, marginBottom: 40 }}>
-        <Button
-          onPress={() => {
-            navigation.navigate('AIJobSearch');
-          }}
-          linerColor={['#D98579', '#C4706A']}
-          title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
-          main_style={{ width: '100%' }}
-        />
-      </View>
-      <View style={{ height: 40 }} />
     </CommanView>
+    <View style={styles.fixedFooter}>
+      <Button
+        onPress={() => {
+          navigation.navigate('AIJobSearch');
+        }}
+        linerColor={['#D98579', '#C4706A']}
+        title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
+        main_style={{ width: '100%' }}
+      />
+    </View>
   </View>
   );
 };
@@ -597,5 +596,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 2,
+  },
+  fixedFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#EBEBEA',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -3 },
+    shadowRadius: 5,
   },
 });

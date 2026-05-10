@@ -42,6 +42,11 @@ const StaffMore = ({ navigation }) => {
       res => {
         setToggleLoading(false);
         setIsJobSeeking(value);
+        
+        // Update Redux store so other screens (like dashboard) reflect the change
+        const updatedUser = { ...userDetail, is_job_seeking: value, is_available: value };
+        dispatch(userDetails(updatedUser));
+
         SimpleToast.show(
           value ? 'You are now visible to employers' : 'You are now hidden from job search',
           SimpleToast.SHORT,
