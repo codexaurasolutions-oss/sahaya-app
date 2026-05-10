@@ -113,12 +113,12 @@ const Dashboard = ({ navigation }) => {
   };
 
   const getFilteredStaff = () => {
-    if (!selectedStaff || selectedStaff.value === null) {
-      return activeStaff?.active_staff;
+    if (!selectedStaff || selectedStaff.value === 'all' || selectedStaff.value === null) {
+      return activeStaff?.active_staff || [];
     }
     return activeStaff?.active_staff?.filter(
-      item => item?.staff?.id === selectedStaff.value || item?.id === selectedStaff.value,
-    );
+      item => (item?.staff?.id == selectedStaff.value) || (item?.id == selectedStaff.value),
+    ) || [];
   };
 
   const fetchLeaveTypes = () => {
