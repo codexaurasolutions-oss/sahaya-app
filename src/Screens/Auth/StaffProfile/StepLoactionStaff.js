@@ -43,7 +43,7 @@ const StepLoactionStaff = forwardRef((props, ref) => {
   const getLocationFromCoordinates = async (latitude, longitude) => {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=en`,
         {
           headers: { 'User-Agent': 'SahayaaApp/1.0' }
         }
