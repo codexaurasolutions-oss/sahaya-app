@@ -412,89 +412,17 @@ const StaffDashboard = ({ navigation }) => {
       </View>
 
 
-      {/* Recent Alerts - commented out
-      <View style={[styles.card, { backgroundColor: '#EBEBEA' }]}>
-        <Typography type={Font.Poppins_SemiBold} size={17}>
-          {LocalizedStrings.staffSection?.StaffDashboard?.recent_alerts ||
-            'Recent Alerts'}
-        </Typography>
-
-        <View style={styles.alertItem}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              marginTop: 10,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Image
-                source={ImageConstant.late}
-                style={{
-                  height: 20,
-                  width: 20,
-                  tintColor: '#22C55E',
-                  marginRight: 10,
-                }}
-              />
-              <Typography type={Font.Poppins_Medium} size={15}>
-                {LocalizedStrings.staffSection?.StaffDashboard
-                  ?.payment_processed || 'Payment Processed'}
-              </Typography>
-            </View>
-            <Typography style={styles.alertTime}>2 hours ago</Typography>
-          </View>
-          <View style={{ paddingLeft: 30 }}>
-            <Typography style={styles.subText}>
-              {LocalizedStrings.staffSection?.StaffDashboard?.salary_credited ||
-                'Your salary has been successfully credited.'}
-            </Typography>
-          </View>
-        </View>
-
-        <View style={[styles.alertItem, { borderBottomWidth: 0 }]}>
-          <View
-            style={{ flexDirection: 'row', justifyContent: 'space-between' }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Image
-                source={ImageConstant.mail}
-                style={{
-                  height: 20,
-                  width: 20,
-                  tintColor: '#D98579',
-                  marginRight: 10,
-                  marginTop: 2,
-                }}
-              />
-              <Typography type={Font.Poppins_Medium} size={15}>
-                {LocalizedStrings.staffSection?.StaffDashboard
-                  ?.new_policy_update || 'New Policy Update'}
-              </Typography>
-            </View>
-
-            <Typography style={styles.alertTime}>7 hours ago</Typography>
-          </View>
-          <View style={{ paddingLeft: 30 }}>
-            <Typography style={[styles.subText]}>
-              {LocalizedStrings.staffSection?.StaffDashboard?.review_policy ||
-                'Review the updated company travel policy.'}
-            </Typography>
-          </View>
-        </View>
+      <View style={{ marginTop: 20, marginBottom: 20 }}>
+        <Button
+          onPress={() => {
+            navigation.navigate('AIJobSearch');
+          }}
+          linerColor={['#D98579', '#C4706A']}
+          title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
+          main_style={{ width: '100%' }}
+        />
       </View>
-      */}
     </CommanView>
-    <View style={styles.fixedFooter}>
-      <Button
-        onPress={() => {
-          navigation.navigate('AIJobSearch');
-        }}
-        linerColor={['#D98579', '#C4706A']}
-        title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
-        main_style={{ width: '100%' }}
-      />
-    </View>
   </View>
   );
 };
@@ -596,17 +524,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 2,
-  },
-  fixedFooter: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#EBEBEA',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: -3 },
-    shadowRadius: 5,
   },
 });
