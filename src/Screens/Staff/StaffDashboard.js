@@ -158,6 +158,7 @@ const StaffDashboard = ({ navigation }) => {
       ? `${userDetail?.first_name} ${userDetail?.last_name}`
       : userDetail?.first_name || userDetail?.name || 'User';
   return (
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
     <CommanView>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, backgroundColor: '#FFFFFF' }}>
         <TouchableOpacity
@@ -485,6 +486,17 @@ const StaffDashboard = ({ navigation }) => {
       */}
       <View style={{ height: 100 }} />
     </CommanView>
+    <View style={{ position: 'absolute', bottom: 100, left: 20, right: 20 }}>
+      <Button
+        onPress={() => {
+          navigation.navigate('AIJobSearch');
+        }}
+        linerColor={['#D98579', '#C4706A']}
+        title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
+        main_style={{ width: '100%' }}
+      />
+    </View>
+    </View>
   );
 };
 

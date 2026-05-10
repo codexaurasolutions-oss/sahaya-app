@@ -26,7 +26,8 @@ const StaffMore = ({ navigation }) => {
     GET_WITH_TOKEN(
       StaffAvailabilityStatus,
       res => {
-        setIsJobSeeking(res?.data?.is_available === true || res?.data?.is_job_seeking === true || res?.is_available === true);
+        const status = res?.data?.is_available || res?.data?.is_job_seeking || res?.is_available || false;
+        setIsJobSeeking(!!status);
       },
       () => {},
       () => {},
@@ -228,13 +229,7 @@ const StaffMore = ({ navigation }) => {
           subtitle={LocalizedStrings.MoreOptions?.discover_tasks || "See all active job postings"}
           onPress={() => navigation.navigate('JobListing')}
         />
-        <Option
-          Images={ImageConstant?.Verify}
-          imageStyle={{tintColor:'#16A34A'}}
-          title="Post Yourself for Hire"
-          subtitle="Let employers find you — toggle your availability"
-          onPress={() => navigation.navigate('HireMe')}
-        />
+
         <Option
           Images={ImageConstant?.Salary}
           title={LocalizedStrings.MoreOptions?.membership || "Membership"}

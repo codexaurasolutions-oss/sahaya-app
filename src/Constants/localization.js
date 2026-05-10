@@ -634,6 +634,7 @@ export default new LocalizedStrings({
         view_history: 'View History',
         apply_leave: 'Apply Leave',
         view_jobs: 'View Jobs',
+        ai_search_jobs: 'AI Search Jobs',
 
         recent_alerts: 'Recent Alerts',
         payment_processed: 'Payment Processed',
