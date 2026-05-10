@@ -76,7 +76,10 @@ const Dashboard = ({ navigation }) => {
       ActiveTodayUser,
       success => {
         console.log('success?.data-----000', success?.data);
-        setActiveStaff(success?.data);
+        // API returns { active_staff: [...], status: {...} } directly
+        // or wrapped in { data: { active_staff: [...] } }
+        const payload = success?.data || success;
+        setActiveStaff(payload);
       },
       error => {
         // Silently ignore - no staff hired yet is normal
@@ -379,7 +382,7 @@ const Dashboard = ({ navigation }) => {
           size={14}
           style={{ paddingVertical: 20 }}
         >
-          {moment(activeStaff?.status?.date).format('DD/MM/YYYY')} (Today)
+          {moment(activeStaff?.status?.date || new Date()).format('DD/MM/YYYY')} (Today)
         </Typography>
       </View>
 
