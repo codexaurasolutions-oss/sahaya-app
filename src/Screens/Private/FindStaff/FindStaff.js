@@ -245,7 +245,8 @@ const FindStaff = ({ navigation, route }) => {
   const extractRoleFromQuery = (query) => {
     const roleMap = {
       'driver': ['driver', 'driving', 'chauffeur'],
-      'cook': ['cook', 'chef', 'cooking'],
+      'cook': ['cook', 'chef', 'cooking', 'baker'],
+      'chef': ['chef', 'cook', 'cooking', 'baker'],
       'maid': ['maid', 'house cleaner', 'housecleaner', 'cleaner', 'cleaning'],
       'nanny': ['nanny', 'babysitter', 'baby sitter', 'childcare'],
       'housekeeper': ['housekeeper', 'housekeeping'],
@@ -262,6 +263,7 @@ const FindStaff = ({ navigation, route }) => {
       'dog walker': ['dog walker', 'pet walker', 'dog walking'],
       'physiotherapist': ['physiotherapist', 'physiotherapy'],
       'attendant': ['attendant', 'helper', 'assistant'],
+      'pet caretaker': ['pet caretaker', 'pet care', 'animal care'],
     };
     const found = [];
     Object.entries(roleMap).forEach(([role, keywords]) => {
@@ -270,7 +272,7 @@ const FindStaff = ({ navigation, route }) => {
         keywords.forEach(kw => found.push(kw));
       }
     });
-    return found;
+    return [...new Set(found)];
   };
 
 
