@@ -23,6 +23,7 @@ import {
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import { useSelector } from 'react-redux';
+import Input from '../../Component/Input';
 
 const HireMeScreen = ({ navigation }) => {
   const userDetail = useSelector(state => state?.userDetails);
@@ -30,18 +31,24 @@ const HireMeScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // 'active' | 'paused' | null
+  
+  // New: Preferred Work City
+  const [workCity, setWorkCity] = useState('');
 
   const role = (() => {
     const r = userDetail?.user_work_info?.primary_role;
     if (Array.isArray(r)) return r.join(', ');
     return r || 'Not set';
   })();
-  const city = userDetail?.addresses?.[0]?.city || userDetail?.city || 'Not set';
+  
+  // Default to their current city if not set
+  const defaultCity = userDetail?.user_work_info?.preferred_work_location || userDetail?.addresses?.[0]?.city || userDetail?.city || '';
   const experience = userDetail?.user_work_info?.total_experience || 'Not set';
 
   useEffect(() => {
     fetchStatus();
-  }, []);
+    if (defaultCity) setWorkCity(defaultCity);
+  }, [defaultCity]);
 
   const fetchStatus = () => {
     setLoading(true);
@@ -53,6 +60,11 @@ const HireMeScreen = ({ navigation }) => {
         const active = data?.is_available === true || data?.status === 'active' || data?.is_job_seeking === true;
         setIsActive(active);
         setStatus(data?.status || (active ? 'active' : null));
+        
+        // If backend has a preferred location, use it
+        if (data?.preferred_work_location) {
+          setWorkCity(data.preferred_work_location);
+        }
       },
       () => setLoading(false),
       () => setLoading(false),
@@ -60,6 +72,11 @@ const HireMeScreen = ({ navigation }) => {
   };
 
   const handleOptIn = () => {
+    if (!workCity.trim()) {
+      SimpleToast.show('Please enter the city where you want to work', SimpleToast.SHORT);
+      return;
+    }
+
     setSaving(true);
     POST_WITH_TOKEN(
       HireMeOptIn,
@@ -67,25 +84,29 @@ const HireMeScreen = ({ navigation }) => {
         is_available: true,
         is_job_seeking: true,
         role: role,
-        city: city,
+        city: workCity, // Send the chosen work city
         experience: experience,
       },
       res => {
         setSaving(false);
         setIsActive(true);
         setStatus('active');
-        SimpleToast.show('Your profile is now visible to employers!', SimpleToast.LONG);
+        SimpleToast.show('Your profile is now visible to employers in ' + workCity + '!', SimpleToast.LONG);
       },
       err => {
         setSaving(false);
-        // If already opted in, try update instead
+        // Fallback to update if opt-in fails (already opted in)
         POST_WITH_TOKEN(
           HireMeUpdate,
-          { is_available: true, is_job_seeking: true },
+          { 
+            is_available: true, 
+            is_job_seeking: true,
+            city: workCity 
+          },
           res2 => {
             setIsActive(true);
             setStatus('active');
-            SimpleToast.show('Profile updated — visible to employers!', SimpleToast.SHORT);
+            SimpleToast.show('Profile updated — visible in ' + workCity, SimpleToast.SHORT);
           },
           () => SimpleToast.show('Failed to update. Try again.', SimpleToast.SHORT),
           () => SimpleToast.show('Network error. Try again.', SimpleToast.SHORT),
@@ -176,6 +197,24 @@ const HireMeScreen = ({ navigation }) => {
           />
         </View>
 
+        {/* Work Preferences */}
+        <View style={styles.card}>
+          <Typography type={Font?.Poppins_SemiBold} size={15} style={{ marginBottom: 12 }}>
+            Work Preferences
+          </Typography>
+          <Typography type={Font?.Poppins_Regular} size={12} color="#888" style={{ marginBottom: 12 }}>
+            In which city are you looking for work?
+          </Typography>
+          
+          <Input
+            placeholder="e.g. Vizag, Mumbai, Delhi"
+            value={workCity}
+            onChangeText={setWorkCity}
+            style={{ marginTop: 0 }}
+            editable={!saving}
+          />
+        </View>
+
         {/* Profile Preview */}
         <View style={styles.card}>
           <Typography type={Font?.Poppins_SemiBold} size={15} style={{ marginBottom: 12 }}>
@@ -191,7 +230,7 @@ const HireMeScreen = ({ navigation }) => {
           </View>
           <View style={styles.infoRow}>
             <Image source={ImageConstant?.Location} style={styles.icon} />
-            <Typography size={13} color="#333">Location: <Typography type={Font?.Poppins_SemiBold} size={13}>{city}</Typography></Typography>
+            <Typography size={13} color="#333">Location: <Typography type={Font?.Poppins_SemiBold} size={13}>{workCity || 'Not set'}</Typography></Typography>
           </View>
           <View style={styles.infoRow}>
             <Image source={ImageConstant?.Calendar} style={styles.icon} />
