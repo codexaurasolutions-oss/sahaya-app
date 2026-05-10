@@ -720,8 +720,8 @@ const EditProfile = ({ navigation, route }) => {
         }
       },
       { 
-        enableHighAccuracy: true, 
-        timeout: 15000, 
+        enableHighAccuracy: false, 
+        timeout: 30000, 
         maximumAge: 10000 
       }
     );

@@ -86,7 +86,11 @@ const StepLoactionStaff = forwardRef((props, ref) => {
         setLoadingLocation(false);
         Alert.alert('Error', 'Could not get your location. Please check permissions.');
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      { 
+        enableHighAccuracy: false, 
+        timeout: 30000, 
+        maximumAge: 10000 
+      }
     );
   };
 
