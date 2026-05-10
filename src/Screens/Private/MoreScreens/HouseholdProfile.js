@@ -135,7 +135,11 @@ const HouseholdProfile = ({ navigation, route }) => {
         setLoadingLocation(false);
         Alert.alert('Error', 'Could not get your location. Please check permissions.');
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      { 
+        enableHighAccuracy: false, 
+        timeout: 60000, 
+        maximumAge: 60000 
+      }
     );
   };
 

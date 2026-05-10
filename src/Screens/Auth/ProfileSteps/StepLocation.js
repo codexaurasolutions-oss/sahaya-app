@@ -131,8 +131,8 @@ const StepLocation = React.forwardRef((props, ref) => {
       },
       { 
         enableHighAccuracy: false, 
-        timeout: 30000, 
-        maximumAge: 10000 
+        timeout: 60000, 
+        maximumAge: 60000 
       }
     );
   };
