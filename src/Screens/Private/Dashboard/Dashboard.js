@@ -602,19 +602,18 @@ const Dashboard = ({ navigation }) => {
           />
         </View>
       </SimpleModal>
-      <View style={{ height: 80 }} />
+      <View style={{ marginTop: 20, marginBottom: 100 }}>
+        <Button
+          onPress={() => {
+            navigation.navigate('AllStaff');
+          }}
+          linerColor={['#D98579', '#C4706A']}
+          title={LocalizedStrings.Dashboard.find_staf}
+          main_style={{ width: '100%' }}
+        />
+      </View>
     </CommanView>
-    <View style={{ position: 'absolute', bottom: 75, left: 20, right: 20 }}>
-      <Button
-        onPress={() => {
-          navigation.navigate('AllStaff');
-        }}
-        linerColor={['#D98579', '#C4706A']}
-        title={LocalizedStrings.Dashboard.find_staf}
-        main_style={{ width: '100%' }}
-      />
-    </View>
-    </View>
+  </View>
   );
 };
 

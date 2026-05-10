@@ -412,7 +412,7 @@ const StaffDashboard = ({ navigation }) => {
       </View>
 
 
-      <View style={{ marginTop: 20, marginBottom: 20 }}>
+      <View style={{ marginTop: 20, marginBottom: 100 }}>
         <Button
           onPress={() => {
             navigation.navigate('AIJobSearch');
