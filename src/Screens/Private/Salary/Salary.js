@@ -29,6 +29,7 @@ import {
   SalaryUpdateStatus,
   AdvanceWithdraw,
   AttendanceStaff,
+  UpdateStaff,
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
@@ -317,6 +318,32 @@ const StaffManagement = ({ navigation }) => {
         setIsSavingDeductions(false);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
+    );
+  };
+
+  const updatePermanentSalary = () => {
+    if (!leaveType?.value) {
+      SimpleToast.show('Please select a staff member first', SimpleToast.SHORT);
+      return;
+    }
+    if (!baseSalary || isNaN(baseSalary)) {
+      SimpleToast.show('Please enter a valid base salary', SimpleToast.SHORT);
+      return;
+    }
+
+    setIsSavingBaseSalary(true);
+    POST_WITH_TOKEN(
+      `${UpdateStaff}/${leaveType?.value}`,
+      { salary: baseSalary },
+      res => {
+        setIsSavingBaseSalary(false);
+        setIsEditingBaseSalary(false);
+        SimpleToast.show('Staff profile salary updated permanently!', SimpleToast.LONG);
+      },
+      err => {
+        setIsSavingBaseSalary(false);
+        SimpleToast.show(err?.data?.message || 'Failed to update permanent salary', SimpleToast.SHORT);
+      }
     );
   };
 
@@ -1092,18 +1119,32 @@ const StaffManagement = ({ navigation }) => {
                 )}
               </View>
               {isEditingBaseSalary && (
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={saveSalaryData}
-                  disabled={isSavingBaseSalary}
-                >
-                  <Typography
-                    type={Font.Poppins_SemiBold}
-                    style={styles.saveButtonText}
+                <View>
+                  <TouchableOpacity
+                    style={styles.saveButton}
+                    onPress={saveSalaryData}
+                    disabled={isSavingBaseSalary}
                   >
-                    {isSavingBaseSalary ? 'Saving...' : 'Save'}
-                  </Typography>
-                </TouchableOpacity>
+                    <Typography
+                      type={Font.Poppins_SemiBold}
+                      style={styles.saveButtonText}
+                    >
+                      {isSavingBaseSalary ? 'Saving...' : 'Save'}
+                    </Typography>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveButton, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D98579', marginTop: 10 }]}
+                    onPress={updatePermanentSalary}
+                    disabled={isSavingBaseSalary}
+                  >
+                    <Typography
+                      type={Font.Poppins_SemiBold}
+                      style={[styles.saveButtonText, { color: '#D98579' }]}
+                    >
+                      Update in Profile
+                    </Typography>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
             <View style={styles.section}>

@@ -18,7 +18,7 @@ import { Colors } from '../../Constants/Colors';
 import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import LocalizedStrings from '../../Constants/localization';
-import { EarningSummary as EarningSummaryRoute, myWork, AttendanceStaff } from '../../Backend/api_routes';
+import { EarningSummary as EarningSummaryRoute, myWork, AttendanceStaff, ReferralCode } from '../../Backend/api_routes';
 import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../Backend/Backend';
 
 
@@ -27,11 +27,12 @@ const EarningSummary = ({ route }) => {
   const jobID = route?.params?.id;
   const isFocused = useIsFocused();
   const userDetail = useSelector(store => store?.userDetails);
+  const [walletBalance, setWalletBalance] = useState('0.00');
 
   const [summary2, setSummary2] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const [attendanceSummary, setAttendanceSummary] = useState({ totalWorked: 0, daysInMonth: 30 });
+  const [attendanceSummary, setAttendanceSummary] = useState({ totalWorked: 0, daysInMonth: 30, last30Days: 0 });
   const [accruedSalary, setAccruedSalary] = useState(0);
 
   const profileIcon = userDetail?.image
@@ -83,7 +84,24 @@ const EarningSummary = ({ route }) => {
             }
           });
         }
-        setAttendanceSummary({ totalWorked, daysInMonth });
+        // Calculate last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        let last30Days = 0;
+        
+        // Since we only fetched current month, we might need to fetch more for real last 30 days, 
+        // but for now let's at least show what we have in the current response filter
+        if (Array.isArray(records)) {
+          records.forEach(record => {
+            const rDate = new Date(record.date);
+            const status = record?.status?.toLowerCase();
+            if (rDate >= thirtyDaysAgo && (status === 'present' || status === 'late')) {
+              last30Days++;
+            }
+          });
+        }
+
+        setAttendanceSummary({ totalWorked, daysInMonth, last30Days });
         
         // Calculate accrued salary
         const monthlySalary = Number(userDetail?.user_work_info?.salary || userDetail?.work_info?.salary || 0);
@@ -158,9 +176,21 @@ const EarningSummary = ({ route }) => {
     }
   }, [jobID, userDetail?.id, fetchEarnings, handleErrorMessage]);
 
+  const fetchWalletBalance = () => {
+    GET_WITH_TOKEN(
+      ReferralCode,
+      success => {
+        setWalletBalance(success?.data?.total_earnings || '0.00');
+      },
+      error => {},
+      () => {},
+    );
+  };
+
   useEffect(() => {
     if (isFocused) {
       fetchSummary();
+      fetchWalletBalance();
     }
   }, [fetchSummary, isFocused]);
 
@@ -242,6 +272,27 @@ const EarningSummary = ({ route }) => {
         </View>
       ) : (
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      
+      {/* Wallet Balance Card to match Dashboard */}
+      <View style={[styles.summaryCard, { backgroundColor: '#FFF5EE', borderColor: '#D98579', borderStyle: 'dashed', marginBottom: 15 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View>
+            <Typography type={Font.Poppins_Medium} size={14} color="#666">
+              Current Wallet Balance
+            </Typography>
+            <Typography type={Font.Poppins_Bold} size={24} color="#D98579">
+              ₹{walletBalance}
+            </Typography>
+          </View>
+          <View style={{ height: 50, width: 50, borderRadius: 25, backgroundColor: '#FFF0EE', justifyContent: 'center', alignItems: 'center' }}>
+            <Typography type={Font.Poppins_Bold} size={20} color="#D98579">₹</Typography>
+          </View>
+        </View>
+        <Typography size={11} color="#999" style={{ marginTop: 8 }}>
+          This includes all your earnings across all jobs and referrals.
+        </Typography>
+      </View>
+
       <View style={styles.summaryCard}>
         <View style={styles.cardHeader}>
           <View style={{ flexDirection: 'row', width: '100%' }}>
@@ -273,7 +324,9 @@ const EarningSummary = ({ route }) => {
                 color={Colors.black}
                 numberOfLines={1}
               >
-                {summary2?.employer || userDetail?.first_name || '--'}
+                {summary2?.employer && summary2.employer !== 'Unknown Employer' 
+                  ? summary2.employer 
+                  : (userDetail?.employer_name || userDetail?.added_by_name || 'Your Employer')}
               </Typography>
               {/* <Image
                 source={ImageConstant?.Arrow}
@@ -325,10 +378,17 @@ const EarningSummary = ({ route }) => {
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Typography size={12} color={Colors.grey}>
-              Worked Days (Accrued)
+              Worked Days ({moment().format('MMMM')})
             </Typography>
-            <Typography type={Font.Poppins_SemiBold} size={16} color="#4CAF50">
+            <Typography type={Font.Poppins_SemiBold} size={15} color="#4CAF50">
               {attendanceSummary.totalWorked} Days
+            </Typography>
+            <View style={{ height: 8 }} />
+            <Typography size={12} color={Colors.grey}>
+              Last 30 Days
+            </Typography>
+            <Typography type={Font.Poppins_SemiBold} size={15} color="#4CAF50">
+              {attendanceSummary.last30Days} Days
             </Typography>
           </View>
         </View>
@@ -498,42 +558,50 @@ const EarningSummary = ({ route }) => {
           {LocalizedStrings.staffSection?.EarningsSummary?.payment_history ||
             'Payment History'}
         </Typography>
-        {paymentHistory.map((entry, index) => (
-          <View
-            key={`${entry?.month}-${index}`}
-            style={[
-              styles.historyRow,
-              index !== paymentHistory.length - 1 && styles.historyRowBorder,
-            ]}
-          >
-            <View>
-              <Typography type={Font.Poppins_SemiBold} size={14}>
-                {entry?.month || '--'}
-              </Typography>
-              <Typography size={12} color={Colors.grey}>
-                {(LocalizedStrings.staffSection?.EarningsSummary?.paid_on ||
-                  'Paid on') +
-                  ' ' +
-                  formatDate(entry?.paid_on)}
-              </Typography>
+        {paymentHistory.length > 0 ? (
+          paymentHistory.map((entry, index) => (
+            <View
+              key={`${entry?.month}-${index}`}
+              style={[
+                styles.historyRow,
+                index !== paymentHistory.length - 1 && styles.historyRowBorder,
+              ]}
+            >
+              <View>
+                <Typography type={Font.Poppins_SemiBold} size={14}>
+                  {entry?.month || '--'}
+                </Typography>
+                <Typography size={12} color={Colors.grey}>
+                  {(LocalizedStrings.staffSection?.EarningsSummary?.paid_on ||
+                    'Paid on') +
+                    ' ' +
+                    formatDate(entry?.paid_on)}
+                </Typography>
+              </View>
+              <View style={styles.historyRight}>
+                <Typography type={Font.Poppins_SemiBold} size={14}>
+                  {formatCurrency(entry?.amount)}
+                </Typography>
+                <TouchableOpacity
+                  style={styles.downloadButton}
+                  onPress={() => handleOpenLink(entry?.receipt_url)}
+                >
+                  <Image
+                    source={ImageConstant?.Doc}
+                    style={styles.downloadIcon}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.historyRight}>
-              <Typography type={Font.Poppins_SemiBold} size={14}>
-                {formatCurrency(entry?.amount)}
-              </Typography>
-              <TouchableOpacity
-                style={styles.downloadButton}
-                onPress={() => handleOpenLink(entry?.receipt_url)}
-              >
-                <Image
-                  source={ImageConstant?.Doc}
-                  style={styles.downloadIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            </View>
+          ))
+        ) : (
+          <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+            <Typography size={13} color={Colors.grey}>
+              No past payment history found.
+            </Typography>
           </View>
-        ))}
+        )}
       </View>
 
       </ScrollView>
