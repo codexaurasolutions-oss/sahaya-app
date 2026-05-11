@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  ScrollView,
 } from 'react-native';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -240,7 +241,7 @@ const EarningSummary = ({ route }) => {
           <ActivityIndicator size="large" color={Colors.blue || '#D98579'} />
         </View>
       ) : (
-      <>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
       <View style={styles.summaryCard}>
         <View style={styles.cardHeader}>
           <View style={{ flexDirection: 'row', width: '100%' }}>
@@ -355,7 +356,6 @@ const EarningSummary = ({ route }) => {
           </View>
         </View>
       )}
-      </View>
 
       <View style={styles.sectionCard}>
         <Typography
@@ -536,7 +536,7 @@ const EarningSummary = ({ route }) => {
         ))}
       </View>
 
-      </>
+      </ScrollView>
       )}
       <View style={styles.bottomSpacing} />
     </CommanView>
