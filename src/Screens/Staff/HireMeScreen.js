@@ -20,6 +20,7 @@ import {
   HireMePause,
   HireMeDeactivate,
   StaffAvailabilityStatus,
+  PROFILE_UPDATE,
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import { useSelector } from 'react-redux';
@@ -88,6 +89,11 @@ const HireMeScreen = ({ navigation }) => {
         experience: experience,
       },
       res => {
+        // Also update profile permanently
+        const formData = new FormData();
+        formData.append('preferred_work_location', workCity);
+        POST_FORM_DATA(PROFILE_UPDATE, formData, () => {}, () => {});
+
         setSaving(false);
         setIsActive(true);
         setStatus('active');

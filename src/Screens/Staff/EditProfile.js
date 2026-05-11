@@ -92,6 +92,7 @@ const EditProfile = ({ navigation, route }) => {
   const [upiId, setUpiId] = useState('');
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [preferredWorkCity, setPreferredWorkCity] = useState('');
 
   // Image modal states
   const [currentImageType, setCurrentImageType] = useState('');
@@ -369,6 +370,8 @@ const EditProfile = ({ navigation, route }) => {
 
     if (workInfo?.emergency_contact_name) setEmergencyName(workInfo.emergency_contact_name);
     if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
+    if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
+    else if (userDetail?.preferred_work_location) setPreferredWorkCity(userDetail.preferred_work_location);
   };
 
   // Toggle skill selection
@@ -760,6 +763,7 @@ const EditProfile = ({ navigation, route }) => {
     if (upiId) formData.append('upi_id', upiId);
     if (emergencyName) formData.append('emergency_contact_name', emergencyName);
     if (emergencyPhone) formData.append('emergency_contact_number', emergencyPhone);
+    if (preferredWorkCity) formData.append('preferred_work_location', preferredWorkCity);
 
     // Profile Image (only if new image selected, not a remote URL)
     if (profileImage?.path && !profileImage.path.startsWith('http')) {
@@ -1039,6 +1043,21 @@ const EditProfile = ({ navigation, route }) => {
             onChange={text => setEmergencyPhone(text)}
             maxLength={10}
           />
+        </View>
+
+        <View style={styles.section}>
+          <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
+            Work Preferences
+          </Typography>
+          <Input
+            placeholder="e.g. Vizag, Mumbai, Delhi"
+            title="Preferred Work Cities"
+            value={preferredWorkCity}
+            onChange={text => setPreferredWorkCity(text)}
+          />
+          <Typography size={11} color="#888" style={{ marginTop: -10, marginBottom: 10 }}>
+            Enter cities where you are ready to work (comma separated)
+          </Typography>
         </View>
 
         <View style={styles.section}>

@@ -152,6 +152,7 @@ const FindStaff = ({ navigation, route }) => {
             role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : (workInfo?.primary_role || ''),
             tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
             location: item?.addresses?.[0]?.city || item?.location || item?.city || item?.address?.city || item?.current_address?.city || item?.region || '',
+            preferredLocation: item?.preferred_work_location || item?.user_work_info?.preferred_work_location || item?.work_info?.preferred_work_location || '',
             pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || '',
             experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
             verified: item?.is_verified || false,
@@ -201,8 +202,9 @@ const FindStaff = ({ navigation, route }) => {
         if (locationKeywords.length > 0) {
           const locFiltered = finalList.filter(c => {
             const loc = (c.location || '').toLowerCase();
+            const prefLoc = (c.preferredLocation || '').toLowerCase();
             const state = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
-            return locationKeywords.some(kw => loc.includes(kw) || state.includes(kw));
+            return locationKeywords.some(kw => loc.includes(kw) || prefLoc.includes(kw) || state.includes(kw));
           });
           if (locFiltered.length > 0) finalList = locFiltered;
         }
@@ -596,9 +598,16 @@ const FindStaff = ({ navigation, route }) => {
                   {/* Info with Icons */}
                   <View style={[styles.infoRow, { marginTop: 15 }]}>
                     <Image source={ImageConstant.Location} style={styles.icon} />
-                    <Typography margin={3} size={14}>
-                      {c.location || 'Not Available'}
-                    </Typography>
+                    <View style={{ flex: 1 }}>
+                      <Typography margin={3} size={14}>
+                        Current: {c.location || 'Not Available'}
+                      </Typography>
+                      {c.preferredLocation ? (
+                        <Typography margin={3} size={12} color="#D98579" type={Font.Poppins_Medium}>
+                          Ready to work in: {c.preferredLocation}
+                        </Typography>
+                      ) : null}
+                    </View>
                   </View>
 
                   <View style={styles.infoRow}>

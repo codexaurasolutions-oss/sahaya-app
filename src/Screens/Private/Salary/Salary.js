@@ -1091,10 +1091,18 @@ const StaffManagement = ({ navigation }) => {
                     Worked Days: {workedDays} / {totalDaysInMonth} Days
                  </Typography>
                  {baseSalary > 0 && (
-                   <Typography type={Font.Poppins_Regular} size={11} color="#15803d">
-                      Suggested Pro-rata: ₹{((baseSalary / totalDaysInMonth) * workedDays).toFixed(2)}
-                   </Typography>
-                 )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                      <Typography type={Font.Poppins_Regular} size={11} color="#15803d">
+                        Suggested Pro-rata: ₹{((baseSalary / totalDaysInMonth) * workedDays).toFixed(2)}
+                      </Typography>
+                      <TouchableOpacity 
+                        style={{ backgroundColor: '#166534', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}
+                        onPress={() => setBaseSalary(((baseSalary / totalDaysInMonth) * workedDays).toFixed(2))}
+                      >
+                        <Typography size={10} color="#fff" type={Font.Poppins_Bold}>Apply</Typography>
+                      </TouchableOpacity>
+                    </View>
+                  )}
               </View>
               <View style={styles.salaryRow}>
                 <Typography type={Font.Poppins_Regular} style={styles.subText}>
@@ -1388,36 +1396,33 @@ const StaffManagement = ({ navigation }) => {
               <Typography type={Font.Poppins_Regular} size={12} color="#D98579">View & track → </Typography>
             </TouchableOpacity>
 
-            {filteredPayments.length > 0 && (
-              <View>
-                <Typography
-                  type={Font.Poppins_SemiBold}
-                  style={styles.sectionTitle}
-                >
-                  {LocalizedStrings.SalaryManagement.recent_payments}
-                </Typography>
-                <View style={styles.section}>
-                  <TouchableOpacity
-                    style={styles.rowBetween}
-                    onPress={() => {
-                      navigation.navigate('RecentSalaryList');
-                    }}
+            <View style={{ marginTop: 20 }}>
+                <View style={styles.rowBetween}>
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.sectionTitle}
                   >
-                    <Typography
-                      type={Font.Poppins_SemiBold}
-                      style={styles.sectionTitle}
+                    {LocalizedStrings.SalaryManagement.recent_payments}
+                  </Typography>
+                  {filteredPayments.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        navigation.navigate('RecentSalaryList');
+                      }}
                     >
-                      {LocalizedStrings.SalaryManagement.recent_payments}
-                    </Typography>
-                    <Typography
-                      type={Font.Poppins_Regular}
-                      style={{ color: '#D98579', fontSize: 12 }}
-                    >
-                      {LocalizedStrings.SalaryManagement.view_all}
-                    </Typography>
-                  </TouchableOpacity>
+                      <Typography
+                        type={Font.Poppins_Regular}
+                        style={{ color: '#D98579', fontSize: 12 }}
+                      >
+                        {LocalizedStrings.SalaryManagement.view_all}
+                      </Typography>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-                  {filteredPayments.slice(0, 3).map((item, index) => {
+                <View style={styles.section}>
+                  {filteredPayments.length > 0 ? (
+                    filteredPayments.slice(0, 3).map((item, index) => {
                     console.log('Salary list item --->', JSON.stringify(item));
                     const itemId = item?.payment_id || item?.id || item?.salary_id;
                     return (
@@ -1511,11 +1516,14 @@ const StaffManagement = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
-                    );
-                  })}
+                    })
+                  ) : (
+                    <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                       <Typography size={13} color="#999">No recent payments found for this staff.</Typography>
+                    </View>
+                  )}
                 </View>
-              </View>
-            )}
+            </View>
           </View>
         )}
       </ScrollView>
