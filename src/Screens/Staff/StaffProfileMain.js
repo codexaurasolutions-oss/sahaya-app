@@ -19,6 +19,8 @@ import RNFS from 'react-native-fs';
 import { Alert } from 'react-native';
 import { isPlaceholderImage } from '../../Utils/ImageUtils';
 
+import { isPlaceholderImage } from '../../Utils/ImageUtils';
+
 const StaffProfileMain = ({ navigation }) => {
     const dispatch = useDispatch();
     const userDetail = useSelector(store => store?.userDetails);
@@ -349,30 +351,30 @@ const StaffProfileMain = ({ navigation }) => {
                     <View style={styles.documentRow}>
                         <TouchableOpacity 
                             style={styles.docItem}
-                            onPress={() => userDetail?.user_work_info?.aadhar_front ? setShowImageModal(userDetail.user_work_info.aadhar_front) : null}
+                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_front) ? setShowImageModal(userDetail.user_work_info.aadhar_front) : null}
                         >
                             <Typography style={styles.docLabel}>Aadhar Front</Typography>
                             <Typography style={styles.docStatus}>
-                                {userDetail?.user_work_info?.aadhar_front ? 'View Card' : 'Not Uploaded'}
+                                {!isPlaceholderImage(userDetail?.user_work_info?.aadhar_front) ? 'View Card' : 'Not Uploaded'}
                             </Typography>
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={styles.docItem}
-                            onPress={() => userDetail?.user_work_info?.aadhar_back ? setShowImageModal(userDetail.user_work_info.aadhar_back) : null}
+                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_back) ? setShowImageModal(userDetail.user_work_info.aadhar_back) : null}
                         >
                             <Typography style={styles.docLabel}>Aadhar Back</Typography>
                             <Typography style={styles.docStatus}>
-                                {userDetail?.user_work_info?.aadhar_back ? 'View Card' : 'Not Uploaded'}
+                                {!isPlaceholderImage(userDetail?.user_work_info?.aadhar_back) ? 'View Card' : 'Not Uploaded'}
                             </Typography>
                         </TouchableOpacity>
                     </View>
                     <TouchableOpacity 
                         style={[styles.docItem, { marginTop: 10 }]}
-                        onPress={() => userDetail?.user_work_info?.verification_certificate ? setShowImageModal(userDetail.user_work_info.verification_certificate) : null}
+                        onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.verification_certificate) ? setShowImageModal(userDetail.user_work_info.verification_certificate) : null}
                     >
                         <Typography style={styles.docLabel}>Police Verification</Typography>
                         <Typography style={styles.docStatus}>
-                            {userDetail?.user_work_info?.verification_certificate ? 'View Certificate' : 'Not Uploaded'}
+                            {!isPlaceholderImage(userDetail?.user_work_info?.verification_certificate) ? 'View Certificate' : 'Not Uploaded'}
                         </Typography>
                     </TouchableOpacity>
                 </View>

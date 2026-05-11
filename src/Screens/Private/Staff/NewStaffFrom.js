@@ -1272,9 +1272,9 @@ const NewStaffForm = ({ navigation, route }) => {
           </View>
 
           {/* Police Clearance & Aadhaar - show read-only if staff already uploaded them */}
-          {data?.aadhar_front || data?.verification_certificate ? (
+          {(!isPlaceholderImage(data?.aadhar_front) || !isPlaceholderImage(data?.verification_certificate)) ? (
             <>
-              {data?.verification_certificate && (
+              {!isPlaceholderImage(data?.verification_certificate) && (
                 <View style={styles.readOnlyDocRow}>
                   <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
                     {LocalizedStrings.NewStaffForm.Police_Clearance_Certificate || 'Police Clearance'}
@@ -1287,7 +1287,7 @@ const NewStaffForm = ({ navigation, route }) => {
                 </View>
               )}
               <View style={styles.uploadRow}>
-                {data?.aadhar_front ? (
+                {!isPlaceholderImage(data?.aadhar_front) ? (
                   <View style={[styles.uploadBox, styles.readOnlyDocContainer]}>
                     <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
                       {LocalizedStrings.NewStaffForm.Aadhaar_Card_Details || 'Aadhaar Front'}
@@ -1307,7 +1307,7 @@ const NewStaffForm = ({ navigation, route }) => {
                     image={aadharCard}
                   />
                 )}
-                {data?.aadhar_back ? (
+                {!isPlaceholderImage(data?.aadhar_back) ? (
                   <View style={[styles.uploadBox, styles.readOnlyDocContainer]}>
                     <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
                       {'Aadhaar Card Back'}
