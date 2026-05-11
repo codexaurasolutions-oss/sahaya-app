@@ -20,7 +20,7 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
-import { GET_WITH_TOKEN, POST_WITH_TOKEN, PUT_WITH_TOKEN } from '../../../Backend/Backend';
+import { GET_WITH_TOKEN, POST_WITH_TOKEN, PUT_WITH_TOKEN, POST_FORM_DATA } from '../../../Backend/Backend';
 import {
   ListStaff,
   SalaryList,
@@ -28,6 +28,7 @@ import {
   SalaryStore,
   SalaryUpdateStatus,
   AdvanceWithdraw,
+  AttendanceStaff,
 } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
@@ -59,12 +60,15 @@ const StaffManagement = ({ navigation }) => {
   const [receiptPayment, setReceiptPayment] = useState(null);
   const [advanceAmount, setAdvanceAmount] = useState('');
   const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [upiUpdating, setUpiUpdating] = useState(false);
   const [showAdvanceModal, setShowAdvanceModal] = useState(false);
   const [advanceHistory, setAdvanceHistory] = useState([]);
   const [paymentType, setPaymentType] = useState(null);
   const [shouldDeductAdvance, setShouldDeductAdvance] = useState(true);
   const [deductionMethod, setDeductionMethod] = useState(null);
   const [advancePaymentMethod, setAdvancePaymentMethod] = useState('Cash');
+  const [workedDays, setWorkedDays] = useState(0);
+  const [totalDaysInMonth, setTotalDaysInMonth] = useState(30);
   const paymentTypeData = [
     { value: 'payment', label: 'Payment' },
     { value: 'advance', label: 'Advance Payment' },
@@ -134,7 +138,7 @@ const StaffManagement = ({ navigation }) => {
           const leaveTypes = success?.data?.data?.map(item => ({
             value: item.id,
             label: `${item.first_name || ''} ${item.last_name || ''}`.trim() || item.name || 'Staff',
-            upi_id: item.upi_id || '',
+            upi_id: item.upi_id || item.user_work_info?.upi_id || item.work_info?.upi_id || '',
           }));
           setLeaveList(leaveTypes || []);
         }
@@ -185,6 +189,37 @@ const StaffManagement = ({ navigation }) => {
         console.log('fetchSalaryDetails network fail ---->', fail);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
+    );
+  };
+
+  const fetchAttendance = (staffId) => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    setTotalDaysInMonth(new Date(year, month, 0).getDate());
+
+    const formData = new FormData();
+    formData.append('id', staffId);
+    formData.append('month', month);
+    formData.append('year', year);
+
+    POST_FORM_DATA(
+      AttendanceStaff,
+      formData,
+      success => {
+        const records = success?.data?.attendance || success?.data || [];
+        let totalWorked = 0;
+        if (Array.isArray(records)) {
+          records.forEach(record => {
+            const status = record?.status?.toLowerCase();
+            if (status === 'present' || status === 'late') {
+              totalWorked++;
+            }
+          });
+        }
+        setWorkedDays(totalWorked);
+      },
+      error => console.log('Salary fetch attendance error:', error)
     );
   };
 
@@ -312,6 +347,7 @@ const StaffManagement = ({ navigation }) => {
               // After opening UPI app, proceed with API call
               submitAdvancePayment();
             } else {
+              setAdvanceLoading(false);
               SimpleToast.show(
                 'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
                 SimpleToast.LONG,
@@ -319,6 +355,7 @@ const StaffManagement = ({ navigation }) => {
             }
           })
           .catch(() => {
+            setAdvanceLoading(false);
             SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
           });
         return;
@@ -326,6 +363,7 @@ const StaffManagement = ({ navigation }) => {
       // No UPI ID found, show modal to enter one
       setUpiInput('');
       setShowUpiModal(true);
+      setAdvanceLoading(false);
       return;
     }
 
@@ -484,6 +522,7 @@ const StaffManagement = ({ navigation }) => {
               Linking.openURL(upiUrl);
               submitSalaryPayment(null);
             } else {
+              setIsSubmitting(false);
               SimpleToast.show(
                 'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
                 SimpleToast.LONG,
@@ -491,6 +530,7 @@ const StaffManagement = ({ navigation }) => {
             }
           })
           .catch(() => {
+            setIsSubmitting(false);
             SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
           });
         return;
@@ -498,6 +538,7 @@ const StaffManagement = ({ navigation }) => {
       // No UPI ID found, show modal to enter one
       setUpiInput('');
       setShowUpiModal(true);
+      setIsSubmitting(false);
       return;
     }
 
@@ -543,47 +584,69 @@ const StaffManagement = ({ navigation }) => {
       return;
     }
 
-    // Update the staff's UPI ID in the local list so it persists in this session
+    setUpiUpdating(true);
+
+    // Save the UPI ID to the staff's profile in the backend
+    const formData = new FormData();
+    formData.append('upi_id', upiId);
+
+    POST_FORM_DATA(
+      `${UpdateStaff}/${leaveType?.value}`,
+      formData,
+      () => {
+        // Successfully updated in backend
+        setUpiUpdating(false);
+        proceedWithUpiOpening(upiId);
+      },
+      (err) => {
+        console.log('Failed to persist UPI ID:', err);
+        setUpiUpdating(false);
+        // Even if persistence fails, we can proceed with the payment for now
+        proceedWithUpiOpening(upiId);
+      }
+    );
+  };
+
+  const proceedWithUpiOpening = (upiId) => {
+    // Update local state
     setLeaveList(prev =>
       prev.map(item =>
         item.value === leaveType?.value ? { ...item, upi_id: upiId } : item,
       ),
     );
-    // Also update current selected staff
     if (leaveType) {
       setLeaveType(prev => ({ ...prev, upi_id: upiId }));
     }
 
     setShowUpiModal(false);
 
-    // Check if this is for advance payment or regular salary
     const isAdvancePayment = paymentType?.value === 'advance';
     const amount = isAdvancePayment ? Number(advanceAmount) : totalNet;
     const transactionNote = isAdvancePayment 
       ? `Advance payment - ${moment().format('DD MMM YYYY')}`
       : `Salary payment for ${moment().format('MMMM YYYY')}`;
 
+    // Standard NPCI UPI URI
     const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
 
-    Linking.canOpenURL(upiUrl)
-      .then(supported => {
-        if (supported) {
-          Linking.openURL(upiUrl);
-          // Call appropriate submit function based on payment type
-          if (isAdvancePayment) {
-            submitAdvancePayment();
-          } else {
-            submitSalaryPayment(null);
-          }
+    Linking.openURL(upiUrl)
+      .then(() => {
+        // Call appropriate submit function based on payment type
+        if (isAdvancePayment) {
+          submitAdvancePayment();
         } else {
-          SimpleToast.show(
-            'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
-            SimpleToast.LONG,
-          );
+          submitSalaryPayment(null);
         }
       })
-      .catch(() => {
-        SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+      .catch((err) => {
+        console.log('Linking error:', err);
+        SimpleToast.show('Failed to open UPI app chooser.', SimpleToast.SHORT);
+        // Still submit to record the transaction as 'pending' or whatever logic is needed
+        if (isAdvancePayment) {
+          submitAdvancePayment();
+        } else {
+          submitSalaryPayment(null);
+        }
       });
   };
 
@@ -712,9 +775,11 @@ const StaffManagement = ({ navigation }) => {
             setAdvance('');
             setDeduction(0);
             setTotalNet(0);
+            setWorkedDays(0);
             // Fetch the selected staff's salary details
             fetchSalaryDetails(item?.value);
             loadAdvanceHistory(item?.value);
+            fetchAttendance(item?.value);
           }}
         />
 
@@ -993,6 +1058,16 @@ const StaffManagement = ({ navigation }) => {
                     resizeMode="contain"
                   />
                 </TouchableOpacity>
+              </View>
+              <View style={{ marginBottom: 10, padding: 10, backgroundColor: '#F0FDF4', borderRadius: 8, borderWidth: 1, borderColor: '#DCFCE7' }}>
+                 <Typography type={Font.Poppins_Medium} size={13} color="#166534">
+                    Worked Days: {workedDays} / {totalDaysInMonth} Days
+                 </Typography>
+                 {baseSalary > 0 && (
+                   <Typography type={Font.Poppins_Regular} size={11} color="#15803d">
+                      Suggested Pro-rata: ₹{((baseSalary / totalDaysInMonth) * workedDays).toFixed(2)}
+                   </Typography>
+                 )}
               </View>
               <View style={styles.salaryRow}>
                 <Typography type={Font.Poppins_Regular} style={styles.subText}>
@@ -1544,9 +1619,11 @@ const StaffManagement = ({ navigation }) => {
             </Typography>
 
             <Button
-              title="Pay via UPI"
+              title={upiUpdating ? 'Updating...' : 'Pay via UPI'}
               onPress={processUpiPayment}
               main_style={{ width: '100%' }}
+              loader={upiUpdating}
+              disabled={upiUpdating}
             />
           </TouchableOpacity>
         </TouchableOpacity>

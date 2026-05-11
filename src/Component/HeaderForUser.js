@@ -9,6 +9,7 @@ import React, { Profiler } from 'react';
 import { Colors } from '../Constants/Colors';
 import { Font } from '../Constants/Font';
 import { ImageConstant } from '../Constants/ImageConstant';
+import { isPlaceholderImage } from '../Utils/ImageUtils';
 import Typography from './UI/Typography';
 import {
   heightPercentageToDP,
@@ -103,7 +104,7 @@ const HeaderForUser = ({
           <TouchableOpacity onPress={onPressProfileIcon}>
             <Image
               source={
-                Profile_icon && typeof Profile_icon === 'string' && !Profile_icon?.includes('noimage.jpg')
+                Profile_icon && !isPlaceholderImage(Profile_icon)
                   ? { uri: Profile_icon }
                   : ImageConstant.user
               }

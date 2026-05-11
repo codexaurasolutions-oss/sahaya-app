@@ -103,7 +103,7 @@ const StaffVerifection = ({ navigation, route }) => {
         }
         navigation.navigate('NewStaffFrom', {
           adharNumber: adharNumber,
-          userData: success?.data || userData,
+          userData: success?.user || userData,
         });
       },
       error => {

@@ -39,13 +39,6 @@ const Otp = ({ navigation, route }) => {
     return () => clearInterval(timer);
   }, [resendTimer]);
 
-  // Auto-send OTP when screen loads
-  // Auto-send OTP when screen loads, BUT NOT if it is a fresh signup (since signup API already sends one)
-  useEffect(() => {
-    if (mobile && countryCode && type !== 'signup') {
-      sendOTP();
-    }
-  }, []);
 
   // Send OTP function (used for auto-send and resend)
   const sendOTP = () => {

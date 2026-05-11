@@ -21,6 +21,7 @@ import LocalizedStrings from '../../../Constants/localization';
 import { validators } from '../../../Backend/Validator';
 import { isValidForm } from '../../../Backend/Utility';
 import SimpleToast from 'react-native-simple-toast';
+import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 import { useIsFocused } from '@react-navigation/native';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../../Backend/Backend';
 import {
@@ -356,7 +357,7 @@ const Dashboard = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.navigate('ProfileManagement')}>
           <Image
             source={
-              userDetails?.image && typeof userDetails?.image === 'string' && !userDetails?.image?.includes('noimage.jpg')
+              userDetails?.image && !isPlaceholderImage(userDetails?.image)
                 ? { uri: userDetails?.image }
                 : ImageConstant.user
             }

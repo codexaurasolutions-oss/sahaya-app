@@ -89,6 +89,9 @@ const EditProfile = ({ navigation, route }) => {
   const [policeVerification, setPoliceVerification] = useState(null);
   const [aadhaarFront, setAadhaarFront] = useState(null);
   const [aadhaarBack, setAadhaarBack] = useState(null);
+  const [upiId, setUpiId] = useState('');
+  const [emergencyName, setEmergencyName] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
 
   // Image modal states
   const [currentImageType, setCurrentImageType] = useState('');
@@ -356,9 +359,16 @@ const EditProfile = ({ navigation, route }) => {
       setAadhaarBack({ uri: kycInfo.aadhar_back });
     } else if (isValidPath(kycInfo?.adharbackend_path)) {
       setAadhaarBack({ uri: kycInfo.adharbackend_path });
-    } else if (isValidPath(kycInfo?.aadhaar_back_path)) {
+    } else    if (isValidPath(kycInfo?.aadhaar_back_path)) {
       setAadhaarBack({ uri: kycInfo.aadhaar_back_path });
     }
+
+    // Payment & Emergency Info
+    if (userDetail?.upi_id) setUpiId(userDetail.upi_id);
+    else if (workInfo?.upi_id) setUpiId(workInfo.upi_id);
+
+    if (workInfo?.emergency_contact_name) setEmergencyName(workInfo.emergency_contact_name);
+    if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
   };
 
   // Toggle skill selection
@@ -746,6 +756,11 @@ const EditProfile = ({ navigation, route }) => {
       formData.append('email', email.trim());
     }
 
+    // Payment & Emergency Info
+    if (upiId) formData.append('upi_id', upiId);
+    if (emergencyName) formData.append('emergency_contact_name', emergencyName);
+    if (emergencyPhone) formData.append('emergency_contact_number', emergencyPhone);
+
     // Profile Image (only if new image selected, not a remote URL)
     if (profileImage?.path && !profileImage.path.startsWith('http')) {
       formData.append('profile_picture', {
@@ -940,12 +955,16 @@ const EditProfile = ({ navigation, route }) => {
             title="First Name"
             value={firstName}
             onChange={text => setFirstName(text)}
+            editable={false}
+            style={{ opacity: 0.7 }}
           />
           <Input
             placeholder=""
             title="Last Name"
             value={lastName}
             onChange={text => setLastName(text)}
+            editable={false}
+            style={{ opacity: 0.7 }}
           />
           <DropdownComponent
             title="Gender"
@@ -992,6 +1011,33 @@ const EditProfile = ({ navigation, route }) => {
             autoCapitalize="none"
             value={email}
             onChange={text => setEmail(text)}
+          />
+          <Input
+            placeholder="e.g. name@upi"
+            title="UPI ID"
+            value={upiId}
+            onChange={text => setUpiId(text)}
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
+            Emergency Contact
+          </Typography>
+          <Input
+            placeholder="Full Name"
+            title="Contact Person Name"
+            value={emergencyName}
+            onChange={text => setEmergencyName(text)}
+          />
+          <Input
+            placeholder="Phone Number"
+            title="Contact Number"
+            keyboardType="phone-pad"
+            value={emergencyPhone}
+            onChange={text => setEmergencyPhone(text)}
+            maxLength={10}
           />
         </View>
 

@@ -26,6 +26,7 @@ import { ReviewStore, StaffAvailableDetail, TerminateStaff } from '../../../Back
 import Date_Picker from '../../../Component/Date_Picker';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 
 const terminationReasons = [
   { label: 'No longer required', value: 'no_longer_required' },
@@ -37,7 +38,7 @@ const terminationReasons = [
 ];
 
 const getProfileImage = (img) => {
-  if (!img || img.includes('noimage')) return null;
+  if (isPlaceholderImage(img)) return null;
   if (img.startsWith('http')) return img;
   const baseUrl = API.replace('/api/', '');
   return `${baseUrl}${img}`;
@@ -59,6 +60,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [noticePeriodDays, setNoticePeriodDays] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
+  const [isEditingSalary, setIsEditingSalary] = useState(false);
+  const [newSalary, setNewSalary] = useState('');
+  const [profileImageToUpload, setProfileImageToUpload] = useState(null);
 
   useEffect(() => {
     if (paramData?.id) {
@@ -107,15 +111,17 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   // KYC Document image URLs
   const kycInfo = data?.kyc_information || {};
   const getDocUrl = (path) => {
-    if (!path || typeof path !== 'string' || path.trim() === '' || path === 'null' || path === 'undefined') return null;
+    if (isPlaceholderImage(path)) {
+      return null;
+    }
     if (path.startsWith('http')) return path;
     const baseUrl = API.replace('/api/', '');
     return `${baseUrl}${path}`;
   };
 
-  const aadhaarFrontUrl = getDocUrl(data?.aadhar_front) || getDocUrl(kycInfo?.aadhar_front) || getDocUrl(kycInfo?.adharfront_path);
-  const aadhaarBackUrl = getDocUrl(data?.aadhar_back) || getDocUrl(kycInfo?.aadhar_back) || getDocUrl(kycInfo?.adharbackend_path);
-  const verificationCertUrl = getDocUrl(data?.verification_certificate) || getDocUrl(kycInfo?.verification_certificate) || getDocUrl(kycInfo?.police_clearance_certificate_path);
+  const aadhaarFrontUrl = getDocUrl(data?.aadhar_front) || getDocUrl(kycInfo?.aadhar_front) || getDocUrl(kycInfo?.adharfront_path) || getDocUrl(data?.user_detail?.aadhar_front);
+  const aadhaarBackUrl = getDocUrl(data?.aadhar_back) || getDocUrl(kycInfo?.aadhar_back) || getDocUrl(kycInfo?.adharbackend_path) || getDocUrl(data?.user_detail?.aadhar_back);
+  const verificationCertUrl = getDocUrl(data?.verification_certificate) || getDocUrl(kycInfo?.verification_certificate) || getDocUrl(kycInfo?.police_clearance_certificate_path) || getDocUrl(data?.user_detail?.verification_certificate);
 
   const openWhatsApp = async number => {
     if (!number) {
@@ -178,6 +184,58 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       }
     });
   };
+  
+  const handlePickProfileImage = () => {
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    };
+
+    launchImageLibrary(options, response => {
+      if (response.didCancel) return;
+      if (response.errorMessage) {
+        SimpleToast.show('Error picking image', SimpleToast.SHORT);
+      } else if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        const imageObj = {
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `staff_photo_${Date.now()}.jpg`,
+        };
+        handleUpdateProfileImage(imageObj);
+      }
+    });
+  };
+
+  const handleUpdateProfileImage = (imageObj) => {
+    setSubmitLoading(true);
+    const formData = new FormData();
+    formData.append('image', imageObj);
+    
+    // We can use UpdateStaff route or dedicated image update if exists
+    POST_FORM_DATA(
+      `${UpdateStaff}/${data?.id}`,
+      formData,
+      res => {
+        setSubmitLoading(false);
+        SimpleToast.show('Profile image updated successfully', SimpleToast.SHORT);
+        // Refresh local data or update image in state
+        if (res?.data?.image || res?.user?.image) {
+          const newImg = res?.data?.image || res?.user?.image;
+          setData(prev => ({ ...prev, image: newImg }));
+        } else {
+          // If response doesn't have image, update with local uri temporarily
+          setData(prev => ({ ...prev, image: imageObj.uri }));
+        }
+      },
+      err => {
+        setSubmitLoading(false);
+        SimpleToast.show(err?.message || 'Failed to update image', SimpleToast.SHORT);
+      }
+    );
+  };
 
   const submitReview = () => {
     if (rating <= 0) return;
@@ -234,6 +292,36 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   };
 
 
+  const handleUpdateSalary = () => {
+    if (!newSalary || isNaN(newSalary)) {
+      SimpleToast.show('Please enter a valid salary amount', SimpleToast.SHORT);
+      return;
+    }
+
+    setSubmitLoading(true);
+    POST_WITH_TOKEN(
+      `${UpdateStaff}/${data?.id}`,
+      { salary: newSalary },
+      res => {
+        setSubmitLoading(false);
+        setIsEditingSalary(false);
+        SimpleToast.show('Salary updated successfully', SimpleToast.SHORT);
+        // Update local state
+        setData(prev => ({
+          ...prev,
+          user_work_info: {
+            ...prev.user_work_info,
+            salary: newSalary
+          }
+        }));
+      },
+      err => {
+        setSubmitLoading(false);
+        SimpleToast.show(err?.message || 'Failed to update salary', SimpleToast.SHORT);
+      }
+    );
+  };
+
   console.log('data------', data);
 
   return (
@@ -248,16 +336,26 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       />
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.profileCard}>
-          <TouchableOpacity onPress={() => setPreviewImage(profileImageUrl)}>
-            <Image
-              source={profileImageUrl ? { uri: profileImageUrl } : ImageConstant.user}
-              style={styles.profileImage}
-            />
-            <View style={styles.enlargeHint}>
-              <Image source={ImageConstant.Zoom || ImageConstant.eye} style={styles.enlargeIcon} />
-              <Typography style={styles.enlargeText}>Tap to enlarge</Typography>
-            </View>
-          </TouchableOpacity>
+          <View style={styles.imageContainer}>
+            <TouchableOpacity onPress={() => setPreviewImage(profileImageUrl)}>
+              <Image
+                source={profileImageUrl ? { uri: profileImageUrl } : ImageConstant.user}
+                style={styles.profileImage}
+              />
+              <View style={styles.enlargeHint}>
+                <Image source={ImageConstant.Zoom || ImageConstant.eye} style={styles.enlargeIcon} />
+                <Typography style={styles.enlargeText}>Tap to enlarge</Typography>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.editImageBtn}
+              onPress={handlePickProfileImage}
+              activeOpacity={0.8}
+            >
+              <Image source={ImageConstant.NewCamera} style={styles.editImageIcon} />
+            </TouchableOpacity>
+          </View>
           <Typography style={styles.name} size={22}>
             {fullName}
           </Typography>
@@ -332,19 +430,68 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography style={styles.value}>{data?.gender || 'Not Available'}</Typography>
             </View>
           </View>
+          <View style={styles.row}>
+            <Image source={ImageConstant.person} style={styles.icon} />
+            <View style={styles.textBox}>
+              <Typography style={styles.label}>
+                Emergency Contact Name
+              </Typography>
+              <Typography style={styles.value}>
+                {data?.user_work_info?.emergency_contact_name || 'Not Available'}
+              </Typography>
+            </View>
+          </View>
           <View style={styles.rowNoBorder}>
             <Image source={ImageConstant.phone} style={styles.icon} />
             <View style={styles.textBox}>
               <Typography style={styles.label}>
-                {LocalizedStrings.StaffProfile.Emergency_Contact}
+                Emergency Contact Number
               </Typography>
               <Typography style={styles.value}>
-                {data?.added_by_user?.phone_number
-                  ? `+91 ${data.added_by_user.phone_number}`
-                  : data?.emergency_contact || 'Not Available'}
+                {data?.user_work_info?.emergency_contact_number
+                  ? `+91 ${data.user_work_info.emergency_contact_number}`
+                  : 'Not Available'}
               </Typography>
             </View>
           </View>
+          <View style={styles.rowNoBorder}>
+            <Image source={ImageConstant.upi} style={styles.icon} />
+            <View style={styles.textBox}>
+              <Typography style={styles.label}>
+                UPI ID
+              </Typography>
+              <Typography style={styles.value}>
+                {data?.upi_id || data?.user_work_info?.upi_id || data?.work_info?.upi_id || 'Not Available'}
+              </Typography>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Typography style={styles.cardTitle}>Documents</Typography>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <TouchableOpacity 
+              style={styles.docBox}
+              onPress={() => aadhaarFrontUrl ? setPreviewImage(aadhaarFrontUrl) : null}
+            >
+              <Typography style={styles.docLabel}>Aadhar Front</Typography>
+              <Typography style={styles.docLink}>{aadhaarFrontUrl ? 'View' : 'None'}</Typography>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.docBox}
+              onPress={() => aadhaarBackUrl ? setPreviewImage(aadhaarBackUrl) : null}
+            >
+              <Typography style={styles.docLabel}>Aadhar Back</Typography>
+              <Typography style={styles.docLink}>{aadhaarBackUrl ? 'View' : 'None'}</Typography>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            style={[styles.docBox, { marginTop: 10, width: '100%' }]}
+            onPress={() => verificationCertUrl ? setPreviewImage(verificationCertUrl) : null}
+          >
+            <Typography style={styles.docLabel}>Police Verification</Typography>
+            <Typography style={styles.docLink}>{verificationCertUrl ? 'View' : 'None'}</Typography>
+          </TouchableOpacity>
         </View>
 
         {data?.user_work_info && (
@@ -370,9 +517,23 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 <Image source={ImageConstant.Dollar} style={styles.icon} />
                 <View style={styles.textBox}>
                   <Typography style={styles.label}>Salary</Typography>
-                  <Typography style={styles.value}>
-                    ₹{Number(data.user_work_info.salary).toLocaleString('en-IN')}
-                  </Typography>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '95%' }}>
+                    <Typography style={styles.value}>
+                      ₹{Number(data.user_work_info.salary).toLocaleString('en-IN')}
+                    </Typography>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setNewSalary(data.user_work_info.salary.toString());
+                        setIsEditingSalary(true);
+                      }}
+                      style={{ padding: 5 }}
+                    >
+                      <Image
+                        source={ImageConstant.pencle}
+                        style={{ width: 14, height: 14, tintColor: '#D98579' }}
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}
@@ -400,7 +561,17 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 </View>
               </View>
             )}
-            {/* Joining Date removed - unwanted info */}
+            {data?.user_work_info?.joining_date && (
+              <View style={styles.rowNoBorder}>
+                <Image source={ImageConstant.Calendar} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Joining Date</Typography>
+                  <Typography style={styles.value}>
+                    {moment(data.user_work_info.joining_date).format('DD MMM YYYY')}
+                  </Typography>
+                </View>
+              </View>
+            )}
           </View>
         )}
 
@@ -735,6 +906,46 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         </View>
       </Modal>
 
+      {/* Edit Salary Modal */}
+      <Modal
+        visible={isEditingSalary}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setIsEditingSalary(false)}
+      >
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogBox}>
+            <TouchableOpacity onPress={() => setIsEditingSalary(false)} style={styles.dialogCloseBtn}>
+              <Typography size={18} color="#D98579">{'\u2715'}</Typography>
+            </TouchableOpacity>
+
+            <Typography type={Font.Poppins_SemiBold} size={17} style={{ textAlign: 'center', marginBottom: 16 }}>
+              Edit Monthly Salary
+            </Typography>
+
+            <Input
+              title="Salary (₹)"
+              placeholder="Enter new salary"
+              value={newSalary}
+              onChange={setNewSalary}
+              keyboardType="numeric"
+              mainStyle={{ marginVertical: 15 }}
+            />
+
+            <Typography size={12} color="#888" style={{ marginBottom: 20, textAlign: 'center' }}>
+              Updating this will change the base salary for all future payments.
+            </Typography>
+
+            <Button
+              onPress={handleUpdateSalary}
+              title="Save Changes"
+              loader={submitLoading}
+              main_style={{ width: '100%', marginBottom: 10 }}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* Full-screen Image Preview Modal */}
       <Modal
         visible={!!previewImage}
@@ -775,6 +986,35 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#EBEBEA',
+  },
+  imageContainer: {
+    position: 'relative',
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editImageBtn: {
+    position: 'absolute',
+    bottom: 5,
+    right: -5,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+  },
+  editImageIcon: {
+    width: 18,
+    height: 18,
+    tintColor: '#D98579',
   },
   profileImage: {
     height: 90,

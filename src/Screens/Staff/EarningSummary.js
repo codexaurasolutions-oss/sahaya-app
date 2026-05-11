@@ -17,8 +17,8 @@ import { Colors } from '../../Constants/Colors';
 import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import LocalizedStrings from '../../Constants/localization';
-import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { EarningSummary as EarningSummaryRoute, myWork } from '../../Backend/api_routes';
+import { EarningSummary as EarningSummaryRoute, myWork, AttendanceStaff } from '../../Backend/api_routes';
+import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../Backend/Backend';
 
 
 const EarningSummary = ({ route }) => {
@@ -30,6 +30,8 @@ const EarningSummary = ({ route }) => {
   const [summary2, setSummary2] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [attendanceSummary, setAttendanceSummary] = useState({ totalWorked: 0, daysInMonth: 30 });
+  const [accruedSalary, setAccruedSalary] = useState(0);
 
   const profileIcon = userDetail?.image
     ? userDetail.image
@@ -55,9 +57,49 @@ const EarningSummary = ({ route }) => {
     return `${year}-${month}`;
   };
 
+  const fetchAttendanceSummary = useCallback((staffId) => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const formData = new FormData();
+    formData.append('id', staffId);
+    formData.append('month', month);
+    formData.append('year', year);
+
+    POST_FORM_DATA(
+      AttendanceStaff,
+      formData,
+      success => {
+        const records = success?.data?.attendance || success?.data || [];
+        let totalWorked = 0;
+        if (Array.isArray(records)) {
+          records.forEach(record => {
+            const status = record?.status?.toLowerCase();
+            if (status === 'present' || status === 'late') {
+              totalWorked++;
+            }
+          });
+        }
+        setAttendanceSummary({ totalWorked, daysInMonth });
+        
+        // Calculate accrued salary
+        const monthlySalary = Number(userDetail?.user_work_info?.salary || userDetail?.work_info?.salary || 0);
+        if (monthlySalary > 0) {
+          const accrued = (monthlySalary / daysInMonth) * totalWorked;
+          setAccruedSalary(accrued);
+        }
+      },
+      error => console.log('Attendance fetch error:', error)
+    );
+  }, [userDetail]);
+
   const fetchEarnings = useCallback((id) => {
     const month = getCurrentMonth();
     const url = `${EarningSummaryRoute}?job_id=${id}&month=${month}`;
+
+    fetchAttendanceSummary(userDetail?.id);
 
     GET_WITH_TOKEN(
       url,
@@ -280,8 +322,39 @@ const EarningSummary = ({ route }) => {
               {formatDate(summary2?.payment_date)}
             </Typography>
           </View>
-
+          <View style={{ alignItems: 'flex-end' }}>
+            <Typography size={12} color={Colors.grey}>
+              Worked Days (Accrued)
+            </Typography>
+            <Typography type={Font.Poppins_SemiBold} size={16} color="#4CAF50">
+              {attendanceSummary.totalWorked} Days
+            </Typography>
+          </View>
         </View>
+      </View>
+
+      {accruedSalary > 0 && (!summary2 || Number(summary2?.total_payable_amount) <= 0) && (
+        <View style={[styles.summaryCard, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+           <Typography type={Font.Poppins_SemiBold} size={14} color="#0369A1">
+            Current Month Progress
+          </Typography>
+          <View style={styles.amountRow}>
+            <View>
+              <Typography size={12} color="#0369A1">
+                Accrued Earnings (Estimated)
+              </Typography>
+              <Typography type={Font.Poppins_Bold} size={28} color="#0369A1">
+                {formatCurrency(accruedSalary)}
+              </Typography>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Typography size={11} color="#0369A1">
+                Based on {attendanceSummary.totalWorked}/{attendanceSummary.daysInMonth} days
+              </Typography>
+            </View>
+          </View>
+        </View>
+      )}
       </View>
 
       <View style={styles.sectionCard}>

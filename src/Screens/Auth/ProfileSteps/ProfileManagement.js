@@ -10,6 +10,7 @@ import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import Typography from '../../../Component/UI/Typography';
+import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 import { Font } from '../../../Constants/Font';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../../Constants/localization';
@@ -107,7 +108,7 @@ const ProfileManagement = ({ navigation }) => {
           <View style={{ position: 'relative' }}>
             <Image
               source={
-                data?.image && !data?.image?.includes('noimage.jpg')
+                data?.image && !isPlaceholderImage(data?.image)
                   ? { uri: data?.image }
                   : ImageConstant.user
               }

@@ -9,13 +9,15 @@ import { Font } from '../../Constants/Font';
 import { useSelector, useDispatch } from 'react-redux';
 import { userDetails } from '../../Redux/action';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../Backend/Backend';
-import { PROFILE, GET_NOTIFICATION_SETTINGS, SAVE_NOTIFICATION_SETTINGS } from '../../Backend/api_routes';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { PROFILE, GET_NOTIFICATION_SETTINGS, SAVE_NOTIFICATION_SETTINGS, PROFILE_UPDATE } from '../../Backend/api_routes';
 import moment from 'moment';
 import LocalizedStrings from '../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
 import { useIsFocused } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
 import { Alert } from 'react-native';
+import { isPlaceholderImage } from '../../Utils/ImageUtils';
 
 const StaffProfileMain = ({ navigation }) => {
     const dispatch = useDispatch();
@@ -92,14 +94,8 @@ const StaffProfileMain = ({ navigation }) => {
     };
 
     // Get user data from userDetails
-    const imgUrl = userDetail?.image?.toLowerCase() || '';
-    const isDefaultImg =
-        !userDetail?.image ||
-        imgUrl.includes('noimage') ||
-        imgUrl.includes('no_image') ||
-        imgUrl.includes('no-image') ||
-        imgUrl.includes('default') ||
-        imgUrl.includes('placeholder');
+    const imgUrl = userDetail?.image || '';
+    const isDefaultImg = isPlaceholderImage(imgUrl);
     const userImage = isDefaultImg ? ImageConstant.user : { uri: userDetail.image };
     const userName = userDetail?.first_name && userDetail?.last_name
         ? `${userDetail.first_name} ${userDetail.last_name}`
@@ -139,9 +135,9 @@ const StaffProfileMain = ({ navigation }) => {
 
     // Get KYC information
     const kycInfo = userDetail?.kyc_information || {};
-    const aadhaarFront = kycInfo?.aadhaar_front_path || null;
-    const aadhaarBack = kycInfo?.aadhaar_back_path || null;
-    const policeVerification = kycInfo?.police_verification_path || null;
+    const aadhaarFront = isPlaceholderImage(kycInfo?.aadhaar_front_path) ? null : kycInfo.aadhaar_front_path;
+    const aadhaarBack = isPlaceholderImage(kycInfo?.aadhaar_back_path) ? null : kycInfo.aadhaar_back_path;
+    const policeVerification = isPlaceholderImage(kycInfo?.police_verification_path) ? null : kycInfo.police_verification_path;
     const policeVerificationStatus = policeVerification ? 'Verified' : 'Pending';
 
     // Fetch notification settings
@@ -195,20 +191,75 @@ const StaffProfileMain = ({ navigation }) => {
         );
     };
 
+    const handlePickProfileImage = () => {
+        const options = {
+            mediaType: 'photo',
+            quality: 0.8,
+            maxWidth: 1024,
+            maxHeight: 1024,
+        };
+
+        launchImageLibrary(options, response => {
+            if (response.didCancel) return;
+            if (response.errorMessage) {
+                SimpleToast.show('Error picking image', SimpleToast.SHORT);
+            } else if (response.assets && response.assets[0]) {
+                const asset = response.assets[0];
+                const imageObj = {
+                    uri: asset.uri,
+                    type: asset.type || 'image/jpeg',
+                    name: asset.fileName || `profile_photo_${Date.now()}.jpg`,
+                };
+                handleUpdateProfileImage(imageObj);
+            }
+        });
+    };
+
+    const handleUpdateProfileImage = (imageObj) => {
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('image', imageObj);
+
+        POST_FORM_DATA(
+            PROFILE_UPDATE,
+            formData,
+            res => {
+                setLoading(false);
+                SimpleToast.show('Profile image updated successfully', SimpleToast.SHORT);
+                fetchProfile(); // Refresh profile data to update UI and Redux
+            },
+            err => {
+                setLoading(false);
+                SimpleToast.show(err?.message || 'Failed to update image', SimpleToast.SHORT);
+            }
+        );
+    };
+
     return (<>
         <CommanView>
             <HeaderForUser
                 title={LocalizedStrings.StaffProfile?.title || "Staff Profile"}
-                source_logo={ImageConstant?.notification}
+                source_logo={ImageConstant?.pencle}
                 Profile_icon={userDetail?.image && userDetail.image}
                 style_title={styles.headerTitle}
-                onPressRightIcon={() => navigation.navigate('Notifications')}
+                onPressRightIcon={() => navigation.navigate('EditProfile')}
                 source_arrow={ImageConstant?.BackArrow}
                 onPressLeftIcon={() => navigation?.goBack()}
             />
             <ScrollView contentContainerStyle={styles.container}>
                 <View style={styles.profileCard}>
-                    <Image source={userImage} style={styles.profileImage} />
+                    <View style={styles.imageContainer}>
+                        <TouchableOpacity onPress={() => setPreviewImage(imgUrl)}>
+                            <Image source={userImage} style={styles.profileImage} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.editImageBtn}
+                            onPress={handlePickProfileImage}
+                            activeOpacity={0.8}
+                        >
+                            <Image source={ImageConstant.NewCamera} style={styles.editImageIcon} />
+                        </TouchableOpacity>
+                    </View>
                     <Typography style={styles.name} size={22}>{userName}</Typography>
                     <Typography style={styles.role}>{userRole}</Typography>
 
@@ -262,11 +313,88 @@ const StaffProfileMain = ({ navigation }) => {
                             <Typography style={styles.value}>{userGender}</Typography>
                         </View>
                     </View>
+                    <View style={styles.row}>
+                        <Image source={ImageConstant.person} style={styles.icon} />
+                        <View style={styles.textBox}>
+                            <Typography style={styles.label}>Emergency Contact Name</Typography>
+                            <Typography style={styles.value}>
+                                {userDetail?.user_work_info?.emergency_contact_name || userDetail?.work_info?.emergency_contact_name || 'Not Found'}
+                            </Typography>
+                        </View>
+                    </View>
                     <View style={styles.rowNoBorder}>
                         <Image source={ImageConstant.phone} style={styles.icon} />
                         <View style={styles.textBox}>
-                            <Typography style={styles.label}>{LocalizedStrings.StaffProfile?.Emergency_Contact || "Emergency Contact"}</Typography>
-                            <Typography style={styles.value}>{userPhone}</Typography>
+                            <Typography style={styles.label}>Emergency Contact Number</Typography>
+                            <Typography style={styles.value}>
+                                {userDetail?.user_work_info?.emergency_contact_number || userDetail?.work_info?.emergency_contact_number
+                                    ? `+91 ${userDetail?.user_work_info?.emergency_contact_number || userDetail?.work_info?.emergency_contact_number}`
+                                    : 'Not Found'}
+                            </Typography>
+                        </View>
+                    </View>
+                    <View style={styles.rowNoBorder}>
+                        <Image source={ImageConstant.upi} style={styles.icon} />
+                        <View style={styles.textBox}>
+                            <Typography style={styles.label}>UPI ID</Typography>
+                            <Typography style={styles.value}>
+                                {userDetail?.upi_id || userDetail?.user_work_info?.upi_id || userDetail?.work_info?.upi_id || 'Not Available'}
+                            </Typography>
+                        </View>
+                    </View>
+                </View>
+                
+                <View style={styles.card}>
+                    <Typography style={styles.cardTitle}>Documents</Typography>
+                    <View style={styles.documentRow}>
+                        <TouchableOpacity 
+                            style={styles.docItem}
+                            onPress={() => userDetail?.user_work_info?.aadhar_front ? setShowImageModal(userDetail.user_work_info.aadhar_front) : null}
+                        >
+                            <Typography style={styles.docLabel}>Aadhar Front</Typography>
+                            <Typography style={styles.docStatus}>
+                                {userDetail?.user_work_info?.aadhar_front ? 'View Card' : 'Not Uploaded'}
+                            </Typography>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={styles.docItem}
+                            onPress={() => userDetail?.user_work_info?.aadhar_back ? setShowImageModal(userDetail.user_work_info.aadhar_back) : null}
+                        >
+                            <Typography style={styles.docLabel}>Aadhar Back</Typography>
+                            <Typography style={styles.docStatus}>
+                                {userDetail?.user_work_info?.aadhar_back ? 'View Card' : 'Not Uploaded'}
+                            </Typography>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity 
+                        style={[styles.docItem, { marginTop: 10 }]}
+                        onPress={() => userDetail?.user_work_info?.verification_certificate ? setShowImageModal(userDetail.user_work_info.verification_certificate) : null}
+                    >
+                        <Typography style={styles.docLabel}>Police Verification</Typography>
+                        <Typography style={styles.docStatus}>
+                            {userDetail?.user_work_info?.verification_certificate ? 'View Certificate' : 'Not Uploaded'}
+                        </Typography>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.card}>
+                    <Typography style={styles.cardTitle}>Work Information</Typography>
+                    <View style={styles.row}>
+                        <Image source={ImageConstant.Briefcase} style={styles.icon} />
+                        <View style={styles.textBox}>
+                            <Typography style={styles.label}>Role</Typography>
+                            <Typography style={styles.value}>{userRole}</Typography>
+                        </View>
+                    </View>
+                    <View style={styles.rowNoBorder}>
+                        <Image source={ImageConstant.Calendar} style={styles.icon} />
+                        <View style={styles.textBox}>
+                            <Typography style={styles.label}>Joining Date</Typography>
+                            <Typography style={styles.value}>
+                                {userDetail?.user_work_info?.joining_date || userDetail?.work_info?.joining_date
+                                    ? moment(userDetail?.user_work_info?.joining_date || userDetail?.work_info?.joining_date).format('DD MMM YYYY')
+                                    : 'Not Found'}
+                            </Typography>
                         </View>
                     </View>
                 </View>
@@ -299,7 +427,6 @@ const StaffProfileMain = ({ navigation }) => {
                     </View>
                 </View>
 
-
                 <View style={styles.card}>
                     <Typography style={styles.cardTitle}>{LocalizedStrings.StaffProfile?.Residential_Address || "Residential Address"}</Typography>
                     {[
@@ -319,138 +446,16 @@ const StaffProfileMain = ({ navigation }) => {
                 </View>
 
                 <View style={styles.card}>
-                    <Typography style={styles.cardTitle}>{LocalizedStrings.StaffProfile?.KYC_Status || "KYC Documents"}</Typography>
-                    <TouchableOpacity
-                        style={{
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            marginTop: 10,
-                            borderBottomWidth: 0.2,
-                            borderBottomColor: '#EBEBEA',
-                            paddingBottom: 20
-                        }}
-                        onPress={() => {
-                            if (aadhaarFront || aadhaarBack) {
-                                setTerminateModal(true); // open modal for Aadhaar images
-                            } else {
-                                SimpleToast.show('Aadhaar images not available');
-                            }
-                        }}
-                    >
-                        <Image source={ImageConstant.Verify} style={styles.icon} />
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '88%' }}>
-                            <Typography style={[styles.label, { color: 'black' }]}>Aadhaar Card</Typography>
-                            <View style={aadharVerify ? styles.kycBadge : [styles.kycBadge, { backgroundColor: '#FEF9C3' }]}>
-                                <Typography style={aadharVerify ? styles.kycText : [styles.kycText, { color: '#854D0E' }]}>
-                                    {aadharVerify ? 'Verified' : 'Pending'}
-                                </Typography>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-
-
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-                        <Image source={ImageConstant.lines} style={styles.icon} />
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '88%' }}>
-                            <Typography style={[styles.label, { color: 'black' }]}>Police Verification</Typography>
-                            <View style={policeVerification ? styles.kycBadge : [styles.kycBadge, { backgroundColor: '#FEF9C3' }]}>
-                                <Typography style={policeVerification ? styles.kycText : [styles.kycText, { color: '#854D0E' }]}>
-                                    {policeVerificationStatus}
-                                </Typography>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                {(aadhaarFront || aadhaarBack || policeVerification) && (
-                    <View style={styles.card}>
-                        <Typography style={styles.cardTitle}>KYC Documents</Typography>
-                        <View style={styles.docGrid}>
-                            {aadhaarFront && (
-                                <TouchableOpacity
-                                    style={styles.docItem}
-                                    onPress={() => setPreviewImage(aadhaarFront)}
-                                >
-                                    <Image
-                                        source={{ uri: aadhaarFront }}
-                                        style={styles.docImage}
-                                        resizeMode="cover"
-                                    />
-                                    <Typography style={styles.docLabel}>Aadhaar Front</Typography>
-                                </TouchableOpacity>
-                            )}
-                            {aadhaarBack && (
-                                <TouchableOpacity
-                                    style={styles.docItem}
-                                    onPress={() => setPreviewImage(aadhaarBack)}
-                                >
-                                    <Image
-                                        source={{ uri: aadhaarBack }}
-                                        style={styles.docImage}
-                                        resizeMode="cover"
-                                    />
-                                    <Typography style={styles.docLabel}>Aadhaar Back</Typography>
-                                </TouchableOpacity>
-                            )}
-                            {policeVerification && (
-                                <TouchableOpacity
-                                    style={styles.docItem}
-                                    onPress={() => setPreviewImage(policeVerification)}
-                                >
-                                    <Image
-                                        source={{ uri: policeVerification }}
-                                        style={styles.docImage}
-                                        resizeMode="cover"
-                                    />
-                                    <Typography style={styles.docLabel}>Police Certificate</Typography>
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-                )}
-
-                <View style={styles.card}>
                     <Typography style={styles.cardTitle}>{LocalizedStrings.EditProfile?.Notification_Preferences || 'Notification Preferences'}</Typography>
-
-                    {/* SMS Alerts - commented out
-                    {notificationLoading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="small" color="#E87C6F" />
-                        </View>
-                    ) : (
-                        <View style={styles.toggleRow}>
-                            <View
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    width: '50%',
-                                }}
-                            >
-                                <Image source={ImageConstant.phone} style={styles.icon} />
-                                <View>
-                                    <Typography style={styles.benefit}>{LocalizedStrings.EditProfile?.SMS_Alerts || 'SMS Alerts'}</Typography>
-                                    <Typography style={styles.subText}>
-                                        {LocalizedStrings.EditProfile?.SMS_Alerts_Desc || 'Get important notifications via text message.'}
-                                    </Typography>
-                                </View>
-                            </View>
-                            <Switch
-                                value={smsAlerts}
-                                onValueChange={handleSmsAlertsChange}
-                                trackColor={{ false: '#ccc', true: '#E87C6F' }}
-                                thumbColor={'#fff'}
-                                disabled={notificationSaving}
-                            />
-                        </View>
-                    )}
-                    */}
                 </View>
-
-
 
             </ScrollView>
 
-
+            <ImageModal 
+                visible={!!showImageModal} 
+                imageUrl={showImageModal} 
+                onClose={() => setShowImageModal(null)} 
+            />
 
         </CommanView>
         <Modal
@@ -535,6 +540,35 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         borderWidth: 1,
         borderColor: '#EBEBEA',
+    },
+    imageContainer: {
+        position: 'relative',
+        marginBottom: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    editImageBtn: {
+        position: 'absolute',
+        bottom: 5,
+        right: -5,
+        backgroundColor: '#fff',
+        borderRadius: 15,
+        width: 30,
+        height: 30,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        borderWidth: 1,
+        borderColor: '#EBEBEA',
+    },
+    editImageIcon: {
+        width: 18,
+        height: 18,
+        tintColor: '#D98579',
     },
     profileImage: {
         height: 90,
@@ -806,6 +840,20 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: Font.Poppins_Medium,
     },
+    docBox: {
+        width: '48%',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#EBEBEA',
+        alignItems: 'center',
+    },
+    docLink: {
+        fontSize: 13,
+        color: '#D98579',
+        fontFamily: Font.Poppins_SemiBold,
+        marginTop: 4,
+    },
     docGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -815,6 +863,25 @@ const styles = StyleSheet.create({
     docItem: {
         width: '30%',
         alignItems: 'center',
+    },
+    documentRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
+    docItemCard: {
+        width: '48%',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#EBEBEA',
+        alignItems: 'center',
+    },
+    docStatus: {
+        fontSize: 13,
+        color: '#D98579',
+        fontFamily: Font.Poppins_SemiBold,
+        marginTop: 4,
     },
     docImage: {
         width: '100%',

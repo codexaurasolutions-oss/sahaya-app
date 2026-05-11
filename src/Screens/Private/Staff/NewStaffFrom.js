@@ -10,6 +10,7 @@ import DropdownComponent from '../../../Component/DropdownComponent';
 import UploadBox from '../../../Component/UploadBox';
 import Date_Picker from '../../../Component/Date_Picker';
 import { ImageConstant } from '../../../Constants/ImageConstant';
+import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 import LocalizedStrings from '../../../Constants/localization';
 import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../../Backend/Backend';
 import ImageModal from '../../../Component/Modals/ImageModal';
@@ -134,40 +135,58 @@ const NewStaffForm = ({ navigation, route }) => {
       // Personal Details
       if (data.first_name) setFirstName(data.first_name);
       if (data.last_name) setLastName(data.last_name);
-      if (data.email) setEmail(data.email);
-      if (data.phone_number) setPhoneNumber(data.phone_number);
-      if (data.phone_number_country_code) {
-        setPhoneNumberCountryCode(data.phone_number_country_code);
+
+      // If first_name is missing but name or full_name is present (common in Aadhaar verified data), split it
+      const displayName = data.name || data.full_name || data.fullname;
+      if (displayName && !data.first_name && !firstName) {
+        const nameParts = displayName.trim().split(/\s+/);
+        if (nameParts.length > 0) {
+          setFirstName(nameParts[0]);
+          if (nameParts.length > 1) {
+            setLastName(nameParts.slice(1).join(' '));
+          }
+        }
       }
-      if (data.aadhar_number) setAadharNumber(data.aadhar_number);
+
+      if (data.email) setEmail(data.email);
+      if (data.phone_number || data.mobile) setPhoneNumber(data.phone_number || data.mobile);
+      if (data.phone_number_country_code || data.country_code) {
+        setPhoneNumberCountryCode(data.phone_number_country_code || data.country_code);
+      }
+      if (data.aadhar_number || data.aadhaar) setAadharNumber(data.aadhar_number || data.aadhaar);
 
       // Gender - find matching option
-      if (data.gender) {
+      const userGender = data.gender || data.sex;
+      if (userGender) {
         const genderOption = genderOptions.find(
           opt =>
-            opt.value === data.gender ||
-            opt.value.toLowerCase() === data.gender.toLowerCase(),
+            opt.value === userGender ||
+            opt.value.toLowerCase() === userGender.toLowerCase() ||
+            opt.label.toLowerCase() === userGender.toLowerCase()
         );
-        setGender(
-          genderOption || {
-            label: data.gender.charAt(0).toUpperCase() + data.gender.slice(1),
-            value: data.gender,
-          },
-        );
+        if (genderOption) {
+          setGender(genderOption);
+        } else {
+          setGender({
+            label: userGender.charAt(0).toUpperCase() + userGender.slice(1),
+            value: userGender.toLowerCase(),
+          });
+        }
       }
 
       // Date of Birth
-      if (data.dob) {
+      const userDob = data.dob || data.birthdate || data.date_of_birth || data.birth_date;
+      if (userDob) {
         // Handle different date formats
         const dobMoment = moment(
-          data.dob,
-          ['YYYY-MM-DD', 'DD-MM-YYYY', moment.ISO_8601],
+          userDob,
+          ['YYYY-MM-DD', 'DD-MM-YYYY', 'DD/MM/YYYY', moment.ISO_8601],
           true,
         );
         if (dobMoment.isValid()) {
           setDateOfBirth(dobMoment.format('YYYY-MM-DD'));
         } else {
-          setDateOfBirth(data.dob);
+          setDateOfBirth(userDob);
         }
       }
 
@@ -200,36 +219,42 @@ const NewStaffForm = ({ navigation, route }) => {
       // UPI ID
       if (data.upi_id) setUpiId(data.upi_id);
 
-      // Work Details from user_work_info - role will be matched once roles are loaded
       if (data.user_work_info) {
         const workInfo = data.user_work_info;
-        if (workInfo.primary_role) {
-          const role = Array.isArray(workInfo.primary_role)
-            ? workInfo.primary_role.join(', ')
-            : String(workInfo.primary_role);
-          // Store the role name temporarily; will be matched to dropdown value once roles load
-          setRoleDesignation(role);
+        if (workInfo.emergency_contact_name) setEmergencyContactName(workInfo.emergency_contact_name);
+        if (workInfo.emergency_contact_number) setEmergencyContactNumber(workInfo.emergency_contact_number);
+        if (workInfo.joining_date) setJoiningDate(workInfo.joining_date);
+        if (workInfo.salary) setSalary(String(workInfo.salary));
+        if (workInfo.pay_frequency) {
+          const freqOption = payFrequencyOptions.find(opt => opt.value === workInfo.pay_frequency);
+          setPayFrequency(freqOption || { label: workInfo.pay_frequency, value: workInfo.pay_frequency });
+        }
+        if (workInfo.working_days) {
+          try {
+            const days = typeof workInfo.working_days === 'string' 
+              ? JSON.parse(workInfo.working_days) 
+              : workInfo.working_days;
+            setWorkingDays(Array.isArray(days) ? days : []);
+          } catch (e) {
+            setWorkingDays([]);
+          }
         }
       }
 
-      // Note: Some fields like emergency_contact_name, emergency_contact_number,
-      // joining_date, salary, pay_frequency, working_days might not be in the response
-      // They will remain empty if not present
-
-      // Images - if URLs are present, we can set them (but won't be editable unless re-uploaded)
-      if (
-        data.image &&
-        data.image !== 'http://sahayya.co.in/public/noimage.jpg'
-      ) {
+      // Images - only set if it's a real image and not a placeholder
+      if (data.image && !isPlaceholderImage(data.image)) {
         setStaffPhoto({ uri: data.image });
       }
-      if (data.aadhar_front) {
+      if (data.aadhar_front && !isPlaceholderImage(data.aadhar_front)) {
         setAadharCard({ uri: data.aadhar_front });
       }
-      if (data.aadhar_back) {
+      if (data.aadhar_back && !isPlaceholderImage(data.aadhar_back)) {
         setAadharBack({ uri: data.aadhar_back });
       }
-      if (data.verification_certificate) {
+      if (
+        data.verification_certificate &&
+        !isPlaceholderImage(data.verification_certificate)
+      ) {
         setPoliceClearance({ uri: data.verification_certificate });
       }
     }
@@ -758,7 +783,7 @@ const NewStaffForm = ({ navigation, route }) => {
     console.log('apiEndpoint----', apiEndpoint, 'user_id:', data?.id);
 
     POST_FORM_DATA(
-      apiEndpoint,
+      PROFILE_UPDATE,
       formData,
       success => {
         setLoading(false);
@@ -1434,6 +1459,26 @@ const styles = StyleSheet.create({
   },
   buttonStyle: {
     width: '90%',
+  },
+  docBox: {
+    width: '48%',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    alignItems: 'center',
+  },
+  docLink: {
+    fontSize: 13,
+    color: '#D98579',
+    fontFamily: Font.Poppins_SemiBold,
+    marginTop: 4,
+  },
+  docGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 12,
   },
   daysContainer: {
     flexDirection: 'row',
