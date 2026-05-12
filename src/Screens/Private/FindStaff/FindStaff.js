@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 import Typography from '../../../Component/UI/Typography';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import { Font } from '../../../Constants/Font';
@@ -57,6 +58,9 @@ const SALARY_OPTIONS = [
 
 const FindStaff = ({ navigation, route }) => {
   const description = route?.params?.description || '';
+  const userDetails = useSelector(state => state?.userDetails);
+  const userCity = userDetails?.addresses?.[0]?.city || userDetails?.city || '';
+  const userState = userDetails?.addresses?.[0]?.state || userDetails?.state || '';
   const [allCandidates, setAllCandidates] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -199,12 +203,21 @@ const FindStaff = ({ navigation, route }) => {
         finalList = finalList.filter(c => c.role || c.location);
 
         // Location filter on top of role filter
-        if (locationKeywords.length > 0) {
+        if (locationKeywords.length > 0 || descLower.includes('near me') || descLower.includes('nearby') || description === '') {
           const locFiltered = finalList.filter(c => {
             const loc = (c.location || '').toLowerCase();
             const prefLoc = (c.preferredLocation || '').toLowerCase();
-            const state = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
-            return locationKeywords.some(kw => loc.includes(kw) || prefLoc.includes(kw) || state.includes(kw));
+            const staffState = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
+            
+            // If explicit keywords found, match them
+            if (locationKeywords.length > 0) {
+              return locationKeywords.some(kw => loc.includes(kw) || prefLoc.includes(kw) || staffState.includes(kw));
+            }
+            
+            // Otherwise if "near me" was used or empty search, match user's city/state
+            const cityMatch = userCity && (loc.includes(userCity.toLowerCase()) || prefLoc.includes(userCity.toLowerCase()));
+            const stateMatch = userState && (staffState.includes(userState.toLowerCase()) || loc.includes(userState.toLowerCase()));
+            return cityMatch || stateMatch;
           });
           if (locFiltered.length > 0) finalList = locFiltered;
         }

@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 import Typography from '../../Component/UI/Typography';
 import DropdownComponent from '../../Component/DropdownComponent';
 import { Font } from '../../Constants/Font';
@@ -41,6 +42,10 @@ const SALARY_OPTIONS = [
 
 const AIJobResults = ({ navigation, route }) => {
   const description = route?.params?.description || '';
+  const userDetails = useSelector(state => state?.userDetails);
+  const userCity = userDetails?.addresses?.[0]?.city || userDetails?.city || '';
+  const userState = userDetails?.addresses?.[0]?.state || userDetails?.state || '';
+  
   console.log('AIJobResults - Received description:', description);
   const [allJobs, setAllJobs] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -112,8 +117,26 @@ const AIJobResults = ({ navigation, route }) => {
           raw: item,
         }));
 
-        setAllJobs(mapped);
-        setJobs(mapped);
+        let finalList = mapped;
+        const descLower = description.toLowerCase();
+
+        // Location filtering logic
+        if (descLower.includes('near me') || descLower.includes('nearby') || description === '') {
+           const locFiltered = mapped.filter(j => {
+              const loc = (j.location || '').toLowerCase();
+              const city = (j.city || '').toLowerCase();
+              const state = (j.state || '').toLowerCase();
+              
+              const cityMatch = userCity && (loc.includes(userCity.toLowerCase()) || city.includes(userCity.toLowerCase()));
+              const stateMatch = userState && (loc.includes(userState.toLowerCase()) || state.includes(userState.toLowerCase()));
+              
+              return cityMatch || stateMatch;
+           });
+           if (locFiltered.length > 0) finalList = locFiltered;
+        }
+
+        setAllJobs(finalList);
+        setJobs(finalList);
         setIsLoading(false);
       },
       (error) => {
