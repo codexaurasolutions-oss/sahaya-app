@@ -87,6 +87,8 @@ const StaffManagement = ({ navigation }) => {
     setter(Number.isNaN(numericValue) ? 0 : numericValue);
   };
   const [totalNet, setTotalNet] = useState(0);
+  const [customAmount, setCustomAmount] = useState('');
+  const [canProcessAnyway, setCanProcessAnyway] = useState(false);
 
   const savePaymentToLocal = async (record) => {
     try {
@@ -129,7 +131,28 @@ const StaffManagement = ({ navigation }) => {
     const taxAmount = Number(deduction) || 0;
     const netSalary = base + bonusAmount + overtimeAmount - taxAmount - advanceVal;
     setTotalNet(netSalary);
-  }, [overtime, baseSalary, bonus, advance, deduction]);
+    // Default custom amount to net salary if not already edited
+    if (customAmount === '' || customAmount === null) {
+      setCustomAmount(String(netSalary));
+    }
+    
+    // Check if already paid to show UI warning
+    const currentMonth = moment().format('YYYY-MM');
+    const selectedStaffId = leaveType?.value;
+    const existing = listPastPayments?.find(payment => {
+      const paymentMonth = moment(payment?.created_at).format('YYYY-MM');
+      const isSameMonth = paymentMonth === currentMonth;
+      const isPaid = payment?.status?.toLowerCase() === 'paid';
+      const isSameStaff = payment?.staff_id === selectedStaffId || payment?.staff_member?.id === selectedStaffId;
+      return isSameMonth && isPaid && isSameStaff;
+    });
+    setCanProcessAnyway(!!existing);
+  }, [overtime, baseSalary, bonus, advance, deduction, leaveType, listPastPayments]);
+
+  // Reset custom amount when staff changes
+  useEffect(() => {
+    setCustomAmount('');
+  }, [leaveType]);
 
   const GetUser = () => {
     GET_WITH_TOKEN(
@@ -139,7 +162,12 @@ const StaffManagement = ({ navigation }) => {
           const leaveTypes = success?.data?.data?.map(item => ({
             value: item.id,
             label: `${item.first_name || ''} ${item.last_name || ''}`.trim() || item.name || 'Staff',
-            upi_id: item.upi_id || item.user_work_info?.upi_id || item.work_info?.upi_id || '',
+            upi_id: item.upi_id || 
+                    item.user_work_info?.upi_id || 
+                    item.work_info?.upi_id || 
+                    item.user_detail?.upi_id ||
+                    item.staff?.upi_id ||
+                    '',
           }));
           setLeaveList(leaveTypes || []);
         }
@@ -514,9 +542,20 @@ const StaffManagement = ({ navigation }) => {
     });
 
     if (alreadyPaid) {
-      SimpleToast.show(
-        `Salary already paid for ${moment().format('MMMM YYYY')}. Check recent payments.`,
-        SimpleToast.LONG,
+      Alert.alert(
+        LocalizedStrings.SalaryManagement.already_paid_title || 'Salary Already Paid',
+        `Salary has already been marked as paid for ${moment().format('MMMM YYYY')}. Do you want to process another payment?`,
+        [
+          { text: 'Cancel', onPress: () => setIsSubmitting(false), style: 'cancel' },
+          { text: 'Process Anyway', onPress: () => {
+            // Re-check UPI if needed, or go straight to submit
+            if (selectedMethod === 'UPI') {
+              processUpiPayment();
+            } else {
+              submitSalaryPayment(null);
+            }
+          }}
+        ]
       );
       return;
     }
@@ -538,39 +577,43 @@ const StaffManagement = ({ navigation }) => {
 
     // If UPI is selected, check if staff already has a UPI ID
     if (selectedMethod === 'UPI') {
-      if (leaveType?.upi_id) {
-        // UPI ID exists, directly process payment without modal
-        setUpiInput(leaveType.upi_id);
-        const upiId = leaveType.upi_id.trim();
-        const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${totalNet.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
-        Linking.canOpenURL(upiUrl)
-          .then(supported => {
-            if (supported) {
-              Linking.openURL(upiUrl);
-              submitSalaryPayment(null);
-            } else {
-              setIsSubmitting(false);
-              SimpleToast.show(
-                'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
-                SimpleToast.LONG,
-              );
-            }
-          })
-          .catch(() => {
-            setIsSubmitting(false);
-            SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
-          });
-        return;
-      }
-      // No UPI ID found, show modal to enter one
-      setUpiInput('');
-      setShowUpiModal(true);
-      setIsSubmitting(false);
+      processUpiPayment();
       return;
     }
 
     // For Cash, directly submit
     submitSalaryPayment(null);
+  };
+
+  const processUpiPayment = () => {
+    if (leaveType?.upi_id) {
+      // UPI ID exists, directly process payment without modal
+      const upiId = leaveType.upi_id.trim();
+      const amountToPay = Number(customAmount) || totalNet;
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${amountToPay.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
+      Linking.canOpenURL(upiUrl)
+        .then(supported => {
+          if (supported) {
+            Linking.openURL(upiUrl);
+            submitSalaryPayment(null);
+          } else {
+            setIsSubmitting(false);
+            SimpleToast.show(
+              'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+              SimpleToast.LONG,
+            );
+          }
+        })
+        .catch(() => {
+          setIsSubmitting(false);
+          SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+        });
+      return;
+    }
+    // No UPI ID found, show modal to enter one
+    setUpiInput('');
+    setShowUpiModal(true);
+    setIsSubmitting(false);
   };
 
   // const processRazorpayPayment = async () => {
@@ -604,7 +647,7 @@ const StaffManagement = ({ navigation }) => {
   //   }
   // };
 
-  const processUpiPayment = () => {
+  const handleUpiModalSubmit = () => {
     const upiId = upiInput?.trim();
     if (!upiId || !upiId.includes('@')) {
       SimpleToast.show('Please enter a valid UPI ID (e.g. name@upi)', SimpleToast.SHORT);
@@ -648,7 +691,8 @@ const StaffManagement = ({ navigation }) => {
     setShowUpiModal(false);
 
     const isAdvancePayment = paymentType?.value === 'advance';
-    const amount = isAdvancePayment ? Number(advanceAmount) : totalNet;
+    const amountToPay = Number(customAmount) || totalNet;
+    const amount = isAdvancePayment ? Number(advanceAmount) : amountToPay;
     const transactionNote = isAdvancePayment 
       ? `Advance payment - ${moment().format('DD MMM YYYY')}`
       : `Salary payment for ${moment().format('MMMM YYYY')}`;
@@ -689,6 +733,7 @@ const StaffManagement = ({ navigation }) => {
       tax: Number(deduction) || 0,
       advance_payment: Number(advance) || 0,
       payment_mode: paymentMode,
+      amount: Number(customAmount) || totalNet,
       status: isPaid ? 'paid' : 'pending',
     };
     POST_WITH_TOKEN(
@@ -1304,21 +1349,7 @@ const StaffManagement = ({ navigation }) => {
                 </TouchableOpacity>
               )}
             </View>
-
             <View style={[styles.section]}>
-              <Typography
-                type={Font.Poppins_SemiBold}
-                style={[
-                  styles.netLabel,
-                  {
-                    paddingVertical: 17,
-                    borderBottomWidth: 1,
-                    borderColor: '#EBEBEA',
-                  },
-                ]}
-              >
-                {LocalizedStrings.SalaryManagement.net_salary}
-              </Typography>
               <View
                 style={{
                   flexDirection: 'row',
@@ -1331,9 +1362,15 @@ const StaffManagement = ({ navigation }) => {
                 >
                   {LocalizedStrings.SalaryManagement.net_salary}
                 </Typography>
-                <Typography type={Font.Poppins_Bold} style={styles.netValue}>
-                  ₹{totalNet.toFixed(2)}
-                </Typography>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Typography type={Font.Poppins_Bold} style={styles.netValue}>₹</Typography>
+                  <TextInput
+                    style={[styles.netValue, { borderBottomWidth: 1, borderColor: '#ccc', minWidth: 80, textAlign: 'right' }]}
+                    keyboardType="numeric"
+                    value={customAmount}
+                    onChangeText={(val) => setCustomAmount(val)}
+                  />
+                </View>
               </View>
             </View>
             <Typography
@@ -1377,6 +1414,15 @@ const StaffManagement = ({ navigation }) => {
                 ))}
               </View>
             </View>
+
+            {canProcessAnyway && (
+              <View style={{ backgroundColor: '#FFF9C4', padding: 12, borderRadius: 8, marginTop: 10, borderLeftWidth: 4, borderLeftColor: '#FBC02D', marginBottom: 10 }}>
+                <Typography type={Font.Poppins_Medium} size={12} color="#5D4037">
+                  Note: A payment has already been made this month. You can still process this as a partial payment or additional installment.
+                </Typography>
+              </View>
+            )}
+
             <View style={styles.bottomButton}>
               <Button
                 title={isSubmitting ? 'Processing...' : LocalizedStrings.SalaryManagement.process_payment}
@@ -1516,7 +1562,8 @@ const StaffManagement = ({ navigation }) => {
                         </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
-                    })
+                    );
+                  })
                   ) : (
                     <View style={{ paddingVertical: 20, alignItems: 'center' }}>
                        <Typography size={13} color="#999">No recent payments found for this staff.</Typography>
@@ -1669,7 +1716,7 @@ const StaffManagement = ({ navigation }) => {
 
             <Button
               title={upiUpdating ? 'Updating...' : 'Pay via UPI'}
-              onPress={processUpiPayment}
+              onPress={handleUpiModalSubmit}
               main_style={{ width: '100%' }}
               loader={upiUpdating}
               disabled={upiUpdating}

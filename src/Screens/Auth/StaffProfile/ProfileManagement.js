@@ -57,7 +57,7 @@ const ProfileManagement = ({ navigation }) => {
             >
               {LocalizedStrings.EditProfile?.Personal_Details || 'Personal Details'}
             </Typography>
-            <Image source={ImageConstant.UserIcon} style={styles.headerIcon} />
+            <Image source={ImageConstant.person} style={styles.headerIcon} />
           </View>
 
           <View style={styles.fieldRow}>

@@ -63,6 +63,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [isEditingSalary, setIsEditingSalary] = useState(false);
   const [newSalary, setNewSalary] = useState('');
   const [profileImageToUpload, setProfileImageToUpload] = useState(null);
+  const [uploadingDoc, setUploadingDoc] = useState(null);
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [newUpi, setNewUpi] = useState('');
 
   useEffect(() => {
     if (paramData?.id) {
@@ -321,6 +324,78 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       }
     );
   };
+ 
+  const handlePickDocument = (field) => {
+    const options = {
+      mediaType: 'photo',
+      quality: 0.8,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    };
+ 
+    launchImageLibrary(options, response => {
+      if (response.didCancel) return;
+      if (response.errorMessage) {
+        SimpleToast.show('Error picking image', SimpleToast.SHORT);
+      } else if (response.assets && response.assets[0]) {
+        const asset = response.assets[0];
+        const imageObj = {
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `${field}_${Date.now()}.jpg`,
+        };
+        handleUploadStaffDocument(field, imageObj);
+      }
+    });
+  };
+ 
+  const handleUploadStaffDocument = (field, imageObj) => {
+    setUploadingDoc(field);
+    const formData = new FormData();
+    formData.append(field, imageObj);
+    
+    POST_FORM_DATA(
+      `${UpdateStaff}/${data?.id}`,
+      formData,
+      res => {
+        setUploadingDoc(null);
+        SimpleToast.show('Document updated successfully', SimpleToast.SHORT);
+        // Refresh local data
+        if (res?.data) {
+          setData(prev => ({ ...prev, ...res.data }));
+        } else if (res?.staff) {
+          setData(prev => ({ ...prev, ...res.staff }));
+        }
+      },
+      err => {
+        setUploadingDoc(null);
+        SimpleToast.show(err?.message || 'Failed to upload document', SimpleToast.SHORT);
+      }
+    );
+  };
+ 
+  const handleUpdateUpi = () => {
+    if (!newUpi || !newUpi.includes('@')) {
+      SimpleToast.show('Please enter a valid UPI ID', SimpleToast.SHORT);
+      return;
+    }
+ 
+    setSubmitLoading(true);
+    POST_WITH_TOKEN(
+      `${UpdateStaff}/${data?.id}`,
+      { upi_id: newUpi },
+      res => {
+        setSubmitLoading(false);
+        setIsEditingUpi(false);
+        SimpleToast.show('UPI ID updated successfully', SimpleToast.SHORT);
+        setData(prev => ({ ...prev, upi_id: newUpi }));
+      },
+      err => {
+        setSubmitLoading(false);
+        SimpleToast.show(err?.message || 'Failed to update UPI ID', SimpleToast.SHORT);
+      }
+    );
+  };
 
   console.log('data------', data);
 
@@ -460,39 +535,32 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography style={styles.label}>
                 UPI ID
               </Typography>
-              <Typography style={styles.value}>
-                {data?.upi_id || data?.user_work_info?.upi_id || data?.work_info?.upi_id || 'Not Available'}
-              </Typography>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '90%' }}>
+                <Typography style={styles.value}>
+                  {data?.upi_id || 
+                   data?.user_work_info?.upi_id || 
+                   data?.work_info?.upi_id || 
+                   data?.user_detail?.upi_id ||
+                   data?.staff?.upi_id ||
+                   'Not Available'}
+                </Typography>
+                <TouchableOpacity
+                  onPress={() => {
+                    setNewUpi(data?.upi_id || data?.user_work_info?.upi_id || '');
+                    setIsEditingUpi(true);
+                  }}
+                  style={{ padding: 5 }}
+                >
+                  <Image
+                    source={ImageConstant.pencle}
+                    style={{ width: 14, height: 14, tintColor: '#D98579' }}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Typography style={styles.cardTitle}>Documents</Typography>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <TouchableOpacity 
-              style={styles.docBox}
-              onPress={() => aadhaarFrontUrl ? setPreviewImage(aadhaarFrontUrl) : null}
-            >
-              <Typography style={styles.docLabel}>Aadhar Front</Typography>
-              <Typography style={styles.docLink}>{aadhaarFrontUrl ? 'View' : 'None'}</Typography>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.docBox}
-              onPress={() => aadhaarBackUrl ? setPreviewImage(aadhaarBackUrl) : null}
-            >
-              <Typography style={styles.docLabel}>Aadhar Back</Typography>
-              <Typography style={styles.docLink}>{aadhaarBackUrl ? 'View' : 'None'}</Typography>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity 
-            style={[styles.docBox, { marginTop: 10, width: '100%' }]}
-            onPress={() => verificationCertUrl ? setPreviewImage(verificationCertUrl) : null}
-          >
-            <Typography style={styles.docLabel}>Police Verification</Typography>
-            <Typography style={styles.docLink}>{verificationCertUrl ? 'View' : 'None'}</Typography>
-          </TouchableOpacity>
-        </View>
 
         {data?.user_work_info && (
           <View style={styles.card}>
@@ -791,6 +859,57 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </View>
           </View>
         )}
+ 
+        <View style={[styles.card, { marginTop: 20, borderColor: '#D98579', borderStyle: 'dashed' }]}>
+           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#eee', paddingBottom: 8, marginBottom: 12 }}>
+             <Typography type={Font.Poppins_Bold} size={16} color="#D98579">
+               Private Documents (Only visible to you)
+             </Typography>
+             <Image source={ImageConstant.Verify} style={{ width: 16, height: 16, tintColor: '#D98579' }} />
+           </View>
+           
+           <Typography size={12} color="#888" style={{ marginBottom: 15 }}>
+             Manage documents specifically for your records. These changes will not affect the staff's global profile.
+           </Typography>
+ 
+           <View style={styles.docGrid}>
+              {[
+                { label: 'Aadhaar Front', field: 'employer_aadhar_front', url: getDocUrl(data?.employer_aadhar_front) },
+                { label: 'Aadhaar Back', field: 'employer_aadhar_back', url: getDocUrl(data?.employer_aadhar_back) },
+                { label: 'Police Verification', field: 'employer_police_verification', url: getDocUrl(data?.employer_police_verification) },
+                { label: 'Contract/Other', field: 'employer_other_doc', url: getDocUrl(data?.employer_other_doc) },
+              ].map((doc) => (
+                <View key={doc.field} style={styles.docItem}>
+                   <TouchableOpacity
+                    style={[styles.docImage, { justifyContent: 'center', alignItems: 'center' }]}
+                    onPress={() => doc.url ? setPreviewImage(doc.url) : handlePickDocument(doc.field)}
+                   >
+                    {doc.url ? (
+                      <Image source={{ uri: doc.url }} style={styles.docImage} resizeMode="cover" />
+                    ) : (
+                      <View style={{ alignItems: 'center' }}>
+                        {uploadingDoc === doc.field ? (
+                          <ActivityIndicator size="small" color="#D98579" />
+                        ) : (
+                          <Image source={ImageConstant.NewCamera} style={{ width: 24, height: 24, tintColor: '#ccc' }} />
+                        )}
+                        <Typography size={10} color="#999" style={{ marginTop: 4 }}>Tap to upload</Typography>
+                      </View>
+                    )}
+                    {doc.url && (
+                       <TouchableOpacity 
+                         style={{ position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10, padding: 2, elevation: 2 }}
+                         onPress={() => handlePickDocument(doc.field)}
+                       >
+                         <Image source={ImageConstant.pencle} style={{ width: 12, height: 12, tintColor: '#D98579' }} />
+                       </TouchableOpacity>
+                    )}
+                   </TouchableOpacity>
+                   <Typography style={styles.docLabel}>{doc.label}</Typography>
+                </View>
+              ))}
+           </View>
+        </View>
 
         {!fromFindStaffAI && (
           <View style={styles.actionFooter}>
@@ -939,6 +1058,45 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             <Button
               onPress={handleUpdateSalary}
               title="Save Changes"
+              loader={submitLoading}
+              main_style={{ width: '100%', marginBottom: 10 }}
+            />
+          </View>
+        </View>
+      </Modal>
+ 
+      {/* Edit UPI Modal */}
+      <Modal
+        visible={isEditingUpi}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setIsEditingUpi(false)}
+      >
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogBox}>
+            <TouchableOpacity onPress={() => setIsEditingUpi(false)} style={styles.dialogCloseBtn}>
+              <Typography size={18} color="#D98579">{'\u2715'}</Typography>
+            </TouchableOpacity>
+ 
+            <Typography type={Font.Poppins_SemiBold} size={17} style={{ textAlign: 'center', marginBottom: 16 }}>
+              Edit UPI ID
+            </Typography>
+ 
+            <Input
+              title="UPI ID"
+              placeholder="e.g. staff@upi"
+              value={newUpi}
+              onChange={setNewUpi}
+              mainStyle={{ marginVertical: 15 }}
+            />
+ 
+            <Typography size={12} color="#888" style={{ marginBottom: 20, textAlign: 'center' }}>
+              This UPI ID will be used for direct salary payments.
+            </Typography>
+ 
+            <Button
+              onPress={handleUpdateUpi}
+              title="Save UPI ID"
               loader={submitLoading}
               main_style={{ width: '100%', marginBottom: 10 }}
             />

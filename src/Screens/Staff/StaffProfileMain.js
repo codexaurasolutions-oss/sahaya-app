@@ -19,8 +19,6 @@ import RNFS from 'react-native-fs';
 import { Alert } from 'react-native';
 import { isPlaceholderImage } from '../../Utils/ImageUtils';
 
-import { isPlaceholderImage } from '../../Utils/ImageUtils';
-
 const StaffProfileMain = ({ navigation }) => {
     const dispatch = useDispatch();
     const userDetail = useSelector(store => store?.userDetails);
@@ -81,7 +79,7 @@ const StaffProfileMain = ({ navigation }) => {
             PROFILE,
             success => {
                 setLoading(false);
-                setAdhar(success.data.kyc_information.aadhaar_front_path)
+                setAdhar(success.data?.kyc_information?.aadhaar_front_path)
                 if (success?.data) {
                     dispatch(userDetails(success.data));
                 }
@@ -351,7 +349,7 @@ const StaffProfileMain = ({ navigation }) => {
                     <View style={styles.documentRow}>
                         <TouchableOpacity 
                             style={styles.docItem}
-                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_front) ? setShowImageModal(userDetail.user_work_info.aadhar_front) : null}
+                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_front) ? setPreviewImage(userDetail.user_work_info.aadhar_front) : null}
                         >
                             <Typography style={styles.docLabel}>Aadhar Front</Typography>
                             <Typography style={styles.docStatus}>
@@ -360,7 +358,7 @@ const StaffProfileMain = ({ navigation }) => {
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={styles.docItem}
-                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_back) ? setShowImageModal(userDetail.user_work_info.aadhar_back) : null}
+                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_back) ? setPreviewImage(userDetail.user_work_info.aadhar_back) : null}
                         >
                             <Typography style={styles.docLabel}>Aadhar Back</Typography>
                             <Typography style={styles.docStatus}>
@@ -370,7 +368,7 @@ const StaffProfileMain = ({ navigation }) => {
                     </View>
                     <TouchableOpacity 
                         style={[styles.docItem, { marginTop: 10 }]}
-                        onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.verification_certificate) ? setShowImageModal(userDetail.user_work_info.verification_certificate) : null}
+                        onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.verification_certificate) ? setPreviewImage(userDetail.user_work_info.verification_certificate) : null}
                     >
                         <Typography style={styles.docLabel}>Police Verification</Typography>
                         <Typography style={styles.docStatus}>
@@ -453,11 +451,6 @@ const StaffProfileMain = ({ navigation }) => {
 
             </ScrollView>
 
-            <ImageModal 
-                visible={!!showImageModal} 
-                imageUrl={showImageModal} 
-                onClose={() => setShowImageModal(null)} 
-            />
 
         </CommanView>
         <Modal
