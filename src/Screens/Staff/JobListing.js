@@ -42,6 +42,7 @@ const JobsList = ({ navigation }) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedLocations, setSelectedLocations] = useState([]);
   const [selectedCompTypes, setSelectedCompTypes] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Get staff's primary role and location from profile
   const staffRole = (() => {
@@ -356,6 +357,88 @@ const JobsList = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
+          {/* Filter Toggle Button */}
+          <TouchableOpacity
+            style={styles.filterToggleBtn}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Image 
+              source={ImageConstant?.Briefcase} 
+              style={{ 
+                width: 16, 
+                height: 16, 
+                tintColor: showFilters ? '#fff' : '#D98579', 
+                marginRight: 8 
+              }} 
+            />
+            <Typography 
+              color={showFilters ? '#fff' : '#D98579'} 
+              type={Font?.Poppins_Medium}
+            >
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </Typography>
+            {hasActiveFilters && (
+              <View style={styles.filterActiveDot} />
+            )}
+          </TouchableOpacity>
+
+          {showFilters && (
+            <View style={styles.inlineFilterCard}>
+               <Typography type={Font.Poppins_SemiBold} size={15} style={{ marginBottom: 10 }}>
+                  Quick Filters
+               </Typography>
+               <View style={styles.chipContainer}>
+                  {filterOptions.locations.map(loc => (
+                    <TouchableOpacity
+                      key={loc}
+                      style={[
+                        styles.chip,
+                        selectedLocations.includes(loc) && styles.chipActive,
+                      ]}
+                      onPress={() => toggleLocation(loc)}
+                    >
+                      <Typography
+                        type={Font.Poppins_Regular}
+                        size={12}
+                        color={selectedLocations.includes(loc) ? '#fff' : '#333'}
+                      >
+                        {loc}
+                      </Typography>
+                    </TouchableOpacity>
+                  ))}
+               </View>
+               <View style={styles.chipContainer}>
+                  {filterOptions.compTypes.map(ct => (
+                    <TouchableOpacity
+                      key={ct}
+                      style={[
+                        styles.chip,
+                        selectedCompTypes.includes(ct) && styles.chipActive,
+                      ]}
+                      onPress={() => toggleCompType(ct)}
+                    >
+                      <Typography
+                        type={Font.Poppins_Regular}
+                        size={12}
+                        color={selectedCompTypes.includes(ct) ? '#fff' : '#333'}
+                        style={{ textTransform: 'capitalize' }}
+                      >
+                        {ct}
+                      </Typography>
+                    </TouchableOpacity>
+                  ))}
+               </View>
+               {hasActiveFilters && (
+                 <TouchableOpacity 
+                   style={{ alignSelf: 'flex-end', marginTop: 5 }} 
+                   onPress={clearFilters}
+                 >
+                    <Typography color="#D98579" size={12} type={Font.Poppins_Medium}>Clear Filters</Typography>
+                 </TouchableOpacity>
+               )}
+            </View>
+          )}
+
           {filteredJobs.length === 0 ? (
             <View style={styles.noResultsWrapper}>
               <Typography type={Font.Poppins_Medium} size={15} color="#999">
@@ -603,6 +686,34 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: '#fff',
+  },
+  filterToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    backgroundColor: '#FFF0EE',
+    borderWidth: 1,
+    borderColor: '#D98579',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  filterActiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D98579',
+    marginLeft: 6,
+  },
+  inlineFilterCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 15,
   },
   sectionHeader: {
     flexDirection: 'row',

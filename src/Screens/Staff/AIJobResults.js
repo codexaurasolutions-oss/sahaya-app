@@ -46,6 +46,7 @@ const AIJobResults = ({ navigation, route }) => {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterLocation, setFilterLocation] = useState('');
@@ -191,6 +192,7 @@ const AIJobResults = ({ navigation, route }) => {
     setFilterCommitment(null);
     setFilterSalary(null);
     setJobs(allJobs);
+    setShowFilters(false);
   };
 
   const dropdownProps = {
@@ -210,6 +212,33 @@ const AIJobResults = ({ navigation, route }) => {
         style_title={{ fontSize: 18 }}
         onPressRightIcon={() => navigation.navigate('Notifications')}
       />
+
+      {/* Filter Toggle Button */}
+      <TouchableOpacity
+        style={styles.filterToggleBtn}
+        onPress={() => setShowFilters(!showFilters)}
+      >
+        <Image 
+          source={ImageConstant?.Briefcase} 
+          style={{ 
+            width: 16, 
+            height: 16, 
+            tintColor: showFilters ? '#fff' : '#D98579', 
+            marginRight: 8 
+          }} 
+        />
+        <Typography 
+          color={showFilters ? '#fff' : '#D98579'} 
+          type={Font?.Poppins_Medium}
+        >
+          {showFilters ? 'Hide Filters' : 'Show Filters'}
+        </Typography>
+        {(filterRole || filterLocation || filterCompType || filterCommitment || filterSalary) && (
+          <View style={styles.filterActiveDot} />
+        )}
+      </TouchableOpacity>
+
+      {showFilters && (
       <View style={styles.filterCard}>
         <Typography
           type={Font?.Poppins_SemiBold}
@@ -304,6 +333,7 @@ const AIJobResults = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </View>
+      )}
 
       {/* Jobs */}
       {isLoading ? (
@@ -475,7 +505,27 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: '#ddd',
-    marginTop: 20,
+    marginTop: 8,
+  },
+  filterToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    backgroundColor: '#FFF0EE',
+    borderWidth: 1,
+    borderColor: '#D98579',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  filterActiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D98579',
+    marginLeft: 6,
   },
   btnRow: {
     flexDirection: 'row',
