@@ -603,7 +603,7 @@ const Dashboard = ({ navigation }) => {
           />
         </View>
       </SimpleModal>
-      <View style={{ marginTop: 50, marginBottom: 100 }}>
+      <View style={{ marginTop: 70, marginBottom: 100 }}>
         <Button
           onPress={() => {
             navigation.navigate('AllStaff');

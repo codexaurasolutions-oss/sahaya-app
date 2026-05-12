@@ -89,6 +89,8 @@ const StaffManagement = ({ navigation }) => {
   const [totalNet, setTotalNet] = useState(0);
   const [customAmount, setCustomAmount] = useState('');
   const [canProcessAnyway, setCanProcessAnyway] = useState(false);
+  const [totalPaidThisMonth, setTotalPaidThisMonth] = useState(0);
+  const [remainingBalance, setRemainingBalance] = useState(0);
 
   const savePaymentToLocal = async (record) => {
     try {
@@ -147,6 +149,18 @@ const StaffManagement = ({ navigation }) => {
       return isSameMonth && isPaid && isSameStaff;
     });
     setCanProcessAnyway(!!existing);
+
+    // Calculate total paid this month for this staff
+    const staffPayments = listPastPayments?.filter(payment => {
+      const paymentMonth = moment(payment?.created_at).format('YYYY-MM');
+      const isSameMonth = paymentMonth === currentMonth;
+      const isPaid = payment?.status?.toLowerCase() === 'paid';
+      const isSameStaff = payment?.staff_id === selectedStaffId || payment?.staff_member?.id === selectedStaffId;
+      return isSameMonth && isPaid && isSameStaff;
+    });
+    const paidSum = staffPayments?.reduce((sum, p) => sum + (Number(p.net_salary || p.amount) || 0), 0) || 0;
+    setTotalPaidThisMonth(paidSum);
+    setRemainingBalance(Math.max(0, netSalary - paidSum));
   }, [overtime, baseSalary, bonus, advance, deduction, leaveType, listPastPayments]);
 
   // Reset custom amount when staff changes
@@ -1373,6 +1387,29 @@ const StaffManagement = ({ navigation }) => {
                 </View>
               </View>
             </View>
+
+            {totalPaidThisMonth > 0 && (
+              <View style={[styles.section, { backgroundColor: '#F0F7FF', borderColor: '#379AE6', marginTop: 5 }]}>
+                <View style={styles.salaryRow}>
+                  <Typography type={Font.Poppins_Medium} size={13} color="#333">Total Paid this Month:</Typography>
+                  <Typography type={Font.Poppins_Bold} size={14} color="#379AE6">₹{totalPaidThisMonth.toLocaleString('en-IN')}</Typography>
+                </View>
+                <View style={[styles.salaryRow, { marginTop: 8 }]}>
+                  <Typography type={Font.Poppins_Medium} size={13} color="#333">Remaining Balance:</Typography>
+                  <Typography type={Font.Poppins_Bold} size={15} color={remainingBalance > 0 ? '#D98579' : '#16A34A'}>
+                    ₹{remainingBalance.toLocaleString('en-IN')}
+                  </Typography>
+                </View>
+                {remainingBalance > 0 && (
+                  <TouchableOpacity 
+                    style={{ alignSelf: 'flex-end', marginTop: 10 }}
+                    onPress={() => setCustomAmount(String(remainingBalance))}
+                  >
+                    <Typography color="#379AE6" size={12} type={Font.Poppins_SemiBold}>Use Remaining Balance</Typography>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
             <Typography
               type={Font.Poppins_SemiBold}
               style={styles.sectionTitle}
@@ -1418,7 +1455,11 @@ const StaffManagement = ({ navigation }) => {
             {canProcessAnyway && (
               <View style={{ backgroundColor: '#FFF9C4', padding: 12, borderRadius: 8, marginTop: 10, borderLeftWidth: 4, borderLeftColor: '#FBC02D', marginBottom: 10 }}>
                 <Typography type={Font.Poppins_Medium} size={12} color="#5D4037">
-                  Note: A payment has already been made this month. You can still process this as a partial payment or additional installment.
+                  Note: You have already paid ₹{totalPaidThisMonth.toLocaleString('en-IN')} to this staff this month. 
+                  {remainingBalance > 0 
+                    ? ` There is a remaining balance of ₹${remainingBalance.toLocaleString('en-IN')}.` 
+                    : " The full salary has been paid."} 
+                  You can still process this as an additional payment if needed.
                 </Typography>
               </View>
             )}
