@@ -396,7 +396,14 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         setSubmitLoading(false);
         setIsEditingUpi(false);
         SimpleToast.show('UPI ID updated successfully', SimpleToast.SHORT);
-        setData(prev => ({ ...prev, upi_id: newUpi }));
+        setData(prev => ({ 
+          ...prev, 
+          upi_id: newUpi,
+          user_work_info: prev.user_work_info ? { ...prev.user_work_info, upi_id: newUpi } : prev.user_work_info,
+          work_info: prev.work_info ? { ...prev.work_info, upi_id: newUpi } : prev.work_info,
+          user_detail: prev.user_detail ? { ...prev.user_detail, upi_id: newUpi } : prev.user_detail,
+          staff: prev.staff ? { ...prev.staff, upi_id: newUpi } : prev.staff,
+        }));
       },
       err => {
         setSubmitLoading(false);
