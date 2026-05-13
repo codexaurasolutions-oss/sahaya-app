@@ -64,8 +64,8 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [newSalary, setNewSalary] = useState('');
   const [profileImageToUpload, setProfileImageToUpload] = useState(null);
   const [uploadingDoc, setUploadingDoc] = useState(null);
-  const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [newUpi, setNewUpi] = useState('');
+  const [isBlacklist, setIsBlacklist] = useState(false);
 
   useEffect(() => {
     if (paramData?.id) {
@@ -161,6 +161,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     setTerminationDate(null);
     setNoticePeriodDays('');
     setSubmitLoading(false);
+    setIsBlacklist(false);
   };
 
   const handlePickFirPhoto = () => {
@@ -256,26 +257,33 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     }
     setSubmitLoading(true);
 
-    const body = {
-      user_id: data?.id,
-      reason,
-      termination_date: terminationDate ? moment(terminationDate).format('YYYY-MM-DD') : undefined,
-      notice_period_days: noticePeriodDays ? Number(noticePeriodDays) : undefined,
-      status: 'pending',
-      remarks: remarks || undefined,
-    };
+    const formData = new FormData();
+    formData.append('user_id', String(data?.id));
+    formData.append('reason', reason);
+    if (terminationDate) formData.append('termination_date', moment(terminationDate).format('YYYY-MM-DD'));
+    if (noticePeriodDays) formData.append('notice_period_days', noticePeriodDays);
+    formData.append('status', 'pending');
+    if (remarks) formData.append('remarks', remarks);
+    if (isBlacklist) {
+      formData.append('is_blacklist', '1');
+      if (firPhoto) {
+        formData.append('fir_photo', firPhoto);
+      }
+      if (policeStationName) formData.append('police_station_name', policeStationName);
+      if (policeStationContact) formData.append('police_station_contact', policeStationContact);
+    }
 
     console.log('--- admin/terminations payload ---', JSON.stringify(body, null, 2));
 
     if (rating > 0) submitReview();
 
-    POST_WITH_TOKEN(
+    POST_FORM_DATA(
       TerminateStaff,
-      body,
+      formData,
       res => {
         console.log('--- admin/terminations SUCCESS ---', JSON.stringify(res, null, 2));
         setSubmitLoading(false);
-        SimpleToast.show('Employee terminated successfully', SimpleToast.SHORT);
+        SimpleToast.show(isBlacklist ? 'Staff reported and blacklisted' : 'Employee terminated successfully', SimpleToast.SHORT);
         resetModal();
         navigation.goBack();
       },
@@ -915,9 +923,23 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           <View style={styles.actionFooter}>
             <TouchableOpacity
               style={[styles.actionButton, styles.actionBorder]}
-              onPress={() => setModalMode('terminate')}>
+              onPress={() => {
+                setIsBlacklist(false);
+                setModalMode('terminate');
+              }}>
               <Typography style={styles.actionButtonText}>
-                Remove/Terminate Employee
+                Terminate Employee
+              </Typography>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.blacklistButton]}
+              onPress={() => {
+                setIsBlacklist(true);
+                setModalMode('terminate');
+              }}>
+              <Typography style={styles.blacklistButtonText}>
+                Report & Blacklist Staff
               </Typography>
             </TouchableOpacity>
           </View>
@@ -937,8 +959,8 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography size={18} color="#D98579">{'\u2715'}</Typography>
             </TouchableOpacity>
 
-            <Typography type={Font.Poppins_SemiBold} size={17} style={{ textAlign: 'center', marginBottom: 16 }}>
-              Remove/Terminate Employee
+            <Typography type={Font.Poppins_SemiBold} size={17} style={{ textAlign: 'center', marginBottom: 16, color: isBlacklist ? '#DE3B40' : '#000' }}>
+              {isBlacklist ? 'Report & Blacklist Staff' : 'Terminate Employee'}
             </Typography>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
@@ -1003,22 +1025,42 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               ))}
             </View>
 
-            <Input
-              title="Remarks (Optional)"
-              placeholder="Enter your remarks..."
-              value={remarks}
-              onChange={setRemarks}
-              multiline
-              numberOfLines={3}
-              style_inputContainer={{ height: 80 }}
-              mainStyle={{ marginVertical: 5 }}
-            />
+            {isBlacklist && (
+              <View style={{ marginTop: 15 }}>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={{ marginBottom: 10 }}>
+                  Police Station Details & FIR
+                </Typography>
+                <Input
+                  placeholder="Police Station Name"
+                  value={policeStationName}
+                  onChange={setPoliceStationName}
+                  mainStyle={{ marginVertical: 5 }}
+                />
+                <Input
+                  placeholder="Police Station Contact"
+                  value={policeStationContact}
+                  onChange={setPoliceStationContact}
+                  keyboardType="numeric"
+                  mainStyle={{ marginVertical: 5 }}
+                />
+                
+                <Typography size={12} color="#888" style={{ marginTop: 10, marginBottom: 5 }}>
+                  Upload FIR Document / Proof
+                </Typography>
+                <UploadBox
+                  title={firPhoto ? "FIR Uploaded" : "Upload FIR Photo"}
+                  onPress={handlePickFirPhoto}
+                  imageUri={firPhoto?.uri}
+                  style={{ marginBottom: 15 }}
+                />
+              </View>
+            )}
 
             <Button
               onPress={handleSubmitTerminate}
-              title="Confirm"
+              title={isBlacklist ? "Confirm & Blacklist" : "Confirm Termination"}
               loader={submitLoading}
-              main_style={{ width: '100%', marginTop: 16, marginBottom: 10 }}
+              main_style={{ width: '100%', marginTop: 16, marginBottom: 10, backgroundColor: isBlacklist ? '#DE3B40' : '#D98579' }}
             />
             </ScrollView>
           </View>
@@ -1334,7 +1376,21 @@ const styles = StyleSheet.create({
   mt12: { marginTop: 12 },
   actionButtonText: {
     color: '#DE3B40',
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: Font.Poppins_SemiBold,
+  },
+  blacklistButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#DE3B40',
+    marginTop: 12,
+  },
+  blacklistButtonText: {
+    color: '#fff',
+    fontSize: 15,
     fontFamily: Font.Poppins_SemiBold,
   },
 
