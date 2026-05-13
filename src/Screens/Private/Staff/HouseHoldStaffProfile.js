@@ -65,6 +65,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [profileImageToUpload, setProfileImageToUpload] = useState(null);
   const [uploadingDoc, setUploadingDoc] = useState(null);
   const [newUpi, setNewUpi] = useState('');
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [isBlacklist, setIsBlacklist] = useState(false);
 
   useEffect(() => {
@@ -109,7 +110,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const addrState = addr?.state || data?.state || data?.state_name || '';
   const addrPincode = addr?.pincode || addr?.zip || data?.pincode || data?.zip_code || data?.postal_code || '';
 
-  const maskAadhar = num => num ? num.replace(/\d(?=\d{4})/g, 'x') : '';
+  const maskAadhar = num => num ? String(num).replace(/\d(?=\d{4})/g, 'x') : '';
 
   // KYC Document image URLs
   const kycInfo = data?.kyc_information || {};
