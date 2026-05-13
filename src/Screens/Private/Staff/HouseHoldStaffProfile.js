@@ -310,20 +310,22 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     }
 
     setSubmitLoading(true);
-    POST_WITH_TOKEN(
+    const formData = new FormData();
+    formData.append('salary', newSalary);
+
+    POST_FORM_DATA(
       `${UpdateStaff}/${data?.id}`,
-      { salary: newSalary },
+      formData,
       res => {
         setSubmitLoading(false);
         setIsEditingSalary(false);
         SimpleToast.show('Salary updated successfully', SimpleToast.SHORT);
-        // Update local state
+        // Update local state across all common objects
         setData(prev => ({
           ...prev,
-          user_work_info: {
-            ...prev.user_work_info,
-            salary: newSalary
-          }
+          salary: newSalary,
+          user_work_info: prev.user_work_info ? { ...prev.user_work_info, salary: newSalary } : prev.user_work_info,
+          work_info: prev.work_info ? { ...prev.work_info, salary: newSalary } : prev.work_info,
         }));
       },
       err => {
@@ -389,9 +391,12 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     }
  
     setSubmitLoading(true);
-    POST_WITH_TOKEN(
+    const formData = new FormData();
+    formData.append('upi_id', newUpi);
+
+    POST_FORM_DATA(
       `${UpdateStaff}/${data?.id}`,
-      { upi_id: newUpi },
+      formData,
       res => {
         setSubmitLoading(false);
         setIsEditingUpi(false);
