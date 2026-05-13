@@ -1327,14 +1327,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionBorder: {
-    borderColor: '#EBEBEA',
-    borderWidth: 2,
+    borderColor: '#FFD7D7',
+    borderWidth: 1.5,
+    backgroundColor: '#FFF5F5',
   },
   mt12: { marginTop: 12 },
   actionButtonText: {
-    color: '#8C8D8B',
+    color: '#DE3B40',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Font.Poppins_SemiBold,
   },
 
   dialogOverlay: {
