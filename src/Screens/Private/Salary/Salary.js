@@ -430,7 +430,11 @@ const StaffManagement = ({ navigation }) => {
         return;
       }
       // No UPI ID found, show modal to enter one
-      setUpiInput('');
+      // Try to find the latest UPI ID from the leaveList just in case leaveType is stale
+      const latestStaffData = leaveList.find(s => s.value === leaveType?.value);
+      const latestUpiId = latestStaffData?.upi_id || leaveType?.upi_id || '';
+      
+      setUpiInput(latestUpiId);
       setShowUpiModal(true);
       setAdvanceLoading(false);
       return;
@@ -449,7 +453,7 @@ const StaffManagement = ({ navigation }) => {
         amount: Number(advanceAmount),
         should_deduct: shouldDeductAdvance,
         deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
-        payment_mode: advancePaymentMethod?.toLowerCase() || 'cash',
+        payment_mode: (advancePaymentMethod || 'cash').toLowerCase(),
       },
       success => {
         setAdvanceLoading(false);
@@ -625,7 +629,10 @@ const StaffManagement = ({ navigation }) => {
       return;
     }
     // No UPI ID found, show modal to enter one
-    setUpiInput('');
+    const latestStaffData = leaveList.find(s => s.value === leaveType?.value);
+    const latestUpiId = latestStaffData?.upi_id || leaveType?.upi_id || '';
+    
+    setUpiInput(latestUpiId);
     setShowUpiModal(true);
     setIsSubmitting(false);
   };
@@ -1075,7 +1082,7 @@ const StaffManagement = ({ navigation }) => {
                         {moment(item.date).format('DD MMM YYYY, hh:mm A')}
                       </Typography>
                       <Typography type={Font.Poppins_Regular} size={10} color="#666">
-                        {item.payment_mode ? (item.payment_mode === 'upi' ? 'UPI' : 'Cash') : 'Cash'}
+                        {item.payment_mode ? (item.payment_mode.toLowerCase() === 'upi' ? 'UPI' : 'Cash') : 'Cash'}
                       </Typography>
                       {item.deduction_method && (
                         <Typography type={Font.Poppins_Regular} size={10} color="#666">
@@ -1752,11 +1759,11 @@ const StaffManagement = ({ navigation }) => {
               color="#888"
               style={{ marginTop: 5, marginBottom: 15 }}
             >
-              Amount: ₹{totalNet.toFixed(2)}
+              Amount: ₹{paymentType?.value === 'advance' ? Number(advanceAmount).toFixed(2) : totalNet.toFixed(2)}
             </Typography>
 
             <Button
-              title={upiUpdating ? 'Updating...' : 'Pay via UPI'}
+              title={upiUpdating ? 'Updating...' : (paymentType?.value === 'advance' ? 'Pay Advance via UPI' : 'Pay via UPI')}
               onPress={handleUpiModalSubmit}
               main_style={{ width: '100%' }}
               loader={upiUpdating}
