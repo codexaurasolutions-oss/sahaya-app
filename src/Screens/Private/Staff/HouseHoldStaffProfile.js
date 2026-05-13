@@ -273,7 +273,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       if (policeStationContact) formData.append('police_station_contact', policeStationContact);
     }
 
-    console.log('--- admin/terminations payload ---', JSON.stringify(body, null, 2));
+    console.log('--- admin/terminations payload --- (FormData with FIR if applicable)');
 
     if (rating > 0) submitReview();
 
