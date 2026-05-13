@@ -199,8 +199,9 @@ const StaffManagement = ({ navigation }) => {
     GET_WITH_TOKEN(
       SalaryList,
       success => {
-        console.log('SalaryList API response --->', JSON.stringify(success));
-        setListPastPayments(success?.data);
+        if (success?.data) {
+          setListPastPayments(success.data);
+        }
       },
       error => {
         SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
@@ -276,7 +277,6 @@ const StaffManagement = ({ navigation }) => {
       `${SalaryUpdateStatus}/${paymentId}/status`,
       { status: 'paid' },
       success => {
-        console.log('markAsPaid success --->', JSON.stringify(success));
         setListPastPayments(prev =>
           prev.map(item =>
             item.payment_id === paymentId ? { ...item, status: 'paid' } : item,
@@ -285,7 +285,6 @@ const StaffManagement = ({ navigation }) => {
         SimpleToast.show('Payment marked as paid', SimpleToast.SHORT);
       },
       error => {
-        console.log('markAsPaid error --->', JSON.stringify(error));
         SimpleToast.show(
           error?.data?.message || 'Failed to update status',
           SimpleToast.SHORT,
@@ -762,7 +761,6 @@ const StaffManagement = ({ navigation }) => {
       body,
       success => {
         setIsSubmitting(false);
-        console.log('submitSalaryPayment success --->', JSON.stringify(success));
         const savedData = success?.data;
         // Add new payment to the local list immediately
         if (savedData) {

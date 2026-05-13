@@ -56,9 +56,8 @@ const StaffAttendance = ({ navigation }) => {
       AttendanceStaff,
       formData,
       success => {
-        console.log('StaffAttendance API full response --->', JSON.stringify(success));
         const records = success?.data?.attendance || success?.data || [];
-        console.log('StaffAttendance records --->', JSON.stringify(records));
+        console.log('StaffAttendance records --->', records);
         const dates = {};
         let totalWorked = 0;
         let absentCount = 0;

@@ -136,9 +136,9 @@ const AttendanceScreen = ({ navigation, route }) => {
       AttendanceStaff,
       formData,
       (success) => {
-        console.log('AttendanceScreen API full response --->', JSON.stringify(success));
+        console.log('AttendanceScreen API full response --->', success);
         const records = success?.data?.attendance || success?.data || [];
-        console.log('AttendanceScreen records --->', JSON.stringify(records));
+        console.log('AttendanceScreen records --->', records);
         const dates = {};
         let totalWorked = 0;
         let absentCount = 0;

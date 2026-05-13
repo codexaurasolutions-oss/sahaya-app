@@ -1,5 +1,6 @@
 import { StyleSheet, View, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import React, { useEffect, useState } from 'react';
+import moment from 'moment';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
 import Typography from '../../Component/UI/Typography';
@@ -12,13 +13,14 @@ import { GET_WITH_TOKEN } from '../../Backend/Backend';
 import { myWork, EarningSummary as EarningSummaryRoute } from '../../Backend/api_routes';
 
 const formatDate = (dateString) => {
-  if (!dateString) return 'Not Found';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  if (!dateString || dateString === 'null' || dateString === 'undefined') return 'Not Found';
+  try {
+    const d = moment(dateString);
+    if (!d.isValid()) return 'Not Found';
+    return d.format('MMMM D, YYYY');
+  } catch (e) {
+    return 'Not Found';
+  }
 };
 
 const MyWork = () => {
@@ -50,12 +52,9 @@ const MyWork = () => {
     GET_WITH_TOKEN(
       `${EarningSummaryRoute}?job_id=${jobId}&month=${month}`,
       success => {
-        const data = success?.data;
-        const earningData = Array.isArray(data) && data.length > 0 ? data[0] : (data && !Array.isArray(data) ? data : null);
+        const earningData = success?.data;
         if (earningData) {
           setEarningSummary(earningData);
-          console.log('EarningSummary response:', JSON.stringify(earningData));
-          // Try to extract employer name from earning summary
           if (!employerName) {
             const name =
               buildName(earningData?.employer_details) ||
@@ -77,30 +76,36 @@ const MyWork = () => {
       myWork,
       success => {
         setLoading(false);
-        const jobApps = success?.jobApplications || success?.data?.jobApplications || success?.job_applications || success?.data?.job_applications || [];
-        const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
-        setWorkData(success?.data || success || null);
-        setJobApplications(jobAppsArr);
-        setAttendanceSummary(Array.isArray(success?.attendanceSummary) ? success.attendanceSummary : []);
-        setLeaveSummary(Array.isArray(success?.leaveSummary) ? success.leaveSummary : []);
+        if (!success) return;
 
-        // Staff has an active job if:
-        // 1. They have job applications with accepted/approved status, OR
-        // 2. They have a job_id in any application (API only returns active ones), OR
-        // 3. The myWork API returned employer/houseowner data (owner directly added staff)
+        const jobApps = success?.jobApplications || userDetail?.applications || success?.job_applications || [];
+        const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
+        setJobApplications(jobAppsArr);
+
+        // Extract and set work data
+        const myWorkData = success?.data || success;
+        setWorkData(myWorkData);
+
+        // Set summaries
+        if (success?.attendanceSummary) {
+          setAttendanceSummary(Array.isArray(success.attendanceSummary) ? success.attendanceSummary : []);
+        }
+        if (success?.leaveSummary || myWorkData?.leaveSummary) {
+          setLeaveSummary(Array.isArray(success.leaveSummary || myWorkData.leaveSummary) ? (success.leaveSummary || myWorkData.leaveSummary) : []);
+        }
+
+        // Determine if staff has an active job
         const activeJob = jobAppsArr.find(app => {
           const status = (app?.status || app?.application_status || '').toLowerCase();
           return status === 'accepted' || status === 'approved' || status === 'active';
         });
 
-        // Check if owner directly added this staff (no job application needed)
-        const myWorkData2 = success?.data;
         const directlyAdded =
-          !!myWorkData2?.houseowner ||
-          !!myWorkData2?.employer_details ||
-          !!myWorkData2?.added_by_user ||
-          !!myWorkData2?.employer ||
-          !!myWorkData2?.workplace ||
+          !!myWorkData?.houseowner ||
+          !!myWorkData?.employer_details ||
+          !!myWorkData?.added_by_user ||
+          !!myWorkData?.employer ||
+          !!myWorkData?.workplace ||
           !!success?.houseowner ||
           !!success?.employer ||
           !!success?.workplace ||
@@ -110,12 +115,7 @@ const MyWork = () => {
         const hasJob = !!activeJob || (jobAppsArr.length > 0 && !!jobAppsArr[0]?.job_id) || directlyAdded;
         setHasActiveJob(hasJob);
 
-        // Try to extract employer name from myWork response
-        const myWorkData = success?.data;
-        console.log('myWork response keys:', myWorkData ? Object.keys(myWorkData) : 'null');
-        console.log('jobApps[0] keys:', jobAppsArr?.[0] ? Object.keys(jobAppsArr[0]) : 'null');
-        console.log('jobApps[0]?.job keys:', jobAppsArr?.[0]?.job ? Object.keys(jobAppsArr[0].job) : 'null');
-
+        // Determine employer name
         const empName =
           buildName(myWorkData?.houseowner) ||
           buildName(myWorkData?.employer_details) ||
@@ -125,10 +125,12 @@ const MyWork = () => {
           buildName(success?.current_employer) ||
           buildName(jobAppsArr?.[0]?.job?.user) ||
           buildName(jobAppsArr?.[0]?.job?.houseowner) ||
-          buildName(jobAppsArr?.[0]?.employer);
+          buildName(jobAppsArr?.[0]?.employer) ||
+          userDetail?.added_by_name;
+
         if (empName) setEmployerName(empName);
 
-        // Fetch earning summary for employer name and role
+        // Fetch earning summary if we have a job ID
         const jobId = jobAppsArr?.[0]?.job_id;
         if (jobId) {
           fetchEarningSummary(jobId);
@@ -378,8 +380,8 @@ const MyWork = () => {
                   Leave Requests
                 </Typography>
               </View>
-              {Array.isArray(workData?.leave_requests) && workData.leave_requests.map((leave) => (
-                <View key={leave.id} style={styles.leaveItem}>
+              {Array.isArray(workData?.leave_requests) && workData.leave_requests.map((leave, idx) => (
+                <View key={leave?.id || `leave-${idx}`} style={styles.leaveItem}>
                   <View style={{ flex: 1 }}>
                     <Typography type={Font.Poppins_Medium} size={13}>
                       {leave.reason}
