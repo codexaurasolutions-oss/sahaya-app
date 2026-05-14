@@ -1570,9 +1570,10 @@ const StaffManagement = ({ navigation }) => {
                       activeOpacity={item.status?.toLowerCase() === 'pending' ? 0.6 : 1}
                       onPress={() => {
                         if (item.status?.toLowerCase() === 'pending') {
+                          const staffDisplayName = item.staff_name || item.staff_member?.name || item.processed_by?.name || 'Staff';
                           Alert.alert(
                             'Mark as Paid',
-                            `Mark payment of ₹${(item.net_salary ?? item.amount ?? 0).toFixed(2)} to ${item.processed_by?.name} as paid?`,
+                            `Mark payment of ₹${(item.net_salary ?? item.amount ?? 0).toFixed(2)} to ${staffDisplayName} as paid?`,
                             [
                               { text: 'Cancel', style: 'cancel' },
                               { text: 'Mark as Paid', onPress: () => markAsPaid(itemId) },
@@ -1607,7 +1608,7 @@ const StaffManagement = ({ navigation }) => {
                             type={Font.Poppins_Regular}
                             style={styles.paymentStaff}
                           >
-                            {`${LocalizedStrings.SalaryManagement.status_paid} to ${item.staff_member?.name || item.processed_by?.name || 'Staff'}`}
+                            {`${LocalizedStrings.SalaryManagement.status_paid} to ${item.staff_name || item.staff_member?.name || item.processed_by?.name || 'Staff'}`}
                           </Typography>
                         </View>
                       </View>
