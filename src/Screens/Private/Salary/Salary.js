@@ -444,16 +444,23 @@ const StaffManagement = ({ navigation }) => {
   };
 
   const submitAdvancePayment = () => {
+    if (!leaveType?.value) {
+      SimpleToast.show('Please select a staff member', SimpleToast.SHORT);
+      return;
+    }
+    
     setAdvanceLoading(true);
+    const body = {
+      user_id: String(leaveType?.value),
+      amount: Number(advanceAmount),
+      should_deduct: shouldDeductAdvance,
+      deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
+      payment_mode: (advancePaymentMethod || 'cash').toLowerCase(),
+    };
+
     POST_WITH_TOKEN(
       AdvanceWithdraw,
-      {
-        user_id: String(leaveType?.value),
-        amount: Number(advanceAmount),
-        should_deduct: shouldDeductAdvance,
-        deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
-        payment_mode: (advancePaymentMethod || 'cash').toLowerCase(),
-      },
+      body,
       success => {
         setAdvanceLoading(false);
         const paidAdvance = Number(advanceAmount) || 0;
@@ -465,10 +472,12 @@ const StaffManagement = ({ navigation }) => {
         if (shouldDeductAdvance) {
           setAdvance(prev => (Number(prev) || 0) + paidAdvance);
         }
-        // Save advance payment to local storage
+        
+        // Save advance payment to local storage for immediate UI update
+        const staffName = leaveType?.label || 'Staff';
         const advanceRecord = {
           staff_id: leaveType?.value,
-          staff_name: leaveType?.label,
+          staff_name: staffName,
           amount: paidAdvance,
           type: 'advance',
           date: new Date().toISOString(),
@@ -476,9 +485,11 @@ const StaffManagement = ({ navigation }) => {
           deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
           payment_mode: advancePaymentMethod,
         };
+        
         savePaymentToLocal(advanceRecord).then(() => {
           loadAdvanceHistory(leaveType?.value);
         });
+        
         SimpleToast.show(
           success?.message || 'Advance payment processed successfully!',
           SimpleToast.SHORT,
@@ -720,24 +731,58 @@ const StaffManagement = ({ navigation }) => {
     // Standard NPCI UPI URI
     const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
 
-    Linking.openURL(upiUrl)
-      .then(() => {
-        // Call appropriate submit function based on payment type
-        if (isAdvancePayment) {
-          submitAdvancePayment();
-        } else {
-          submitSalaryPayment(null);
+    Linking.canOpenURL(upiUrl)
+      .then(supported => {
+        if (!supported) {
+          setIsSubmitting(false);
+          setAdvanceLoading(false);
+          Alert.alert(
+            'UPI Not Supported',
+            'No UPI apps (like GPay, PhonePe) found on this device. Please note that UPI is primarily supported in India. Please use Cash or Bank Transfer for payment.',
+          );
+          return;
         }
+
+        Linking.openURL(upiUrl)
+          .then(() => {
+            // Only submit if URL was actually opened
+            // Note: We still can't know if payment succeeded, so we mark it and tell user
+            Alert.alert(
+              'Payment Confirmation',
+              'Please confirm if you have completed the payment in your UPI app.',
+              [
+                { 
+                  text: 'Cancel', 
+                  onPress: () => {
+                    setIsSubmitting(false);
+                    setAdvanceLoading(false);
+                  },
+                  style: 'cancel' 
+                },
+                { 
+                  text: 'Yes, Paid', 
+                  onPress: () => {
+                    if (isAdvancePayment) {
+                      submitAdvancePayment();
+                    } else {
+                      submitSalaryPayment(null);
+                    }
+                  } 
+                }
+              ]
+            );
+          })
+          .catch((err) => {
+            console.log('Linking error:', err);
+            setIsSubmitting(false);
+            setAdvanceLoading(false);
+            SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+          });
       })
-      .catch((err) => {
-        console.log('Linking error:', err);
-        SimpleToast.show('Failed to open UPI app chooser.', SimpleToast.SHORT);
-        // Still submit to record the transaction as 'pending' or whatever logic is needed
-        if (isAdvancePayment) {
-          submitAdvancePayment();
-        } else {
-          submitSalaryPayment(null);
-        }
+      .catch(() => {
+        setIsSubmitting(false);
+        setAdvanceLoading(false);
+        SimpleToast.show('Error checking UPI support.', SimpleToast.SHORT);
       });
   };
 
