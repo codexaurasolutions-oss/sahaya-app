@@ -443,7 +443,7 @@ const StaffManagement = ({ navigation }) => {
     submitAdvancePayment();
   };
 
-  const submitAdvancePayment = () => {
+  const submitAdvancePayment = (forcedStatus = null) => {
     if (!leaveType?.value) {
       SimpleToast.show('Please select a staff member', SimpleToast.SHORT);
       return;
@@ -456,6 +456,7 @@ const StaffManagement = ({ navigation }) => {
       should_deduct: shouldDeductAdvance,
       deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
       payment_mode: (advancePaymentMethod || 'cash').toLowerCase(),
+      status: forcedStatus,
     };
 
     POST_WITH_TOKEN(
@@ -763,9 +764,9 @@ const StaffManagement = ({ navigation }) => {
                   text: 'Yes, Paid', 
                   onPress: () => {
                     if (isAdvancePayment) {
-                      submitAdvancePayment();
+                      submitAdvancePayment('paid');
                     } else {
-                      submitSalaryPayment(null);
+                      submitSalaryPayment('paid');
                     }
                   } 
                 }
