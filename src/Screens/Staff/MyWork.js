@@ -39,11 +39,18 @@ const MyWork = () => {
   // Safe name builder — never returns "null" or "undefined" strings
   const buildName = (obj) => {
     if (!obj) return null;
-    const first = obj?.first_name || obj?.employer_first_name || obj?.fname || '';
-    const last = obj?.last_name || obj?.employer_last_name || obj?.lname || '';
-    const name = obj?.name || '';
-    const full = (first || last) ? `${first} ${last}`.trim() : name.trim();
-    return full && full !== 'null' && full !== 'undefined' ? full : null;
+    const first = (obj?.first_name || obj?.employer_first_name || obj?.fname || '').trim();
+    const last = (obj?.last_name || obj?.employer_last_name || obj?.lname || '').trim();
+    const name = (obj?.name || '').trim();
+    
+    // Prioritize first + last name
+    let full = (first || last) ? `${first} ${last}`.trim() : name;
+    
+    // Filter out generic/null strings
+    if (!full || full === 'null' || full === 'undefined' || full.toLowerCase() === 'user') {
+      return null;
+    }
+    return full;
   };
 
   const fetchEarningSummary = (jobId) => {
