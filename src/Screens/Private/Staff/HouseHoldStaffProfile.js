@@ -38,9 +38,9 @@ const terminationReasons = [
 ];
 
 const getProfileImage = (img) => {
-  if (isPlaceholderImage(img)) return null;
-  if (img.startsWith('http')) return img;
-  const baseUrl = API.replace('/api/', '');
+  if (!img || isPlaceholderImage(img)) return null;
+  if (typeof img === 'string' && img.startsWith('http')) return img;
+  const baseUrl = (API && typeof API === 'string') ? API.replace('/api/', '') : '';
   return `${baseUrl}${img}`;
 };
 
@@ -115,11 +115,11 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   // KYC Document image URLs
   const kycInfo = data?.kyc_information || {};
   const getDocUrl = (path) => {
-    if (isPlaceholderImage(path)) {
+    if (!path || isPlaceholderImage(path)) {
       return null;
     }
-    if (path.startsWith('http')) return path;
-    const baseUrl = API.replace('/api/', '');
+    if (typeof path === 'string' && path.startsWith('http')) return path;
+    const baseUrl = (API && typeof API === 'string') ? API.replace('/api/', '') : '';
     return `${baseUrl}${path}`;
   };
 
@@ -371,10 +371,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       res => {
         setUploadingDoc(null);
         SimpleToast.show('Document updated successfully', SimpleToast.SHORT);
-        // Refresh local data
-        if (res?.data) {
+        // Refresh local data with defensive checks
+        if (res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
           setData(prev => ({ ...prev, ...res.data }));
-        } else if (res?.staff) {
+        } else if (res?.staff && typeof res.staff === 'object' && !Array.isArray(res.staff)) {
           setData(prev => ({ ...prev, ...res.staff }));
         }
       },
@@ -418,7 +418,6 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     );
   };
 
-  console.log('data------', data);
 
   return (
     <CommanView>
