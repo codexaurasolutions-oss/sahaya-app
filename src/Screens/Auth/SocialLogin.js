@@ -20,8 +20,10 @@ const SocialLogin = ({ navigation }) => {
 
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId:
-        'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with your actual web client ID from Google Cloud Console
+      // Paste your Web Client ID from Firebase/Google Cloud Console here
+      webClientId: '342118935526-5enee4e4c8rm0k9gu8nsufdnm8mp9h3l.apps.googleusercontent.com',
+      // Paste your iOS Client ID from GoogleService-Info.plist (CLIENT_ID) here
+      iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
       offlineAccess: true,
     });
   }, []);

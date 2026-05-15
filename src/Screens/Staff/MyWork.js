@@ -252,7 +252,7 @@ const MyWork = () => {
               size={20}
               style={styles.valueBig}
             >
-              ₹{jobApplications?.[0]?.expected_salary || workData?.lastsalary?.amount || workData?.last_exp?.salary || '0'}
+              ₹{userDetail?.user_work_info?.salary || jobApplications?.[0]?.expected_salary || workData?.lastsalary?.amount || workData?.last_exp?.salary || '0'}
             </Typography>
 
             <TouchableOpacity
