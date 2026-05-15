@@ -101,12 +101,17 @@ const RecentSalaryList = ({ navigation }) => {
       SalaryList,
       success => {
         const data = success?.data?.data || success?.data || [];
-        const formattedData = data.map(item => ({
-          ...item,
-          amount: item.net_salary || item.amount || 0,
-          created_at: item.payment_date || item.created_at,
-          status: item.status || 'Paid'
-        }));
+        const formattedData = data.map(item => {
+          const actualId = item.id || item.salary_id || item.payment_id;
+          return {
+            ...item,
+            id: actualId, // Ensure we have a primary ID for API calls
+            display_id: item.payment_id || `SAL-${actualId}`,
+            amount: item.net_salary || item.amount || 0,
+            created_at: item.payment_date || item.created_at,
+            status: item.status || 'Paid'
+          };
+        });
         
         const allRecords = [...formattedData, ...localRecords];
         const sorted = allRecords.sort(
@@ -281,7 +286,7 @@ const RecentSalaryList = ({ navigation }) => {
           </Typography>
 
           <Typography type={Font.Poppins_Regular} style={styles.paymentAmount}>
-            ₹{Math.max(0, Number(item?.amount ?? 0)).toLocaleString()}
+            ₹{Math.max(0, Number(item?.net_salary ?? item?.amount ?? 0)).toLocaleString()}
           </Typography>
 
           <Typography type={Font.Poppins_Regular} style={styles.paymentStaff}>
@@ -336,7 +341,7 @@ const RecentSalaryList = ({ navigation }) => {
 
         <FlatList
           data={visibleRecords}
-          keyExtractor={item => item?.payment_id?.toString()}
+          keyExtractor={(item, index) => (item?.id || item?.payment_id || index).toString()}
           renderItem={renderItem}
           refreshing={isRefreshing}
           onRefresh={handleRefresh}
@@ -368,7 +373,7 @@ const RecentSalaryList = ({ navigation }) => {
                   Amount
                 </Typography>
                 <Typography type={Font.Poppins_SemiBold}>
-                  ₹{Number(selectedPayment?.amount ?? 0).toFixed(2)}
+                  ₹{Math.max(0, Number(selectedPayment?.net_salary ?? selectedPayment?.amount ?? 0)).toFixed(2)}
                 </Typography>
               </View>
 
@@ -450,7 +455,7 @@ const RecentSalaryList = ({ navigation }) => {
               {selectedPayment?.status?.toLowerCase() === 'pending' && (
                 <TouchableOpacity
                   style={styles.markPaidButton}
-                  onPress={() => markAsPaid(selectedPayment?.payment_id)}
+                  onPress={() => markAsPaid(selectedPayment?.id || selectedPayment?.payment_id)}
                   activeOpacity={0.8}
                   disabled={isMarkingPaid}
                 >
