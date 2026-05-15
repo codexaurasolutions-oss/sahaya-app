@@ -27,7 +27,7 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
 
   if (!paymentData) return null;
 
-  const amount = Number(paymentData?.net_salary ?? paymentData?.amount ?? 0);
+  const amount = Math.max(0, Number(paymentData?.net_salary ?? paymentData?.amount ?? 0));
   const baseSalary = Number(
     paymentData?.salary_breakdown?.base_salary ?? paymentData?.basic_salary ?? 0,
   );

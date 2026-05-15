@@ -551,6 +551,15 @@ const StaffManagement = ({ navigation }) => {
       return false;
     }
 
+    // Check if total net is negative or zero
+    if (totalNet <= 0) {
+      SimpleToast.show(
+        'Net Salary cannot be zero or negative. Please check earnings and deductions.',
+        SimpleToast.LONG,
+      );
+      return false;
+    }
+
     return true;
   };
 
@@ -1378,7 +1387,7 @@ const StaffManagement = ({ navigation }) => {
 
               <View style={styles.salaryRow}>
                 <Typography type={Font.Poppins_Regular} style={styles.label}>
-                  Advance Deduction
+                  Advance Katauti (Deduct Taken Advance)
                 </Typography>
                 {isEditingDeductions ? (
                   <TextInput
