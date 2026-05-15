@@ -633,7 +633,10 @@ const StaffManagement = ({ navigation }) => {
         .then(supported => {
           if (supported) {
             Linking.openURL(upiUrl);
-            submitSalaryPayment(null);
+            // Give the app a moment to settle after opening external app before hitting the API
+            setTimeout(() => {
+              submitSalaryPayment(null);
+            }, 1000);
           } else {
             setIsSubmitting(false);
             SimpleToast.show(
@@ -690,8 +693,9 @@ const StaffManagement = ({ navigation }) => {
 
   const handleUpiModalSubmit = () => {
     const upiId = upiInput?.trim();
-    if (!upiId || !upiId.includes('@')) {
-      SimpleToast.show('Please enter a valid UPI ID (e.g. name@upi)', SimpleToast.SHORT);
+    const upiRegex = /^[\w.-]+@[\w.-]+$/;
+    if (!upiId || !upiRegex.test(upiId)) {
+      SimpleToast.show('Please enter a valid UPI ID (e.g. name@bank)', SimpleToast.SHORT);
       return;
     }
 
@@ -755,32 +759,34 @@ const StaffManagement = ({ navigation }) => {
 
         Linking.openURL(upiUrl)
           .then(() => {
-            // Only submit if URL was actually opened
-            // Note: We still can't know if payment succeeded, so we mark it and tell user
-            Alert.alert(
-              'Payment Confirmation',
-              'Please confirm if you have completed the payment in your UPI app.',
-              [
-                { 
-                  text: 'Cancel', 
-                  onPress: () => {
-                    setIsSubmitting(false);
-                    setAdvanceLoading(false);
+            // Delay to ensure the OS handles the app switch before showing the confirmation or hitting API
+            // This prevents network "Try Again" errors during app switching
+            setTimeout(() => {
+              Alert.alert(
+                'Payment Confirmation',
+                'Please confirm if you have completed the payment in your UPI app.',
+                [
+                  { 
+                    text: 'Cancel', 
+                    onPress: () => {
+                      setIsSubmitting(false);
+                      setAdvanceLoading(false);
+                    },
+                    style: 'cancel' 
                   },
-                  style: 'cancel' 
-                },
-                { 
-                  text: 'Yes, Paid', 
-                  onPress: () => {
-                    if (isAdvancePayment) {
-                      submitAdvancePayment('paid');
-                    } else {
-                      submitSalaryPayment('paid');
-                    }
-                  } 
-                }
-              ]
-            );
+                  { 
+                    text: 'Yes, Paid', 
+                    onPress: () => {
+                      if (isAdvancePayment) {
+                        submitAdvancePayment('paid');
+                      } else {
+                        submitSalaryPayment('paid');
+                      }
+                    } 
+                  }
+                ]
+              );
+            }, 1500);
           })
           .catch((err) => {
             console.log('Linking error:', err);
