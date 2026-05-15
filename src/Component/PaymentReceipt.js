@@ -50,9 +50,9 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
       0,
   );
   const staffName =
+    paymentData?.staff_name ??
     paymentData?.staff_member?.name ??
-    paymentData?.processed_by?.name ??
-    'N/A';
+    'Staff Member';
   const paymentDate = paymentData?.created_at
     ? moment(paymentData.created_at).format('DD MMM YYYY, hh:mm A')
     : moment().format('DD MMM YYYY, hh:mm A');

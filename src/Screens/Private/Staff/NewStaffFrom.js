@@ -783,7 +783,7 @@ const NewStaffForm = ({ navigation, route }) => {
     console.log('apiEndpoint----', apiEndpoint, 'user_id:', data?.id);
 
     POST_FORM_DATA(
-      PROFILE_UPDATE,
+      apiEndpoint,
       formData,
       success => {
         setLoading(false);

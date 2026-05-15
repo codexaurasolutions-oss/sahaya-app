@@ -87,8 +87,9 @@ const RecentSalaryList = ({ navigation }) => {
           payment_mode: item.payment_mode || 'cash',
           created_at: item.date,
           type: item.type,
-          processed_by: { name: item.staff_name || 'N/A' },
-          staff_member: { name: item.staff_name || '' },
+          processed_by: { name: userDetails?.name || userDetails?.first_name || 'Employer' },
+          staff_name: item.staff_name || 'Staff Member',
+          staff_member: { name: item.staff_name || 'Staff Member' },
           is_local: true,
         }));
       }
@@ -275,8 +276,8 @@ const RecentSalaryList = ({ navigation }) => {
 
           <Typography type={Font.Poppins_Regular} style={styles.paymentStaff}>
             {item?.type === 'advance'
-              ? `Advance to ${item?.processed_by?.name ?? 'N/A'}`
-              : `${LocalizedStrings.SalaryManagement.status_paid} to ${item?.processed_by?.name ?? 'N/A'}`}
+              ? `Advance to ${item.staff_name || item.staff_member?.name || 'Staff'}`
+              : `${LocalizedStrings.SalaryManagement.status_paid} to ${item.staff_name || item.staff_member?.name || 'Staff'}`}
           </Typography>
         </View>
       </View>
@@ -378,7 +379,7 @@ const RecentSalaryList = ({ navigation }) => {
                   Staff
                 </Typography>
                 <Typography type={Font.Poppins_Regular}>
-                  {selectedPayment?.processed_by?.name ?? 'N/A'}
+                  {selectedPayment?.staff_name || selectedPayment?.staff_member?.name || 'Staff Member'}
                 </Typography>
               </View>
 

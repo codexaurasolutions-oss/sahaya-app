@@ -349,6 +349,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
       if (response.errorMessage) {
         SimpleToast.show('Error picking image', SimpleToast.SHORT);
       } else if (response.assets && response.assets[0]) {
+        if (!data?.id) {
+          SimpleToast.show('Staff ID not found. Please try again.', SimpleToast.SHORT);
+          return;
+        }
         const asset = response.assets[0];
         const imageObj = {
           uri: asset.uri,
@@ -593,9 +597,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 <View style={styles.textBox}>
                   <Typography style={styles.label}>Role</Typography>
                   <Typography style={styles.value}>
-                    {Array.isArray(data.user_work_info.primary_role)
+                    {Array.isArray(data?.user_work_info?.primary_role)
                       ? data.user_work_info.primary_role.join(', ')
-                      : data.user_work_info.primary_role}
+                      : data?.user_work_info?.primary_role}
                   </Typography>
                 </View>
               </View>
@@ -893,12 +897,12 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
            </Typography>
  
            <View style={styles.docGrid}>
-              {[
+              {(Array.isArray(data?.private_docs_list) ? data.private_docs_list : [
                 { label: 'Aadhaar Front', field: 'employer_aadhar_front', url: getDocUrl(data?.employer_aadhar_front) },
                 { label: 'Aadhaar Back', field: 'employer_aadhar_back', url: getDocUrl(data?.employer_aadhar_back) },
                 { label: 'Police Verification', field: 'employer_police_verification', url: getDocUrl(data?.employer_police_verification) },
                 { label: 'Contract/Other', field: 'employer_other_doc', url: getDocUrl(data?.employer_other_doc) },
-              ].map((doc) => (
+              ]).map((doc) => (
                 <View key={doc.field} style={styles.docItem}>
                    <TouchableOpacity
                     style={[styles.docImage, { justifyContent: 'center', alignItems: 'center' }]}
@@ -1172,7 +1176,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           >
             <Typography size={22} color="#fff">{'\u2715'}</Typography>
           </TouchableOpacity>
-          {previewImage && (
+          {previewImage && typeof previewImage === 'string' && (
             <Image
               source={{ uri: previewImage }}
               style={styles.imagePreviewFull}
