@@ -22,7 +22,7 @@ import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
 import { POST_FORM_DATA, POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
-import { ReviewStore, StaffAvailableDetail, TerminateStaff } from '../../../Backend/api_routes';
+import { ReviewStore, StaffAvailableDetail, TerminateStaff, UpdateStaff } from '../../../Backend/api_routes';
 import Date_Picker from '../../../Component/Date_Picker';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
