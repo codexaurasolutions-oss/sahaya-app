@@ -100,10 +100,11 @@ const StaffDashboard = ({ navigation }) => {
         // Extract job_id and houseowner_id for navigation
         const jobApps = success?.jobApplications || success?.data?.jobApplications || success?.job_applications || success?.data?.job_applications || [];
         const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
-        // Only set staffJobId if there's an actual job application with a job_id
-        // Do NOT fallback to success?.data?.id — that's the user/work ID, not a job
-        const jobId = jobAppsArr?.[0]?.job_id || null;
+        
+        // Extract job_id and houseowner_id for navigation
+        const jobId = jobAppsArr?.[0]?.job_id || success?.data?.job_id || null;
         setStaffJobId(jobId);
+        
         const ownerId =
           jobAppsArr?.[0]?.houseowner_id ||
           jobAppsArr?.[0]?.job?.houseowner_id ||
@@ -111,6 +112,7 @@ const StaffDashboard = ({ navigation }) => {
           success?.data?.houseowner_id ||
           success?.data?.employer_id ||
           success?.data?.added_by ||
+          success?.data?.added_by_user?.id ||
           null;
         if (ownerId) {
           setHouseownerId(ownerId);
@@ -287,7 +289,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
-            disabled={!staffJobId}
+            disabled={!houseownerId}
             onPress={() => navigation.navigate('StaffAttendance')}
             style={{ height: 40 }}
           />
@@ -325,7 +327,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
-            disabled={!staffJobId}
+            disabled={!houseownerId}
             onPress={() => navigation.navigate('EarningSummary', { id: staffJobId })}
             style={{ height: 40 }}
           />
@@ -368,7 +370,7 @@ const StaffDashboard = ({ navigation }) => {
             }
             main_style={styles.smallBtn}
             title_style={styles.btnTextSmall}
-            disabled={!staffJobId}
+            disabled={!houseownerId}
             onPress={() => navigation.navigate('ApplyLeave', { houseownerId })}
             style={{ height: 40 }}
           />

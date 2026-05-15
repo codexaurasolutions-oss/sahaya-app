@@ -100,8 +100,15 @@ const RecentSalaryList = ({ navigation }) => {
     GET_WITH_TOKEN(
       SalaryList,
       success => {
-        const data = success?.data ?? [];
-        const allRecords = [...data, ...localRecords];
+        const data = success?.data?.data || success?.data || [];
+        const formattedData = data.map(item => ({
+          ...item,
+          amount: item.net_salary || item.amount || 0,
+          created_at: item.payment_date || item.created_at,
+          status: item.status || 'Paid'
+        }));
+        
+        const allRecords = [...formattedData, ...localRecords];
         const sorted = allRecords.sort(
           (a, b) => new Date(b?.created_at) - new Date(a?.created_at),
         );
@@ -149,7 +156,10 @@ const RecentSalaryList = ({ navigation }) => {
     }
     if (selectedStatus === 'Advance') {
       return salaryRecords.filter(
-        item => item?.type === 'advance' || item?.status?.toLowerCase() === 'advance',
+        item => 
+          item?.type === 'advance' || 
+          item?.status?.toLowerCase() === 'advance' || 
+          Number(item?.advance_payment) > 0,
       );
     }
     return salaryRecords.filter(
@@ -271,7 +281,7 @@ const RecentSalaryList = ({ navigation }) => {
           </Typography>
 
           <Typography type={Font.Poppins_Regular} style={styles.paymentAmount}>
-            ₹{Number(item?.amount ?? 0).toFixed(2)}
+            ₹{Math.max(0, Number(item?.amount ?? 0)).toLocaleString()}
           </Typography>
 
           <Typography type={Font.Poppins_Regular} style={styles.paymentStaff}>
