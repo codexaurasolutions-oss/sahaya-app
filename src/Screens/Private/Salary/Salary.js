@@ -1408,7 +1408,7 @@ const StaffManagement = ({ navigation }) => {
                     type={Font.Poppins_SemiBold}
                     style={{ color: '#D98579' }}
                   >
-                    -{getSanitizedValue(advance) || '0'}
+                    {Number(advance) > 0 ? `-${getSanitizedValue(advance)}` : '0'}
                   </Typography>
                 )}
               </View>
