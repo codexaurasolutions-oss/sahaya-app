@@ -131,12 +131,11 @@ const StaffManagement = ({ navigation }) => {
     const overtimeAmount = Number(overtime) || 0;
     const advanceVal = Number(advance) || 0;
     const taxAmount = Number(deduction) || 0;
-    const netSalary = base + bonusAmount + overtimeAmount - taxAmount - advanceVal;
+    const netSalary = Math.max(0, base + bonusAmount + overtimeAmount - taxAmount - advanceVal);
     setTotalNet(netSalary);
-    // Default custom amount to net salary if not already edited
-    if (customAmount === '' || customAmount === null) {
-      setCustomAmount(String(netSalary));
-    }
+    
+    // Auto-calculate custom amount whenever net salary components change
+    setCustomAmount(String(netSalary.toFixed(2)));
     
     // Check if already paid to show UI warning
     const currentMonth = moment().format('YYYY-MM');
