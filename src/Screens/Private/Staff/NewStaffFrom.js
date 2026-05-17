@@ -217,7 +217,8 @@ const NewStaffForm = ({ navigation, route }) => {
       }
 
       // UPI ID
-      if (data.upi_id) setUpiId(data.upi_id);
+      const upi = data.upi_id || data.user_work_info?.upi_id || data.work_info?.upi_id || data.user_detail?.upi_id || data.staff?.upi_id;
+      if (upi) setUpiId(upi);
 
       if (data.user_work_info) {
         const workInfo = data.user_work_info;
