@@ -20,10 +20,10 @@ const SocialLogin = ({ navigation }) => {
 
   useEffect(() => {
     GoogleSignin.configure({
-
+      // Paste your Web Client ID from Firebase/Google Cloud Console here
       webClientId: '342118935526-5enee4e4c8rm0k9gu8nsufdnm8mp9h3l.apps.googleusercontent.com',
-
-      iosClientId: '342118935526-qpevg1annvflq6m26vh7dt1igu8stigq.apps.googleusercontent.com',
+      // Paste your iOS Client ID from GoogleService-Info.plist (CLIENT_ID) here
+      iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
       offlineAccess: true,
     });
   }, []);
@@ -40,7 +40,7 @@ const SocialLogin = ({ navigation }) => {
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
 
-       
+        // Send to backend for authentication
         const formdata = new FormData();
         formdata.append('email', email);
         formdata.append('first_name', firstName);

@@ -19,7 +19,18 @@ Sirf file folder mein rakhne se kaam nahi chalega, Xcode ko batana padega:
    - Sab se neeche **URL Types** section mein `+` dabayen.
    - **URL Schemes** wale box mein apna `REVERSED_CLIENT_ID` paste kar dein (e.g., `com.googleusercontent.apps.12345...`).
 
+## 3. Code Mein IDs Update Karein
+Maine `src/Screens/Auth/SocialLogin.js` mein placeholders dal diye hain. Aapko bas wahan apni real IDs paste karni hain:
 
+```javascript
+// src/Screens/Auth/SocialLogin.js
+
+GoogleSignin.configure({
+  webClientId: 'APNI_WEB_CLIENT_ID_PASTE_KAREIN', // Firebase console se milegi
+  iosClientId: 'APNI_IOS_CLIENT_ID_PASTE_KAREIN', // .plist file se CLIENT_ID uthayen
+  offlineAccess: true,
+});
+```
 
 ## 4. App Re-Build Karein
 Sari changes karne ke baad, terminal mein ye command chalayein:
