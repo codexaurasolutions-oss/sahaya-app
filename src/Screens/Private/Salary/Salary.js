@@ -407,23 +407,17 @@ const StaffManagement = ({ navigation }) => {
         // UPI ID exists, directly open UPI app
         const upiId = leaveType.upi_id.trim();
         const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${Number(advanceAmount).toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Advance payment - ${moment().format('DD MMM YYYY')}`)}`;
-        Linking.canOpenURL(upiUrl)
-          .then(supported => {
-            if (supported) {
-              Linking.openURL(upiUrl);
-              // After opening UPI app, proceed with API call
-              submitAdvancePayment();
-            } else {
-              setAdvanceLoading(false);
-              SimpleToast.show(
-                'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
-                SimpleToast.LONG,
-              );
-            }
+        Linking.openURL(upiUrl)
+          .then(() => {
+            // After opening UPI app, proceed with API call
+            submitAdvancePayment();
           })
           .catch(() => {
             setAdvanceLoading(false);
-            SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+            SimpleToast.show(
+              'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+              SimpleToast.LONG,
+            );
           });
         return;
       }
@@ -628,25 +622,19 @@ const StaffManagement = ({ navigation }) => {
       const upiId = leaveType.upi_id.trim();
       const amountToPay = Number(customAmount) || totalNet;
       const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${amountToPay.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
-      Linking.canOpenURL(upiUrl)
-        .then(supported => {
-          if (supported) {
-            Linking.openURL(upiUrl);
-            // Give the app a moment to settle after opening external app before hitting the API
-            setTimeout(() => {
-              submitSalaryPayment(null);
-            }, 1000);
-          } else {
-            setIsSubmitting(false);
-            SimpleToast.show(
-              'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
-              SimpleToast.LONG,
-            );
-          }
+      Linking.openURL(upiUrl)
+        .then(() => {
+          // Give the app a moment to settle after opening external app before hitting the API
+          setTimeout(() => {
+            submitSalaryPayment(null);
+          }, 1000);
         })
         .catch(() => {
           setIsSubmitting(false);
-          SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
+          SimpleToast.show(
+            'No UPI app found on this device. Please install GPay, PhonePe or any UPI app.',
+            SimpleToast.LONG,
+          );
         });
       return;
     }
@@ -744,60 +732,45 @@ const StaffManagement = ({ navigation }) => {
     // Standard NPCI UPI URI
     const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
 
-    Linking.canOpenURL(upiUrl)
-      .then(supported => {
-        if (!supported) {
-          setIsSubmitting(false);
-          setAdvanceLoading(false);
+    Linking.openURL(upiUrl)
+      .then(() => {
+        // Delay to ensure the OS handles the app switch before showing the confirmation or hitting API
+        // This prevents network "Try Again" errors during app switching
+        setTimeout(() => {
           Alert.alert(
-            'UPI Not Supported',
-            'No UPI apps (like GPay, PhonePe) found on this device. Please note that UPI is primarily supported in India. Please use Cash or Bank Transfer for payment.',
-          );
-          return;
-        }
-
-        Linking.openURL(upiUrl)
-          .then(() => {
-            // Delay to ensure the OS handles the app switch before showing the confirmation or hitting API
-            // This prevents network "Try Again" errors during app switching
-            setTimeout(() => {
-              Alert.alert(
-                'Payment Confirmation',
-                'Please confirm if you have completed the payment in your UPI app.',
-                [
-                  { 
-                    text: 'Cancel', 
-                    onPress: () => {
-                      setIsSubmitting(false);
-                      setAdvanceLoading(false);
-                    },
-                    style: 'cancel' 
-                  },
-                  { 
-                    text: 'Yes, Paid', 
-                    onPress: () => {
-                      if (isAdvancePayment) {
-                        submitAdvancePayment('paid');
-                      } else {
-                        submitSalaryPayment('paid');
-                      }
-                    } 
+            'Payment Confirmation',
+            'Please confirm if you have completed the payment in your UPI app.',
+            [
+              { 
+                text: 'Cancel', 
+                onPress: () => {
+                  setIsSubmitting(false);
+                  setAdvanceLoading(false);
+                },
+                style: 'cancel' 
+              },
+              { 
+                text: 'Yes, Paid', 
+                onPress: () => {
+                  if (isAdvancePayment) {
+                    submitAdvancePayment('paid');
+                  } else {
+                    submitSalaryPayment('paid');
                   }
-                ]
-              );
-            }, 1500);
-          })
-          .catch((err) => {
-            console.log('Linking error:', err);
-            setIsSubmitting(false);
-            setAdvanceLoading(false);
-            SimpleToast.show('Failed to open UPI app.', SimpleToast.SHORT);
-          });
+                } 
+              }
+            ]
+          );
+        }, 1500);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.log('Linking error:', err);
         setIsSubmitting(false);
         setAdvanceLoading(false);
-        SimpleToast.show('Error checking UPI support.', SimpleToast.SHORT);
+        Alert.alert(
+          'UPI Payment Failed',
+          'Failed to open UPI app. Please install GPay, PhonePe or any UPI app. Alternatively, use Cash or Bank Transfer.',
+        );
       });
   };
 
