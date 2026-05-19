@@ -15,7 +15,7 @@ import LocalizedStrings from '../../../Constants/localization';
 
 const AadharOtp = ({ navigation, route }) => {
   const [otp, setOtp] = useState('');
-  const [resendTimer, setResendTimer] = useState(30); // 30 sec timer
+  const [resendTimer, setResendTimer] = useState(60); // 60 sec timer
   const [otpError, setOtpError] = useState('');
   const { mobile } = route?.params;
   const dispatch = useDispatch();
@@ -46,7 +46,7 @@ const AadharOtp = ({ navigation, route }) => {
       data,
       sucess => {
         setOtpError(''); // Clear any previous errors
-        setResendTimer(30);
+        setResendTimer(60);
         let timer = setInterval(() => {
           setResendTimer(prev => {
             if (prev <= 1) {

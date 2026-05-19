@@ -23,7 +23,7 @@ const StaffVerifection = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
   const [otpError, setOtpError] = useState('');
-  const [resendTimer, setResendTimer] = useState(30);
+  const [resendTimer, setResendTimer] = useState(60);
   const last4 = adharNumber?.slice(-4) || '****';
 
   useEffect(() => {
@@ -55,7 +55,7 @@ const StaffVerifection = ({ navigation, route }) => {
       AADHAR_SAVE,
       body,
       success => {
-        setResendTimer(30);
+        setResendTimer(60);
         setOtpError('');
       },
       error => {

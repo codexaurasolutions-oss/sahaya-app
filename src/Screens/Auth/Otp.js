@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const Otp = ({ navigation, route }) => {
   const { type, aadhaar, mobile, countryCode, user_id } = route?.params;
   const [otp, setOtp] = useState('');
-  const [resendTimer, setResendTimer] = useState(30); // 30 sec timer
+  const [resendTimer, setResendTimer] = useState(60); // 60 sec timer
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
   const dispatch = useDispatch();
@@ -68,7 +68,7 @@ const Otp = ({ navigation, route }) => {
           'OTP sent successfully!',
           SimpleToast.SHORT,
         );
-        setResendTimer(30);
+        setResendTimer(60);
       },
       error => {
         setIsLoading(false);
