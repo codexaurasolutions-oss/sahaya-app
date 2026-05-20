@@ -299,6 +299,10 @@ const EditProfile = ({ navigation, route }) => {
         label: `${workInfo.total_experience} Years`,
         value: workInfo.total_experience,
       });
+    if (workInfo?.emergency_contact_name) setEmergencyName(workInfo.emergency_contact_name);
+    if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
+    if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
+    if (userDetail?.upi_id) setUpiId(userDetail.upi_id);
 
     // Last Work Experience
     const lastExp = userDetail?.last_exp || {};
