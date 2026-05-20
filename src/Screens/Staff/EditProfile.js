@@ -1062,6 +1062,83 @@ const EditProfile = ({ navigation, route }) => {
           <Typography size={11} color="#888" style={{ marginTop: -10, marginBottom: 10 }}>
             Enter cities where you are ready to work (comma separated)
           </Typography>
+          <View style={[styles.skillContainer, { marginBottom: 0 }]}>
+            <TouchableOpacity 
+              onPress={() => setPreferredWorkCity('All India')}
+              style={[
+                styles.skillChip,
+                preferredWorkCity === 'All India' && styles.skillChipSelected,
+              ]}
+            >
+              <Typography 
+                style={[
+                  styles.skillText,
+                  preferredWorkCity === 'All India' && styles.skillTextSelected,
+                ]}
+                type={Font?.Manrope_SemiBold}
+              >
+                All India (Anywhere)
+              </Typography>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => setPreferredWorkCity('Metro Cities')}
+              style={[
+                styles.skillChip,
+                preferredWorkCity === 'Metro Cities' && styles.skillChipSelected,
+              ]}
+            >
+              <Typography 
+                style={[
+                  styles.skillText,
+                  preferredWorkCity === 'Metro Cities' && styles.skillTextSelected,
+                ]}
+                type={Font?.Manrope_SemiBold}
+              >
+                Metro Cities
+              </Typography>
+            </TouchableOpacity>
+
+            {currentCity ? (
+              <TouchableOpacity 
+                onPress={() => setPreferredWorkCity(currentCity)}
+                style={[
+                  styles.skillChip,
+                  preferredWorkCity === currentCity && styles.skillChipSelected,
+                ]}
+              >
+                <Typography 
+                  style={[
+                    styles.skillText,
+                    preferredWorkCity === currentCity && styles.skillTextSelected,
+                  ]}
+                  type={Font?.Manrope_SemiBold}
+                >
+                  Only {currentCity}
+                </Typography>
+              </TouchableOpacity>
+            ) : null}
+
+            {currentState ? (
+              <TouchableOpacity 
+                onPress={() => setPreferredWorkCity(`Within ${currentState}`)}
+                style={[
+                  styles.skillChip,
+                  preferredWorkCity === `Within ${currentState}` && styles.skillChipSelected,
+                ]}
+              >
+                <Typography 
+                  style={[
+                    styles.skillText,
+                    preferredWorkCity === `Within ${currentState}` && styles.skillTextSelected,
+                  ]}
+                  type={Font?.Manrope_SemiBold}
+                >
+                  Within {currentState}
+                </Typography>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.section}>
