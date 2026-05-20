@@ -48,7 +48,7 @@ const FamilyMembers = ({ navigation, route }) => {
         }
       },
       error => {
-        SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+        SimpleToast.show('Failed to load family members', SimpleToast.SHORT);
       },
       fail => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);

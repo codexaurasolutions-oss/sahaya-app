@@ -186,7 +186,7 @@ const StaffManagement = ({ navigation }) => {
         }
       },
       error => {
-        SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+        SimpleToast.show('Failed to load staff list for salary', SimpleToast.SHORT);
       },
       fail => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
@@ -203,7 +203,7 @@ const StaffManagement = ({ navigation }) => {
         }
       },
       error => {
-        SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+        SimpleToast.show('Failed to load past payments', SimpleToast.SHORT);
       },
       fail => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);

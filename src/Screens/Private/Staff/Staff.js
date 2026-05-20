@@ -47,7 +47,7 @@ const Staff = ({ navigation }) => {
         }
       },
       error => {
-        SimpleToast.show('Failed to load profile', SimpleToast.SHORT);
+        SimpleToast.show('Failed to load staff list', SimpleToast.SHORT);
       },
       fail => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
