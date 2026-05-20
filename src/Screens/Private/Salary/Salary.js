@@ -40,6 +40,7 @@ import { setAsyncStorage, getAsyncStorage } from '../../../Utils/AsyncStorage';
 const StaffManagement = ({ navigation }) => {
   const isFocused = useIsFocused();
   const [baseSalary, setBaseSalary] = useState('');
+  const [profileMonthlySalary, setProfileMonthlySalary] = useState(0);
   const [bonus, setBonus] = useState('');
   const [overtime, setOvertime] = useState('');
   const [advance, setAdvance] = useState('');
@@ -124,6 +125,15 @@ const StaffManagement = ({ navigation }) => {
     GetSalaryList();
     GetUser();
   }, [isFocused]);
+
+  useEffect(() => {
+    if (profileMonthlySalary > 0 && totalDaysInMonth > 0) {
+      const calculatedBase = ((profileMonthlySalary / totalDaysInMonth) * workedDays).toFixed(2);
+      setBaseSalary(calculatedBase);
+    } else {
+      setBaseSalary('0');
+    }
+  }, [profileMonthlySalary, workedDays, totalDaysInMonth]);
 
   useEffect(() => {
     const base = Number(baseSalary) || 0;
@@ -218,7 +228,7 @@ const StaffManagement = ({ navigation }) => {
         const salaryDetails = response?.data?.salary_details ?? {};
         const baseSalary = salaryDetails?.base_salary?.monthly_salary ?? 0;
         const adjustments = salaryDetails?.adjustments ?? {};
-        setBaseSalary(baseSalary);
+        setProfileMonthlySalary(baseSalary);
         setBonus(adjustments.performance_bonus ?? 0);
         setOvertime(adjustments.overtime_pay ?? 0);
         setAdvance(adjustments.advance_payment ?? 0);
@@ -894,6 +904,7 @@ const StaffManagement = ({ navigation }) => {
             setPaymentType(null);
             // Reset salary fields when switching staff
             setBaseSalary('');
+            setProfileMonthlySalary(0);
             setBonus('');
             setOvertime('');
             setAdvance('');
@@ -1173,33 +1184,16 @@ const StaffManagement = ({ navigation }) => {
                 >
                   {LocalizedStrings.SalaryManagement.base_salary}
                 </Typography>
-                <TouchableOpacity
-                  onPress={() => setIsEditingBaseSalary(!isEditingBaseSalary)}
-                >
-                  <Image
-                    source={ImageConstant.pencle}
-                    style={styles.pencle}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
               </View>
               <View style={{ marginBottom: 10, padding: 10, backgroundColor: '#F0FDF4', borderRadius: 8, borderWidth: 1, borderColor: '#DCFCE7' }}>
                  <Typography type={Font.Poppins_Medium} size={13} color="#166534">
                     Worked Days: {workedDays} / {totalDaysInMonth} Days
                  </Typography>
-                 {baseSalary > 0 && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                      <Typography type={Font.Poppins_Regular} size={11} color="#15803d">
-                        Suggested Pro-rata: ₹{((baseSalary / totalDaysInMonth) * workedDays).toFixed(2)}
-                      </Typography>
-                      <TouchableOpacity 
-                        style={{ backgroundColor: '#166534', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}
-                        onPress={() => setBaseSalary(((baseSalary / totalDaysInMonth) * workedDays).toFixed(2))}
-                      >
-                        <Typography size={10} color="#fff" type={Font.Poppins_Bold}>Apply</Typography>
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                 {profileMonthlySalary > 0 && (
+                   <Typography type={Font.Poppins_Regular} size={11} color="#15803d" style={{ marginTop: 4 }}>
+                     Monthly base salary (from profile): ₹{profileMonthlySalary.toFixed(2)}
+                   </Typography>
+                 )}
               </View>
               <View style={styles.salaryRow}>
                 <Typography type={Font.Poppins_Regular} style={styles.subText}>
