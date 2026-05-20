@@ -418,137 +418,145 @@ const EarningSummary = ({ route }) => {
         </View>
       )}
 
-      <View style={styles.sectionCard}>
-        <Typography
-          type={Font.Poppins_SemiBold}
-          size={15}
-          style={styles.sectionTitle}
-        >
-          {LocalizedStrings.staffSection?.EarningsSummary?.earnings_breakdown ||
-            'Earnings Breakdown'}
-        </Typography>
-        <View style={styles.breakdownRow}>
-          <View style={styles.breakdownLeft}>
-            <View style={styles.iconWrapper}>
-              <Image
-                source={ImageConstant?.Dollar}
-                style={styles.rowIcon}
-                resizeMode="contain"
-              />
+      {(Number(summary2?.earnings_breakdown?.base_salary?.amount) > 0 ||
+        Number(summary2?.earnings_breakdown?.performance_bonus?.amount) > 0 ||
+        Number(summary2?.earnings_breakdown?.overtime_pay?.amount) > 0) ? (
+        <View style={styles.sectionCard}>
+          <Typography
+            type={Font.Poppins_SemiBold}
+            size={15}
+            style={styles.sectionTitle}
+          >
+            {LocalizedStrings.staffSection?.EarningsSummary?.earnings_breakdown ||
+              'Earnings Breakdown'}
+          </Typography>
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLeft}>
+              <View style={styles.iconWrapper}>
+                <Image
+                  source={ImageConstant?.Dollar}
+                  style={styles.rowIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Typography size={14}>
+                {LocalizedStrings.staffSection?.EarningsSummary?.base_salary ||
+                  'Base Salary'}
+              </Typography>
             </View>
-            <Typography size={14}>
-              {LocalizedStrings.staffSection?.EarningsSummary?.base_salary ||
-                'Base Salary'}
+            <Typography type={Font.Poppins_SemiBold} size={14}>
+              {formatCurrency(summary2?.earnings_breakdown?.base_salary?.amount)}
             </Typography>
           </View>
-          <Typography type={Font.Poppins_SemiBold} size={14}>
-            {formatCurrency(summary2?.earnings_breakdown?.base_salary?.amount)}
-          </Typography>
-        </View>
-        <View style={styles.breakdownRow}>
-          <View style={styles.breakdownLeft}>
-            <View style={styles.iconWrapper}>
-              <Image
-                source={ImageConstant?.Dollar}
-                style={styles.rowIcon}
-                resizeMode="contain"
-              />
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLeft}>
+              <View style={styles.iconWrapper}>
+                <Image
+                  source={ImageConstant?.Dollar}
+                  style={styles.rowIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Typography size={14}>
+                {LocalizedStrings.staffSection?.EarningsSummary
+                  ?.performance_bonus || 'Performance Bonus'}
+              </Typography>
             </View>
-            <Typography size={14}>
-              {LocalizedStrings.staffSection?.EarningsSummary
-                ?.performance_bonus || 'Performance Bonus'}
+            <Typography type={Font.Poppins_SemiBold} size={14}>
+              {formatCurrency(
+                summary2?.earnings_breakdown?.performance_bonus?.amount,
+              )}
             </Typography>
           </View>
-          <Typography type={Font.Poppins_SemiBold} size={14}>
-            {formatCurrency(
-              summary2?.earnings_breakdown?.performance_bonus?.amount,
-            )}
-          </Typography>
-        </View>
-        <View style={styles.breakdownRow}>
-          <View style={styles.breakdownLeft}>
-            <View style={styles.iconWrapper}>
-              <Image
-                source={ImageConstant?.Dollar}
-                style={styles.rowIcon}
-                resizeMode="contain"
-              />
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLeft}>
+              <View style={styles.iconWrapper}>
+                <Image
+                  source={ImageConstant?.Dollar}
+                  style={styles.rowIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Typography size={14}>
+                {LocalizedStrings.staffSection?.EarningsSummary?.overtime_pay ||
+                  'Overtime Pay'}
+              </Typography>
             </View>
-            <Typography size={14}>
-              {LocalizedStrings.staffSection?.EarningsSummary?.overtime_pay ||
-                'Overtime Pay'}
+            <Typography type={Font.Poppins_SemiBold} size={14}>
+              {formatCurrency(summary2?.earnings_breakdown?.overtime_pay?.amount)}
             </Typography>
           </View>
-          <Typography type={Font.Poppins_SemiBold} size={14}>
-            {formatCurrency(summary2?.earnings_breakdown?.overtime_pay?.amount)}
-          </Typography>
         </View>
-      </View>
+      ) : null}
 
-      <View style={styles.sectionCard}>
-        <Typography
-          type={Font.Poppins_SemiBold}
-          size={15}
-          style={styles.sectionTitle}
-        >
-          {LocalizedStrings.staffSection?.EarningsSummary?.deductions ||
-            'Deductions (if applicable)'}
-        </Typography>
-        <View style={styles.breakdownRow}>
-          <View style={styles.breakdownLeft}>
-            <View style={[styles.iconWrapper, styles.deductionIcon]}>
-              <Image
-                source={ImageConstant?.fileText}
-                style={styles.rowIcon}
-                resizeMode="contain"
-              />
+      {(Number(summary2?.deductions?.provident_fund?.amount) > 0 ||
+        Number(summary2?.deductions?.income_tax?.amount) > 0 ||
+        Number(summary2?.deductions?.advance_repayment?.amount) > 0) ? (
+        <View style={styles.sectionCard}>
+          <Typography
+            type={Font.Poppins_SemiBold}
+            size={15}
+            style={styles.sectionTitle}
+          >
+            {LocalizedStrings.staffSection?.EarningsSummary?.deductions ||
+              'Deductions (if applicable)'}
+          </Typography>
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLeft}>
+              <View style={[styles.iconWrapper, styles.deductionIcon]}>
+                <Image
+                  source={ImageConstant?.fileText}
+                  style={styles.rowIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Typography size={14}>
+                {LocalizedStrings.staffSection?.EarningsSummary?.provident_fund ||
+                  'Provident Fund'}
+              </Typography>
             </View>
-            <Typography size={14}>
-              {LocalizedStrings.staffSection?.EarningsSummary?.provident_fund ||
-                'Provident Fund'}
+            <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
+              {formatCurrency(summary2?.deductions?.provident_fund?.amount)}
             </Typography>
           </View>
-          <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
-            {formatCurrency(summary2?.deductions?.provident_fund?.amount)}
-          </Typography>
-        </View>
-        <View style={styles.breakdownRow}>
-          <View style={styles.breakdownLeft}>
-            <View style={[styles.iconWrapper, styles.deductionIcon]}>
-              <Image
-                source={ImageConstant?.fileText}
-                style={styles.rowIcon}
-                resizeMode="contain"
-              />
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLeft}>
+              <View style={[styles.iconWrapper, styles.deductionIcon]}>
+                <Image
+                  source={ImageConstant?.fileText}
+                  style={styles.rowIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Typography size={14}>
+                {LocalizedStrings.staffSection?.EarningsSummary?.income_tax ||
+                  'Income Tax'}
+              </Typography>
             </View>
-            <Typography size={14}>
-              {LocalizedStrings.staffSection?.EarningsSummary?.income_tax ||
-                'Income Tax'}
+            <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
+              {formatCurrency(summary2?.deductions?.income_tax?.amount)}
             </Typography>
           </View>
-          <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
-            {formatCurrency(summary2?.deductions?.income_tax?.amount)}
-          </Typography>
-        </View>
-        <View style={styles.breakdownRow}>
-          <View style={styles.breakdownLeft}>
-            <View style={[styles.iconWrapper, styles.deductionIcon]}>
-              <Image
-                source={ImageConstant?.fileText}
-                style={styles.rowIcon}
-                resizeMode="contain"
-              />
+          <View style={styles.breakdownRow}>
+            <View style={styles.breakdownLeft}>
+              <View style={[styles.iconWrapper, styles.deductionIcon]}>
+                <Image
+                  source={ImageConstant?.fileText}
+                  style={styles.rowIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Typography size={14}>
+                {LocalizedStrings.staffSection?.EarningsSummary
+                  ?.advance_repayment || 'Advance Repayment'}
+              </Typography>
             </View>
-            <Typography size={14}>
-              {LocalizedStrings.staffSection?.EarningsSummary
-                ?.advance_repayment || 'Advance Repayment'}
+            <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
+              {formatCurrency(summary2?.deductions?.advance_repayment?.amount)}
             </Typography>
           </View>
-          <Typography type={Font.Poppins_SemiBold} size={14} color={Colors.red}>
-            {formatCurrency(summary2?.deductions?.advance_repayment?.amount)}
-          </Typography>
         </View>
-      </View>
+      ) : null}
 
       <View style={[styles.sectionCard, styles.historyCard]}>
         <Typography

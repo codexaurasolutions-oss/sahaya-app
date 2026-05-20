@@ -1237,18 +1237,7 @@ const StaffManagement = ({ navigation }) => {
                       {isSavingBaseSalary ? 'Saving...' : 'Save'}
                     </Typography>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.saveButton, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D98579', marginTop: 10 }]}
-                    onPress={updatePermanentSalary}
-                    disabled={isSavingBaseSalary}
-                  >
-                    <Typography
-                      type={Font.Poppins_SemiBold}
-                      style={[styles.saveButtonText, { color: '#D98579' }]}
-                    >
-                      Update in Profile
-                    </Typography>
-                  </TouchableOpacity>
+
                 </View>
               )}
             </View>
