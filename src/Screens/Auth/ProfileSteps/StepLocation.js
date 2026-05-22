@@ -19,12 +19,14 @@ const StepLocation = React.forwardRef((props, ref) => {
   const [loadingLocation, setLoadingLocation] = useState(false);
   
   // Primary address states
+  const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [street, setStreet] = useState('');
   const [pinCode, setPinCode] = useState('');
   
   // Secondary address states
+  const [name2, setName2] = useState('');
   const [city2, setCity2] = useState('');
   const [state2, setState2] = useState('');
   const [street2, setStreet2] = useState('');
@@ -144,6 +146,7 @@ const StepLocation = React.forwardRef((props, ref) => {
   // Validation function for address fields
   const validateAddress = () => {
     let errors = {
+      name: validators.checkRequire('Address Name', name),
       street: validators.checkRequire('Street', street),
       city: validators.checkAlphabet('City', 2, 50, city),
       state: validators.checkAlphabet('State', 2, 50, state),
@@ -154,6 +157,7 @@ const StepLocation = React.forwardRef((props, ref) => {
     if (show) {
       errors = {
         ...errors,
+        name2: validators.checkRequire('Address Name', name2),
         street2: validators.checkRequire('Street', street2),
         city2: validators.checkAlphabet('City', 2, 50, city2),
         state2: validators.checkAlphabet('State', 2, 50, state2),
@@ -168,6 +172,7 @@ const StepLocation = React.forwardRef((props, ref) => {
   // Function to get address data
   const getAddressData = () => {
     const addresses = [{
+      name,
       street,
       city,
       state,
@@ -177,6 +182,7 @@ const StepLocation = React.forwardRef((props, ref) => {
     // Add secondary address if exists
     if (show && street2 && city2 && state2 && pinCode2) {
       addresses.push({
+        name: name2,
         street: street2,
         city: city2,
         state: state2,
@@ -215,6 +221,18 @@ const StepLocation = React.forwardRef((props, ref) => {
             </Typography>
           </TouchableOpacity>
         </View>
+
+        {/* Address Name */}
+        <Input
+          title={LocalizedStrings.EditProfile?.address_name || 'Address Name'}
+          placeholder="e.g. Home, Office, Villa 1"
+          value={name}
+          onChange={(text) => {
+            setName(text);
+            if (error?.name) setError({...error, name: null});
+          }}
+          error={error?.name}
+        />
 
         {/* Street - FIRST */}
         <Input
@@ -286,6 +304,18 @@ const StepLocation = React.forwardRef((props, ref) => {
               <Image source={ImageConstant?.X} style={styles.closeIcon} />
             </TouchableOpacity>
           </View>
+
+          {/* Address Name */}
+          <Input
+            title={LocalizedStrings.EditProfile?.address_name || 'Address Name'}
+            placeholder="e.g. Home, Office, Villa 2"
+            value={name2}
+            onChange={(text) => {
+              setName2(text);
+              if (error?.name2) setError({...error, name2: null});
+            }}
+            error={error?.name2}
+          />
 
           {/* Street - FIRST */}
           <Input

@@ -30,7 +30,7 @@ const ManageAddresses = ({ navigation }) => {
   
   // Multiple address support
   const [addresses, setAddresses] = useState([
-    { street: '', city: '', state: '', pincode: '' },
+    { title: '', street: '', city: '', state: '', pincode: '' },
   ]);
 
   useEffect(() => {
@@ -49,6 +49,7 @@ const ManageAddresses = ({ navigation }) => {
           if (Array.isArray(user.addresses) && user.addresses.length > 0) {
             const mappedAddresses = user.addresses.map(addr => ({
               id: addr.id,
+              title: addr.title || addr.name || '',
               street: addr.street || '',
               city: addr.city || '',
               state: addr.state || '',
@@ -67,7 +68,7 @@ const ManageAddresses = ({ navigation }) => {
   };
 
   const addAddress = () => {
-    setAddresses([...addresses, { street: '', city: '', state: '', pincode: '' }]);
+    setAddresses([...addresses, { title: '', street: '', city: '', state: '', pincode: '' }]);
   };
 
   const removeAddress = (index) => {
@@ -100,6 +101,9 @@ const ManageAddresses = ({ navigation }) => {
     
     // According to original code, it sends addresses as arrays
     addresses.forEach((addr, index) => {
+      if (addr.title) {
+        formData.append(`addresses[${index}][title]`, addr.title);
+      }
       formData.append(`addresses[${index}][street]`, addr.street);
       formData.append(`addresses[${index}][city]`, addr.city);
       formData.append(`addresses[${index}][state]`, addr.state || '');
@@ -164,6 +168,13 @@ const ManageAddresses = ({ navigation }) => {
                     </TouchableOpacity>
                   )}
                 </View>
+
+                <Input
+                  title="Address Name / Heading"
+                  placeholder="e.g. Home, Office, Work"
+                  value={address.title}
+                  onChange={(val) => updateAddress(index, 'title', val)}
+                />
 
                 <Input
                   title="Street / Landmark"

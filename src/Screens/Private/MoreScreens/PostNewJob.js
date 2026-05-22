@@ -9,6 +9,7 @@ import {
   TextInput,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -42,14 +43,20 @@ const PostNewJob = ({ navigation, route }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
+  const userDetail = useSelector(state => state?.userDetails);
+  const userAddresses = userDetail?.addresses || [];
+  
+  const addressOptions = userAddresses.map(addr => ({
+    label: addr?.title || addr?.name || `${addr?.street || ''}, ${addr?.city || ''}`,
+    value: addr,
+  }));
+
   // Compensation
   const [expectedCompensation, setExpectedCompensation] = useState('');
-  const [compensationType, setCompensationType] = useState(null);
+  const [compensationType, setCompensationType] = useState({ label: 'Monthly', value: 'monthly' });
 
-  // Location - multiple addresses
-  const [addresses, setAddresses] = useState([
-    { streetAddress: '', city: '', state: null, zipCode: '' },
-  ]);
+  // Location
+  const [selectedAddress, setSelectedAddress] = useState(null);
 
   // Working Schedule
   const [startTime, setStartTime] = useState(null);
@@ -471,16 +478,9 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Validate Addresses
-    const firstAddr = addresses[0];
-    if (!firstAddr?.streetAddress || firstAddr.streetAddress.trim().length < 5) {
-      validationErrors.addresses = 'At least one address with street (min 5 chars) is required.';
-    } else if (!firstAddr?.zipCode || !/^\d{6}$/.test(firstAddr.zipCode.trim())) {
-      validationErrors.addresses = 'Please enter a valid 6-digit pincode for the first address.';
-    } else if (!firstAddr?.city) {
-      validationErrors.addresses = 'City is required for the first address.';
-    } else if (!firstAddr?.state) {
-      validationErrors.addresses = 'State is required for the first address.';
+    // Validate Address
+    if (!selectedAddress) {
+      validationErrors.selectedAddress = 'Please select a location for this job.';
     }
 
     // Validate Commitment Type
@@ -503,11 +503,8 @@ const PostNewJob = ({ navigation, route }) => {
       validationErrors.selectedDays = 'Please select at least one working day.';
     }
 
-    // Validate Additional Requirements
-    validationErrors.additionalRequirements = validators.checkRequire(
-      'Additional Requirements',
-      additionalRequirements,
-    );
+    // Validate Additional Requirements (Non-mandatory)
+    // No validation required for additionalRequirements
 
     // Validate Selected Skills
     if (selectedSkills.length === 0) {
@@ -535,19 +532,13 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Location - send first address as primary
-    formData.append('street_address', addresses[0].streetAddress);
-    formData.append('city', addresses[0].city);
-    formData.append('state', typeof addresses[0].state === 'string' ? addresses[0].state : addresses[0].state?.label || '');
-    formData.append('zip_code', addresses[0].zipCode);
-
-    // Additional addresses
-    addresses.forEach((addr, index) => {
-      formData.append(`addresses[${index}][street_address]`, addr.streetAddress);
-      formData.append(`addresses[${index}][city]`, addr.city);
-      formData.append(`addresses[${index}][state]`, typeof addr.state === 'string' ? addr.state : addr.state?.label || '');
-      formData.append(`addresses[${index}][zip_code]`, addr.zipCode);
-    });
+    // Location
+    if (selectedAddress) {
+      formData.append('street_address', selectedAddress.street || '');
+      formData.append('city', selectedAddress.city || '');
+      formData.append('state', typeof selectedAddress.state === 'string' ? selectedAddress.state : selectedAddress.state?.label || '');
+      formData.append('zip_code', selectedAddress.pincode || selectedAddress.zip_code || '');
+    }
 
     // Working Schedule
     if (commitment.length > 0) {
@@ -561,7 +552,7 @@ const PostNewJob = ({ navigation, route }) => {
     }
 
     // Status
-    formData.append('status', 'pending');
+    formData.append('status', 'open');
 
     // Skills & Requirements
     selectedSkills.forEach((skill, index) => {
@@ -596,7 +587,6 @@ const PostNewJob = ({ navigation, route }) => {
       success => {
         SimpleToast.show('Job posted successfully!', SimpleToast.SHORT);
         setLoading(false);
-        handelapplication(success?.data?.id);
         navigation?.goBack();
       },
       error => {
@@ -613,31 +603,7 @@ const PostNewJob = ({ navigation, route }) => {
     );
   };
 
-  const handelapplication = id => {
-    const body = {
-      status: 'open',
-    };
-
-    POST_WITH_TOKEN(
-      `${ApplicantsList}/${id}/status`,
-      body,
-      success => {
-        // SimpleToast.show(
-        //   success?.message || 'Member deleted successfully',
-        //   SimpleToast.SHORT,
-        // );
-      },
-      error => {
-        // SimpleToast.show(
-        //   error?.message || 'Failed to delete Member',
-        //   SimpleToast.SHORT,
-        // );
-      },
-      fail => {
-        // SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
-      },
-    );
-  };
+  // handelapplication removed as status is now correctly set to 'open' upon creation
 
   const UpdatePostJob = () => {
     if (loading) return;
@@ -689,16 +655,9 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Validate Addresses
-    const firstAddr = addresses[0];
-    if (!firstAddr?.streetAddress || firstAddr.streetAddress.trim().length < 5) {
-      validationErrors.addresses = 'At least one address with street (min 5 chars) is required.';
-    } else if (!firstAddr?.zipCode || !/^\d{6}$/.test(firstAddr.zipCode.trim())) {
-      validationErrors.addresses = 'Please enter a valid 6-digit pincode for the first address.';
-    } else if (!firstAddr?.city) {
-      validationErrors.addresses = 'City is required for the first address.';
-    } else if (!firstAddr?.state) {
-      validationErrors.addresses = 'State is required for the first address.';
+    // Validate Address
+    if (!selectedAddress) {
+      validationErrors.selectedAddress = 'Please select a location for this job.';
     }
 
     // Validate Commitment Type
@@ -721,11 +680,8 @@ const PostNewJob = ({ navigation, route }) => {
       validationErrors.selectedDays = 'Please select at least one working day.';
     }
 
-    // Validate Additional Requirements
-    validationErrors.additionalRequirements = validators.checkRequire(
-      'Additional Requirements',
-      additionalRequirements,
-    );
+    // Validate Additional Requirements (Non-mandatory)
+    // No validation required for additionalRequirements
 
     // Validate Selected Skills
     if (selectedSkills.length === 0) {
@@ -753,19 +709,13 @@ const PostNewJob = ({ navigation, route }) => {
       compensationType?.value || compensationType,
     );
 
-    // Location - send first address as primary
-    formData.append('street_address', addresses[0].streetAddress);
-    formData.append('city', addresses[0].city);
-    formData.append('state', typeof addresses[0].state === 'string' ? addresses[0].state : addresses[0].state?.label || '');
-    formData.append('zip_code', addresses[0].zipCode);
-
-    // Additional addresses
-    addresses.forEach((addr, index) => {
-      formData.append(`addresses[${index}][street_address]`, addr.streetAddress);
-      formData.append(`addresses[${index}][city]`, addr.city);
-      formData.append(`addresses[${index}][state]`, typeof addr.state === 'string' ? addr.state : addr.state?.label || '');
-      formData.append(`addresses[${index}][zip_code]`, addr.zipCode);
-    });
+    // Location
+    if (selectedAddress) {
+      formData.append('street_address', selectedAddress.street || '');
+      formData.append('city', selectedAddress.city || '');
+      formData.append('state', typeof selectedAddress.state === 'string' ? selectedAddress.state : selectedAddress.state?.label || '');
+      formData.append('zip_code', selectedAddress.pincode || selectedAddress.zip_code || '');
+    }
 
     // Working Schedule
     if (commitment.length > 0) {
@@ -779,7 +729,7 @@ const PostNewJob = ({ navigation, route }) => {
     }
 
     // Status
-    formData.append('status', 'pending');
+    formData.append('status', 'open');
 
     // Skills & Requirements
     selectedSkills.forEach((skill, index) => {
@@ -892,6 +842,7 @@ const PostNewJob = ({ navigation, route }) => {
                 onChange={handleCompensationChange}
                 keyboardType="numeric"
                 error={errors.expectedCompensation}
+                prefixText="Rs "
               />
             </View>
             <View style={{ width: '46%' }}>
@@ -921,61 +872,21 @@ const PostNewJob = ({ navigation, route }) => {
             icon={ImageConstant?.Location}
             title={LocalizedStrings.PostNewJob.location_details}
           />
-          {addresses.map((addr, index) => (
-            <View key={index} style={index > 0 ? styles.addressBlock : null}>
-              {index > 0 && (
-                <View style={styles.addressHeader}>
-                  <Typography type={Font?.Poppins_Medium} size={14} style={{ color: '#666' }}>
-                    Address {index + 1}
-                  </Typography>
-                  <TouchableOpacity onPress={() => removeAddress(index)}>
-                    <Typography style={{ color: '#D98579', fontSize: 14 }}>Remove</Typography>
-                  </TouchableOpacity>
-                </View>
-              )}
-              <Input
-                title={LocalizedStrings.PostNewJob.street_address}
-                value={addr.streetAddress}
-                onChange={value => updateAddress(index, 'streetAddress', value)}
-              />
-              <Input
-                title={LocalizedStrings.PostNewJob.zip_code}
-                value={addr.zipCode}
-                onChange={value => handlePincodeChange(index, value)}
-                keyboardType="numeric"
-                maxLength={6}
-              />
-              {addr.zipCode?.length === 6 && (
-                <View style={styles.locationRow}>
-                  <View style={styles.cityContainer}>
-                    <Input
-                      title={LocalizedStrings.PostNewJob.city}
-                      value={addr.city}
-                      onChange={value => updateAddress(index, 'city', value)}
-                    />
-                  </View>
-                  <View style={styles.stateContainer}>
-                    <Input
-                      title={LocalizedStrings.PostNewJob.state}
-                      value={typeof addr.state === 'string' ? addr.state : addr.state?.label || ''}
-                      onChange={value => updateAddress(index, 'state', value)}
-                    />
-                  </View>
-                </View>
-              )}
-            </View>
-          ))}
-          {errors.addresses && (
-            <Typography
-              textAlign={'right'}
-              style={{ color: 'red', fontSize: 12, marginTop: 5 }}
-            >
-              {errors.addresses}
-            </Typography>
-          )}
-          <TouchableOpacity style={styles.addAddressBtn} onPress={addAddress}>
-            <Typography style={{ color: '#D98579', fontSize: 14 }}>+ Add Another Address</Typography>
-          </TouchableOpacity>
+          <DropdownComponent
+            title="Select Address"
+            placeholder="Select from your existing addresses"
+            data={addressOptions}
+            value={selectedAddress}
+            onChange={item => {
+              setSelectedAddress(item.value);
+              if (errors.selectedAddress) {
+                setErrors({ ...errors, selectedAddress: null });
+              }
+            }}
+            error={errors.selectedAddress}
+            marginHorizontal={0}
+            MainBoxStyle={{ width: '100%' }}
+          />
         </View>
 
         <View style={styles.card}>

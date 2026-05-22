@@ -48,6 +48,7 @@ const Input = ({
   textAlign = 'right',
   firstStyle,
   showImage2,
+  prefixText,
 }) => {
   const [show, setShow] = useState(false);
   const [countryCode, setCountryCode] = useState({
@@ -133,6 +134,12 @@ const Input = ({
                 }}
               />
             </>
+          )}
+
+          {prefixText && (
+            <Typography style={{ marginLeft: 15, marginRight: -5, fontSize: 14 / fontScale, fontFamily: Font.Poppins_Medium, color: Colors.black, alignSelf: 'center' }}>
+              {prefixText}
+            </Typography>
           )}
 
           <TextInput

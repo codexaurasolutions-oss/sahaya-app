@@ -166,6 +166,14 @@ const Staff = ({ navigation }) => {
         >
           {Array.isArray(item.user_work_info?.primary_role) ? item.user_work_info.primary_role.join(', ') : (item.user_work_info?.primary_role || '')}
         </Typography>
+        {(item?.address_title || item?.address?.title || item?.address?.name || item?.user_work_info?.address_title || item?.user_work_info?.location) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, backgroundColor: '#FFF5F4', alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+            <Image source={ImageConstant?.Location} style={{ width: 10, height: 10, marginRight: 4 }} tintColor="#D98579" />
+            <Typography type={Font?.Poppins_Medium} size={11} color="#D98579">
+              {item?.address_title || item?.address?.title || item?.address?.name || item?.user_work_info?.address_title || item?.user_work_info?.location}
+            </Typography>
+          </View>
+        )}
       </View>
       <View style={styles.statusRow}>
         <View

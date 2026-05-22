@@ -148,6 +148,7 @@ const Step1 = () => {
         const addresses = stepLocationRef.current.getAddressData();
         // Add all addresses to formData
         addresses.forEach((address, index) => {
+          formData.append(`addresses[${index}][name]`, address.name || '');
           formData.append(`addresses[${index}][street]`, address.street);
           formData.append(`addresses[${index}][city]`, address.city);
           formData.append(`addresses[${index}][state]`, address.state);

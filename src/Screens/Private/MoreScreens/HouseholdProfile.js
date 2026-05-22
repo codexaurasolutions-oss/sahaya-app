@@ -47,7 +47,7 @@ const HouseholdProfile = ({ navigation, route }) => {
 
   // Address State
   const [addresses, setAddresses] = useState([
-    { street: '', city: '', state: '', pincode: '' },
+    { name: '', street: '', city: '', state: '', pincode: '' },
   ]);
 
   // Household Information State
@@ -175,7 +175,7 @@ const HouseholdProfile = ({ navigation, route }) => {
   const addAddress = () => {
     setAddresses(prev => [
       ...prev,
-      { street: '', city: '', state: '', pincode: '' },
+      { name: '', street: '', city: '', state: '', pincode: '' },
     ]);
   };
 
@@ -227,6 +227,7 @@ const HouseholdProfile = ({ navigation, route }) => {
     // Address from first address
     if (profileData?.addresses && profileData.addresses.length > 0) {
       const formattedAddresses = profileData.addresses.map(addr => ({
+        name: addr?.name || '',
         street: addr?.street || '',
         city: addr?.city || '',
         state: addr?.state || '',
@@ -234,7 +235,7 @@ const HouseholdProfile = ({ navigation, route }) => {
       }));
       setAddresses(formattedAddresses);
     } else {
-      setAddresses([{ street: '', city: '', state: '', pincode: '' }]);
+      setAddresses([{ name: '', street: '', city: '', state: '', pincode: '' }]);
     }
 
     // Household Information
@@ -446,6 +447,9 @@ const HouseholdProfile = ({ navigation, route }) => {
 
     // Address
     addresses.forEach((address, index) => {
+      if (address.title || address.name) {
+        formData.append(`addresses[${index}][title]`, address.title || address.name);
+      }
       formData.append(`addresses[${index}][street]`, address.street || '');
       formData.append(`addresses[${index}][city]`, address.city || '');
       formData.append(`addresses[${index}][state]`, address.state || '');
@@ -726,6 +730,13 @@ const HouseholdProfile = ({ navigation, route }) => {
                   </Typography>
                 </TouchableOpacity>
               </View>
+
+              <Input
+                title={LocalizedStrings.EditProfile.Address_Name || 'Address Name / Heading'}
+                placeholder="e.g. Home, Office, Work"
+                value={address.title || address.name}
+                onChange={value => updateAddress(index, 'title', value)}
+              />
 
               <Input
                 title={LocalizedStrings.EditProfile.Street || 'Street'}
