@@ -135,6 +135,8 @@ export const SUBSCRIPTION_USER_CREATE_ORDER = 'subscription/create-order';
 export const SUBSCRIPTION_USER_VERIFY = 'subscription/verify-payment';
 export const SUBSCRIPTION_USER_SUBSCRIBE = 'subscription/subscribe';
 export const SUBSCRIPTION_HISTORY = 'subscription/history';
+export const SUBSCRIPTION_CREATE_EXTRA_JOB_ORDER = 'subscription/create-extra-job-order';
+export const SUBSCRIPTION_VERIFY_EXTRA_JOB_PAYMENT = 'subscription/verify-extra-job-payment';
 
 
 // ===========================================

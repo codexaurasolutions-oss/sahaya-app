@@ -7,6 +7,7 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -28,7 +29,10 @@ import {
   ApplicantsList,
   ListJob,
   CATEGORY,
+  SUBSCRIPTION_CREATE_EXTRA_JOB_ORDER,
+  SUBSCRIPTION_VERIFY_EXTRA_JOB_PAYMENT,
 } from '../../../Backend/api_routes';
+import { initiatePayment } from '../../../Services/RazorpayService';
 import SimpleToast from 'react-native-simple-toast';
 import DatePicker from 'react-native-date-picker';
 import moment from 'moment';
@@ -46,8 +50,13 @@ const PostNewJob = ({ navigation, route }) => {
   const userDetail = useSelector(state => state?.userDetails);
   const userAddresses = userDetail?.addresses || [];
   
-  const addressOptions = userAddresses.map(addr => ({
-    label: addr?.title || addr?.name || `${addr?.street || ''}, ${addr?.city || ''}`,
+  const addressOptionsList = [...userAddresses];
+  if (selectedAddress && !userAddresses.some(addr => (addr.street === selectedAddress.street || addr.streetAddress === selectedAddress.streetAddress) && addr.city === selectedAddress.city)) {
+    addressOptionsList.push(selectedAddress);
+  }
+
+  const mappedAddressOptions = addressOptionsList.map(addr => ({
+    label: addr?.title || addr?.name || `${addr?.street || addr?.streetAddress || ''}, ${addr?.city || ''}`,
     value: addr,
   }));
 
@@ -161,14 +170,24 @@ const PostNewJob = ({ navigation, route }) => {
     setCompensationType(foundComp || compTypeRaw || null);
 
     // Location
-    setAddresses([
-      {
-        streetAddress: jobData.street_address || '',
-        city: jobData.city || '',
-        state: jobData.state || null,
-        zipCode: jobData.zip_code ? String(jobData.zip_code) : '',
-      },
-    ]);
+    if (jobData.street_address || jobData.city) {
+      const matchedAddr = userAddresses.find(
+        addr =>
+          (addr.street || addr.streetAddress || '').toLowerCase() === (jobData.street_address || '').toLowerCase() &&
+          (addr.city || '').toLowerCase() === (jobData.city || '').toLowerCase()
+      );
+      if (matchedAddr) {
+        setSelectedAddress(matchedAddr);
+      } else {
+        const fallbackAddr = {
+          street: jobData.street_address || '',
+          city: jobData.city || '',
+          state: jobData.state || '',
+          pincode: jobData.zip_code ? String(jobData.zip_code) : '',
+        };
+        setSelectedAddress(fallbackAddr);
+      }
+    }
 
     // Working Schedule
     const commitRaw = jobData.commitment_type || '';
@@ -285,61 +304,6 @@ const PostNewJob = ({ navigation, route }) => {
     { label: 'West Bengal', value: 'west_bengal' },
   ];
 
-  // Address helpers
-  const updateAddress = (index, field, value) => {
-    const updated = [...addresses];
-    updated[index] = { ...updated[index], [field]: value };
-    setAddresses(updated);
-  };
-
-  const addAddress = () => {
-    setAddresses([...addresses, { streetAddress: '', city: '', state: null, zipCode: '' }]);
-  };
-
-  const removeAddress = index => {
-    if (addresses.length > 1) {
-      setAddresses(addresses.filter((_, i) => i !== index));
-    }
-  };
-
-  // Fetch pincode details for a specific address index
-  const handlePincodeChange = async (index, value) => {
-    const numericValue = value.replace(/[^0-9]/g, '').slice(0, 6);
-
-    if (numericValue.length < 6) {
-      setAddresses(prev => {
-        const updated = [...prev];
-        updated[index] = { ...updated[index], zipCode: numericValue, city: '', state: null };
-        return updated;
-      });
-      return;
-    }
-
-    if (numericValue.length === 6) {
-      setAddresses(prev => {
-        const updated = [...prev];
-        updated[index] = { ...updated[index], zipCode: numericValue };
-        return updated;
-      });
-      try {
-        const details = await fetchPincodeDetails(numericValue);
-        if (details?.city || details?.state) {
-          setAddresses(prev => {
-            const updated = [...prev];
-            updated[index] = {
-              ...updated[index],
-              city: details?.city || updated[index].city,
-              state: details?.state || updated[index].state,
-            };
-            return updated;
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching pincode details:', error);
-      }
-    }
-  };
-
   // Toggle day selection
   const toggleDay = day => {
     if (selectedDays.includes(day)) {
@@ -444,14 +408,8 @@ const PostNewJob = ({ navigation, route }) => {
       validationErrors.title = 'Job title must not exceed 100 characters';
     }
 
-    // Validate Description
-    const descError = validators.checkRequire('Job Description', description);
-    if (descError) {
-      validationErrors.description = descError;
-    } else if (description && description.trim().length < 20) {
-      validationErrors.description =
-        'Job description must be at least 20 characters';
-    } else if (description && description.trim().length > 2000) {
+    // Validate Description (Optional)
+    if (description && description.trim().length > 2000) {
       validationErrors.description =
         'Job description must not exceed 2000 characters';
     }
@@ -475,7 +433,7 @@ const PostNewJob = ({ navigation, route }) => {
     // Validate Compensation Type
     validationErrors.compensationType = validators.checkRequire(
       'Compensation Type',
-      compensationType?.value || compensationType,
+      compensationType?.value || compensationType || 'monthly',
     );
 
     // Validate Address
@@ -501,14 +459,6 @@ const PostNewJob = ({ navigation, route }) => {
     // Validate Selected Days
     if (selectedDays.length === 0) {
       validationErrors.selectedDays = 'Please select at least one working day.';
-    }
-
-    // Validate Additional Requirements (Non-mandatory)
-    // No validation required for additionalRequirements
-
-    // Validate Selected Skills
-    if (selectedSkills.length === 0) {
-      validationErrors.selectedSkills = 'Required Skills field is required.';
     }
 
     setErrors(validationErrors);
@@ -585,6 +535,27 @@ const PostNewJob = ({ navigation, route }) => {
       AddJob,
       formData,
       success => {
+        if (success?.success === false) {
+          setLoading(false);
+          if (success?.error_code === 'LIMIT_EXCEEDED') {
+            const price = success?.extra_job_price || 500;
+            Alert.alert(
+              'Job Limit Exceeded',
+              `Your subscription's monthly job limit has been reached. Would you like to post an extra job for ₹${price}?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Pay & Post',
+                  onPress: () => processExtraJobPayment(price, formData),
+                },
+              ],
+              { cancelable: true }
+            );
+          } else {
+            SimpleToast.show(success?.message || 'Failed to post job', SimpleToast.SHORT);
+          }
+          return;
+        }
         SimpleToast.show('Job posted successfully!', SimpleToast.SHORT);
         setLoading(false);
         navigation?.goBack();
@@ -600,6 +571,101 @@ const PostNewJob = ({ navigation, route }) => {
         );
         setLoading(false);
       },
+    );
+  };
+
+  const processExtraJobPayment = (price, originalFormData) => {
+    setLoading(true);
+    POST_WITH_TOKEN(
+      SUBSCRIPTION_CREATE_EXTRA_JOB_ORDER,
+      { amount: price },
+      async success => {
+        if (!success?.success || !success?.order_id) {
+          setLoading(false);
+          SimpleToast.show(success?.message || 'Failed to create payment order', SimpleToast.SHORT);
+          return;
+        }
+
+        try {
+          const result = await initiatePayment({
+            amount: success.amount,
+            currency: success.currency,
+            orderId: success.order_id,
+            description: 'Extra Job Post Purchase',
+            prefill: {
+              name: userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}` : userDetail?.name || '',
+              email: userDetail?.email || '',
+              contact: userDetail?.phone || userDetail?.mobile || '',
+            },
+          });
+
+          if (result.success) {
+            verifyExtraJobPayment(result, originalFormData);
+          } else {
+            setLoading(false);
+            if (result.code === 0 || result.code === 2) {
+              SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
+            } else {
+              SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
+            }
+          }
+        } catch (paymentErr) {
+          setLoading(false);
+          SimpleToast.show('Payment checkout error. Please try again.', SimpleToast.SHORT);
+        }
+      },
+      error => {
+        setLoading(false);
+        SimpleToast.show(error?.message || 'Failed to initialize payment', SimpleToast.SHORT);
+      },
+      fail => {
+        setLoading(false);
+        SimpleToast.show('Network error during payment initialization', SimpleToast.SHORT);
+      }
+    );
+  };
+
+  const verifyExtraJobPayment = (paymentResult, originalFormData) => {
+    POST_WITH_TOKEN(
+      SUBSCRIPTION_VERIFY_EXTRA_JOB_PAYMENT,
+      {
+        razorpay_order_id: paymentResult.orderId,
+        razorpay_payment_id: paymentResult.paymentId,
+        razorpay_signature: paymentResult.signature,
+      },
+      success => {
+        if (success?.success) {
+          SimpleToast.show('Payment verified! Posting your job...', SimpleToast.SHORT);
+          POST_FORM_DATA(
+            AddJob,
+            originalFormData,
+            postSuccess => {
+              SimpleToast.show('Job posted successfully!', SimpleToast.SHORT);
+              setLoading(false);
+              navigation?.goBack();
+            },
+            postErr => {
+              setLoading(false);
+              SimpleToast.show('Failed to post job after payment', SimpleToast.SHORT);
+            },
+            postFail => {
+              setLoading(false);
+              SimpleToast.show('Network error posting job after payment', SimpleToast.SHORT);
+            }
+          );
+        } else {
+          setLoading(false);
+          SimpleToast.show(success?.message || 'Payment verification failed', SimpleToast.SHORT);
+        }
+      },
+      error => {
+        setLoading(false);
+        SimpleToast.show(error?.message || 'Payment verification failed', SimpleToast.SHORT);
+      },
+      fail => {
+        setLoading(false);
+        SimpleToast.show('Network error verifying payment', SimpleToast.SHORT);
+      }
     );
   };
 
@@ -621,14 +687,8 @@ const PostNewJob = ({ navigation, route }) => {
       validationErrors.title = 'Job title must not exceed 100 characters';
     }
 
-    // Validate Description
-    const descError = validators.checkRequire('Job Description', description);
-    if (descError) {
-      validationErrors.description = descError;
-    } else if (description && description.trim().length < 20) {
-      validationErrors.description =
-        'Job description must be at least 20 characters';
-    } else if (description && description.trim().length > 2000) {
+    // Validate Description (Optional)
+    if (description && description.trim().length > 2000) {
       validationErrors.description =
         'Job description must not exceed 2000 characters';
     }
@@ -683,10 +743,7 @@ const PostNewJob = ({ navigation, route }) => {
     // Validate Additional Requirements (Non-mandatory)
     // No validation required for additionalRequirements
 
-    // Validate Selected Skills
-    if (selectedSkills.length === 0) {
-      validationErrors.selectedSkills = 'Required Skills field is required.';
-    }
+    // Validate Selected Skills (Removed)
 
     setErrors(validationErrors);
 
@@ -833,8 +890,8 @@ const PostNewJob = ({ navigation, route }) => {
             icon={ImageConstant?.Dollar}
             title={LocalizedStrings.PostNewJob.compensation}
           />
-          <View style={{ flexDirection: 'row', flex: 1 }}>
-            <View style={{ width: '58%' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            <View style={{ flex: 1.2 }}>
               <Input
                 // placeholder="Enter expected compensation"
                 title={LocalizedStrings.PostNewJob.expected_compensation}
@@ -842,25 +899,20 @@ const PostNewJob = ({ navigation, route }) => {
                 onChange={handleCompensationChange}
                 keyboardType="numeric"
                 error={errors.expectedCompensation}
-                prefixText="Rs "
+                prefixText="₹"
               />
             </View>
-            <View style={{ width: '46%' }}>
+            <View style={{ flex: 0.8, marginLeft: 10 }}>
               <DropdownComponent
                 title={' '}
                 // placeholder="Select Type"
                 MainBoxStyle={{ width: '100%' }}
                 style_title={{ textAlign: 'left' }}
                 data={compensationTypeOptions}
-                value={compensationType?.value}
-                onChange={item => {
-                  handleCompensationTypeChange(item);
-                  if (errors.compensationType) {
-                    setErrors({ ...errors, compensationType: null });
-                  }
-                }}
-                selectedTextStyleNew={{ paddingHorizontal: 10, size: 10 }}
+                value="monthly"
+                disable={true}
                 marginHorizontal={0}
+                style_dropdown={{ marginHorizontal: 0 }}
                 error={errors.compensationType}
               />
             </View>
@@ -875,7 +927,7 @@ const PostNewJob = ({ navigation, route }) => {
           <DropdownComponent
             title="Select Address"
             placeholder="Select from your existing addresses"
-            data={addressOptions}
+            data={mappedAddressOptions}
             value={selectedAddress}
             onChange={item => {
               setSelectedAddress(item.value);
@@ -1054,70 +1106,6 @@ const PostNewJob = ({ navigation, route }) => {
             </Typography>
           )}
         </View>
-
-        <View style={styles.card}>
-          <SectionHeader
-            icon={ImageConstant?.blub}
-            title={LocalizedStrings.PostNewJob.requirements_skills}
-          />
-          <Input
-            style_input={styles.inputText}
-            multiline={true}
-            style_inputContainer={{ height: 130 }}
-            // placeholder={LocalizedStrings.PostNewJob.additional_requirements_placeholder}
-            title={LocalizedStrings.PostNewJob.additional_requirements}
-            value={additionalRequirements}
-            onChange={value => {
-              setAdditionalRequirements(value);
-              if (errors.additionalRequirements) {
-                setErrors({ ...errors, additionalRequirements: null });
-              }
-            }}
-            error={errors.additionalRequirements}
-          />
-          <Typography
-            type={Font?.Poppins_Bold}
-            size={14}
-            style={{ marginVertical: 10 }}
-          >
-            {LocalizedStrings.PostNewJob.required_skills}
-          </Typography>
-          {errors.selectedSkills && (
-            <Typography
-              textAlign={'right'}
-              style={{ color: 'red', fontSize: 12, marginBottom: 5 }}
-            >
-              {errors.selectedSkills}
-            </Typography>
-          )}
-          <View style={styles.skillsContainer}>
-            {availableSkills.map((skill, index) => (
-              <View>
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => toggleSkill(skill)}
-                  style={[
-                    styles.skillChip,
-                    selectedSkills.includes(skill) && styles.skillChipSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.skillText,
-                      selectedSkills.includes(skill) &&
-                        styles.skillTextSelected,
-                    ]}
-                  >
-                    {skill}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-            <TouchableOpacity style={[styles.skillChip]} onPress={openAddSkill}>
-              <Text>Add new skill</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
 
       <Button
@@ -1128,40 +1116,6 @@ const PostNewJob = ({ navigation, route }) => {
         style={{ marginTop: 20 }}
         disabled={loading}
       />
-      {/* Add New Skill Modal */}
-      <Modal
-        transparent={true}
-        visible={isAddSkillVisible}
-        animationType="fade"
-        onRequestClose={closeAddSkill}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add new skill</Text>
-            <TextInput
-              placeholder="Enter skill name"
-              value={newSkillName}
-              onChangeText={setNewSkillName}
-              style={styles.modalInput}
-              placeholderTextColor={'#999'}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={closeAddSkill}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalPrimaryButton}
-                onPress={confirmAddSkill}
-              >
-                <Text style={styles.modalPrimaryButtonText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </CommanView>
   );
 };

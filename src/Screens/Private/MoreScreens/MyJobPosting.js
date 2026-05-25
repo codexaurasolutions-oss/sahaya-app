@@ -20,6 +20,7 @@ import {
   Joblist_Admin,
   ListJob,
   UpdateMember,
+  SUBSCRIPTION_USER_CURRENT,
 } from '../../../Backend/api_routes';
 import { useIsFocused } from '@react-navigation/native';
 import SimpleToast from 'react-native-simple-toast';
@@ -31,12 +32,51 @@ const MyJobPosting = ({ navigation }) => {
   const [jobData, setJobData] = useState([]);
   const isFocused = useIsFocused();
   const data = useSelector(state => state?.userDetails);
+  const [isPremium, setIsPremium] = useState(false);
   
   useEffect(() => {
     if (isFocused) {
       JobList();
+      checkSubscription();
     }
   }, [isFocused]);
+
+  const checkSubscription = () => {
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      res => {
+        const sub = res?.subscription;
+        const active = res?.is_active;
+        const price = sub?.subscription?.price ? parseFloat(sub.subscription.price) : 0;
+        if (active && sub && price > 0) {
+          setIsPremium(true);
+        } else {
+          setIsPremium(false);
+        }
+      },
+      () => {
+        setIsPremium(false);
+      },
+      () => {
+        setIsPremium(false);
+      }
+    );
+  };
+
+  const showUpgradeAlert = () => {
+    Alert.alert(
+      'Upgrade to Premium Plan',
+      'You are currently on the Standard (Free) plan. Upgrade to Premium to post and manage jobs.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Upgrade Now',
+          onPress: () => navigation.navigate('HouseholdManager'),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const JobList = () => {
     const route = data?.user_role_id ? Joblist_Admin : ListJob;
@@ -205,6 +245,10 @@ const MyJobPosting = ({ navigation }) => {
       <Button
         title={LocalizedStrings.MyJobPostings.manage_job}
         onPress={() => {
+          if (!isPremium) {
+            showUpgradeAlert();
+            return;
+          }
           navigation?.navigate('PostNewJob', { id: item?.id });
         }}
         linerColor={['#F3F4F6', '#F3F4F6']}
@@ -230,6 +274,10 @@ const MyJobPosting = ({ navigation }) => {
       <Button
         title={LocalizedStrings.MyJobPostings.post_new_job}
         onPress={() => {
+          if (!isPremium) {
+            showUpgradeAlert();
+            return;
+          }
           navigation?.navigate('PostNewJob');
         }}
         icon={ImageConstant?.ic_plus}

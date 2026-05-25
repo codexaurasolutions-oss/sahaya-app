@@ -30,6 +30,7 @@ import {
   LeaveList,
   ListStaff,
   ReferralCode,
+  NotificationUnreadCount,
 } from '../../../Backend/api_routes';
 import EmptyView from '../../../Component/UI/EmptyView';
 
@@ -40,6 +41,7 @@ const Dashboard = ({ navigation }) => {
   const userDetails = useSelector(state => state?.userDetails);
   const [leaveList, setLeaveList] = useState([]);
   const [walletBalance, setWalletBalance] = useState('0.00');
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const [leaveModal, setLeaveModal] = useState({
     visible: false,
@@ -59,7 +61,19 @@ const Dashboard = ({ navigation }) => {
     fetchLeaveTypes();
     fetchStaffList();
     fetchWalletBalance();
+    fetchUnreadNotificationCount();
   }, [isFocused]);
+
+  const fetchUnreadNotificationCount = () => {
+    GET_WITH_TOKEN(
+      NotificationUnreadCount,
+      success => {
+        setUnreadNotificationCount(success?.unread_count || 0);
+      },
+      error => {},
+      () => {},
+    );
+  };
 
   const fetchWalletBalance = () => {
     GET_WITH_TOKEN(
@@ -350,8 +364,30 @@ const Dashboard = ({ navigation }) => {
           {LocalizedStrings.Dashboard.title}
         </Typography>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Notification')} style={{ marginRight: 10 }}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Notification')}
+          style={{ marginRight: 10, position: 'relative' }}
+        >
           <Image source={ImageConstant?.notification} style={{ height: 30, width: 30, resizeMode: 'center' }} />
+          {unreadNotificationCount > 0 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                backgroundColor: '#DC2626',
+                borderRadius: 8,
+                width: 16,
+                height: 16,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Typography style={{ color: 'white', fontSize: 10, fontFamily: Font.Poppins_Bold, lineHeight: 14 }}>
+                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+              </Typography>
+            </View>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate('ProfileManagement')}>

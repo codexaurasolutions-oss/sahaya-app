@@ -28,7 +28,7 @@ export const BASE_URL = PRODUCTION_API_URL;
 // RAZORPAY PAYMENT GATEWAY
 // ===========================================
 // Razorpay Payment API Base URL (for create-order, verify-payment, etc.)
-export const RAZORPAY_API_URL = 'http://localhost:8000/api/';
+export const RAZORPAY_API_URL = 'https://sahayaa-backend-production.up.railway.app/api/';
 
 // Test Mode Keys
 export const RAZORPAY_KEY_ID = 'rzp_test_Rcx3E3rF2dNmEc';

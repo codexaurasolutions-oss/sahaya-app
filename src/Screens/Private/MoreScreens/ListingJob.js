@@ -82,6 +82,24 @@ export default function ListingJob({ navigation, route }) {
   const id = route.params.id;
   const isFocused = useIsFocused();
 
+  const reviews = detailItem?.user?.reviews_received || detailItem?.user?.reviewsReceived || [];
+  const totalReviews = reviews.length;
+  const avgRating = totalReviews > 0
+    ? (reviews.reduce((sum, r) => {
+        const rate = Number(r.rating);
+        return sum + (isNaN(rate) ? 0 : rate);
+      }, 0) / totalReviews).toFixed(1)
+    : 'No ratings';
+
+  const getApplicantAddress = () => {
+    if (detailItem?.user?.addresses && detailItem.user.addresses.length > 0) {
+      const addr = detailItem.user.addresses.find(a => a.is_primary) || detailItem.user.addresses[0];
+      return [addr.street, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ');
+    }
+    return [detailItem?.user?.street_address, detailItem?.user?.locality, detailItem?.user?.city, detailItem?.user?.state]
+      .filter(Boolean).join(', ');
+  };
+
   const handleCall = phoneNumber => {
     if (!phoneNumber) {
       SimpleToast.show('Phone number not available', SimpleToast.SHORT);
@@ -438,6 +456,16 @@ export default function ListingJob({ navigation, route }) {
                       {detailItem.user.email}
                     </Typography>
                   ) : null}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                    <Typography type={Font.Poppins_SemiBold} size={13} color="#D98579">
+                      {totalReviews > 0 ? `${avgRating} \u2605` : 'No Ratings'}
+                    </Typography>
+                    {totalReviews > 0 && (
+                      <Typography type={Font.Poppins_Regular} size={12} color="#888" style={{ marginLeft: 6 }}>
+                        ({totalReviews} {totalReviews === 1 ? 'review' : 'reviews'})
+                      </Typography>
+                    )}
+                  </View>
                 </View>
               </View>
 
@@ -469,8 +497,7 @@ export default function ListingJob({ navigation, route }) {
                 <DetailRow label="Date of Birth" value={detailItem?.user?.dob} />
                 <DetailRow label="Location" value={detailItem?.user?.city || detailItem?.user?.location} />
                 <DetailRow label="Address" value={
-                  [detailItem?.user?.street_address, detailItem?.user?.locality, detailItem?.user?.city, detailItem?.user?.state]
-                    .filter(Boolean).join(', ') || null
+                  getApplicantAddress() || null
                 } />
               </View>
 
@@ -502,7 +529,9 @@ export default function ListingJob({ navigation, route }) {
                     : null
                 } />
                 <DetailRow label="Experience" value={
-                  detailItem?.user?.user_work_info?.experience || detailItem?.experience
+                  detailItem?.user?.user_work_info?.total_experience ||
+                  detailItem?.user?.user_work_info?.experience ||
+                  detailItem?.experience
                 } />
               </View>
 
@@ -514,6 +543,38 @@ export default function ListingJob({ navigation, route }) {
                 <DetailRow label="Aadhaar Verified" value={
                   detailItem?.user?.aadhar__verify == 1 ? 'Yes' : 'No'
                 } />
+              </View>
+
+              {/* Previous Employer Reviews */}
+              <View style={styles.modalSection}>
+                <Typography type={Font.Poppins_SemiBold} size={14} style={styles.modalSectionTitle}>
+                  Previous Employer Reviews
+                </Typography>
+                {reviews.length === 0 ? (
+                  <Typography type={Font.Poppins_Regular} size={13} color="#888" style={{ fontStyle: 'italic', paddingVertical: 4 }}>
+                    No reviews from previous employers yet.
+                  </Typography>
+                ) : (
+                  reviews.map((rev, index) => (
+                    <View key={rev.id || index} style={styles.reviewCard}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography type={Font.Poppins_SemiBold} size={13} color="#333">
+                          {rev.given_by?.first_name 
+                            ? `${rev.given_by.first_name} ${rev.given_by.last_name || ''}`.trim()
+                            : 'Previous Employer'}
+                        </Typography>
+                        <Typography type={Font.Poppins_Bold} size={12} color="#D98579">
+                          {Array(Math.max(1, Math.min(5, Number(rev.rating || 5)))).fill('\u2605').join('')}
+                        </Typography>
+                      </View>
+                      {rev.review ? (
+                        <Typography type={Font.Poppins_Regular} size={12} color="#555" style={{ marginTop: 4, lineHeight: 18 }}>
+                          "{rev.review}"
+                        </Typography>
+                      ) : null}
+                    </View>
+                  ))
+                )}
               </View>
 
               {/* Contact Buttons */}
@@ -738,5 +799,13 @@ const styles = StyleSheet.create({
     flex: 1.5,
     textAlign: 'right',
     textTransform: 'capitalize',
+  },
+  reviewCard: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
 });

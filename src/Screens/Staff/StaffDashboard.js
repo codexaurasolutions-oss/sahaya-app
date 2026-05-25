@@ -17,7 +17,7 @@ import LocalizedStrings from '../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
 import SimpleToast from 'react-native-simple-toast';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { customerDashbord, ListJob, myWork, PROFILE, ReferralCode } from '../../Backend/api_routes';
+import { customerDashbord, ListJob, myWork, PROFILE, ReferralCode, NotificationUnreadCount } from '../../Backend/api_routes';
 
 const StaffDashboard = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -28,6 +28,7 @@ const StaffDashboard = ({ navigation }) => {
   const [staffJobId, setStaffJobId] = useState(null);
   const [houseownerId, setHouseownerId] = useState(null);
   const [walletBalance, setWalletBalance] = useState('0.00');
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const fetchWalletBalance = () => {
     GET_WITH_TOKEN(
@@ -40,12 +41,24 @@ const StaffDashboard = ({ navigation }) => {
     );
   };
 
+  const fetchUnreadNotificationCount = () => {
+    GET_WITH_TOKEN(
+      NotificationUnreadCount,
+      success => {
+        setUnreadNotificationCount(success?.unread_count || 0);
+      },
+      error => {},
+      () => {},
+    );
+  };
+
   useEffect(() => {
     if (isFocused) {
       GetUser();
       fetchJobCount();
       fetchLeaveCount();
       fetchWalletBalance();
+      fetchUnreadNotificationCount();
       // Try to resolve houseownerId from userDetail first
       const fromUser =
         userDetail?.added_by ||
@@ -194,8 +207,30 @@ const StaffDashboard = ({ navigation }) => {
           {LocalizedStrings.staffSection?.StaffDashboard?.title || 'Staff Dashboard'}
         </Typography>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Notifications')}
+          style={{ position: 'relative' }}
+        >
           <Image source={ImageConstant?.notification} style={{ height: 30, width: 30, resizeMode: 'center' }} />
+          {unreadNotificationCount > 0 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                backgroundColor: '#DC2626',
+                borderRadius: 8,
+                width: 16,
+                height: 16,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Typography style={{ color: 'white', fontSize: 10, fontFamily: Font.Poppins_Bold, lineHeight: 14 }}>
+                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+              </Typography>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
       <View style={{ borderBottomWidth: 1, borderColor: '#EBEBEA' }} />

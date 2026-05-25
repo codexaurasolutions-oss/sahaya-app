@@ -143,7 +143,7 @@ const Input = ({
           )}
 
           <TextInput
-            style={[styles.input, {fontSize: 13 / fontScale}, style_input]}
+            style={[styles.input, {fontSize: 13 / fontScale}, prefixText && { paddingLeft: 5 }, style_input]}
             onChangeText={onChange}
             multiline={multiline}
             numberOfLines={numberOfLines}

@@ -8,6 +8,7 @@ import {
   Linking,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -22,7 +23,7 @@ import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
 import { POST_FORM_DATA, POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
-import { ReviewStore, StaffAvailableDetail, TerminateStaff, UpdateStaff } from '../../../Backend/api_routes';
+import { ReviewStore, StaffAvailableDetail, TerminateStaff, UpdateStaff, SUBSCRIPTION_USER_CURRENT } from '../../../Backend/api_routes';
 import Date_Picker from '../../../Component/Date_Picker';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -67,6 +68,44 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [newUpi, setNewUpi] = useState('');
   const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [isBlacklist, setIsBlacklist] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+
+  useEffect(() => {
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      res => {
+        const sub = res?.subscription;
+        const active = res?.is_active;
+        const price = sub?.subscription?.price ? parseFloat(sub.subscription.price) : 0;
+        if (active && sub && price > 0) {
+          setIsPremium(true);
+        } else {
+          setIsPremium(false);
+        }
+      },
+      () => {
+        setIsPremium(false);
+      },
+      () => {
+        setIsPremium(false);
+      }
+    );
+  }, []);
+
+  const showUpgradeAlert = () => {
+    Alert.alert(
+      'Upgrade to Premium Plan',
+      'You are currently on the Standard (Free) plan. Upgrade to Premium to contact staff members directly.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Upgrade Now',
+          onPress: () => navigation.navigate('HouseholdManager'),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   useEffect(() => {
     if (paramData?.id) {
@@ -128,6 +167,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const verificationCertUrl = getDocUrl(data?.verification_certificate) || getDocUrl(kycInfo?.verification_certificate) || getDocUrl(kycInfo?.police_clearance_certificate_path) || getDocUrl(data?.user_detail?.verification_certificate);
 
   const openWhatsApp = async number => {
+    if (!isPremium) {
+      showUpgradeAlert();
+      return;
+    }
     if (!number) {
       SimpleToast.show('Phone number not available', SimpleToast.SHORT);
       return;
@@ -143,6 +186,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   };
 
   const handleCall = number => {
+    if (!isPremium) {
+      showUpgradeAlert();
+      return;
+    }
     if (!number) {
       SimpleToast.show('Phone number not available', SimpleToast.SHORT);
       return;
@@ -466,7 +513,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             <Image source={ImageConstant.phone} style={styles.icon} />
             <Typography style={styles.info}>
               {data?.phone_number
-                ? `${data?.phone_number_prefix || '+91'} ${data.phone_number}`
+                ? isPremium
+                  ? `${data?.phone_number_prefix || '+91'} ${data.phone_number}`
+                  : '+91 **********'
                 : 'Not Available'}
             </Typography>
           </View>
@@ -935,7 +984,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
            </View>
         </View>
 
-        {!fromFindStaffAI && (
+        {!fromFindStaffAI && data?.status !== 'inactive' && data?.status !== 'absent' && (
           <View style={styles.actionFooter}>
             <TouchableOpacity
               style={[styles.actionButton, styles.actionBorder]}
