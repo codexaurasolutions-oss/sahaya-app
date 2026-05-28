@@ -43,7 +43,7 @@ const ChooseUser = ({ navigation }) => {
             if (freePlan) {
               // Auto-subscribe to the free plan
               POST_WITH_TOKEN(
-                SUBSCRIPTIONS_USER_SUBSCRIBE,
+                SUBSCRIPTION_USER_SUBSCRIBE,
                 { subscriptionId: freePlan.id, paymentId: null },
                 subSuccess => {
                   setIsLoading(false);
@@ -51,22 +51,33 @@ const ChooseUser = ({ navigation }) => {
                 },
                 subError => {
                   setIsLoading(false);
-                  // Even if subscription fails, proceed to referral to avoid blocking
-                  navigation.navigate('ApplyReferral', { isFirstTime: true });
+                  navigation.navigate('ChoosePlan', {
+                    userType: roleId,
+                    autoFreeOnMount: false,
+                  });
                 }
               );
             } else {
               setIsLoading(false);
-              navigation.navigate('ApplyReferral', { isFirstTime: true });
+              navigation.navigate('ChoosePlan', {
+                userType: roleId,
+                autoFreeOnMount: false,
+              });
             }
           } else {
             setIsLoading(false);
-            navigation.navigate('ApplyReferral', { isFirstTime: true });
+            navigation.navigate('ChoosePlan', {
+              userType: roleId,
+              autoFreeOnMount: false,
+            });
           }
         },
         error => {
           setIsLoading(false);
-          navigation.navigate('ApplyReferral', { isFirstTime: true });
+          navigation.navigate('ChoosePlan', {
+            userType: roleId,
+            autoFreeOnMount: false,
+          });
         }
       );
       return;

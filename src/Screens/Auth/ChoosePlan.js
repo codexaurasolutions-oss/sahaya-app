@@ -61,13 +61,28 @@ const ChoosePlan = ({ navigation, route }) => {
       POST_WITH_TOKEN(
         SUBSCRIPTION_USER_SUBSCRIBE,
         { subscriptionId: freePlan.id, paymentId: null },
-        s => console.log('[ChoosePlan] Auto free-plan success:', JSON.stringify(s)),
-        e => console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e)),
-        () => console.log('[ChoosePlan] Auto free-plan network fail'),
+        s => {
+          console.log('[ChoosePlan] Auto free-plan success:', JSON.stringify(s));
+          navigation.navigate('ApplyReferral', { isFirstTime: true });
+        },
+        e => {
+          console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e));
+          SimpleToast.show(
+            e?.data?.message || 'Failed to activate free plan. Please select a plan.',
+            SimpleToast.LONG,
+          );
+          autoSubscribedRef.current = false;
+        },
+        () => {
+          console.log('[ChoosePlan] Auto free-plan network fail');
+          SimpleToast.show('Network error while activating free plan.', SimpleToast.SHORT);
+          autoSubscribedRef.current = false;
+        },
       );
+      return;
     }
-    // Always navigate to ApplyReferral for staff after signup to collect referral info
-    navigation.navigate('ApplyReferral', { isFirstTime: true });
+    SimpleToast.show('No free plan available for staff. Please select a plan.', SimpleToast.LONG);
+    autoSubscribedRef.current = false;
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
 
   const fetchAllSubscriptions = (roleId) => {
