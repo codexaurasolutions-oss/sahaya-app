@@ -14,12 +14,12 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import Button from '../../../Component/Button';
 import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
-import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../../Backend/Backend';
+import { DELETE_WITH_TOKEN, GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../../Backend/Backend';
 import {
+  AddJob,
   DeleteJob,
   Joblist_Admin,
   ListJob,
-  UpdateMember,
   SUBSCRIPTION_USER_CURRENT,
 } from '../../../Backend/api_routes';
 import { useIsFocused } from '@react-navigation/native';
@@ -121,6 +121,55 @@ const MyJobPosting = ({ navigation }) => {
     );
   };
 
+  const deleteJob = itemId => {
+    if (!itemId) {
+      SimpleToast.show('Invalid job id', SimpleToast.SHORT);
+      return;
+    }
+
+    // Primary: existing backend route used by the app.
+    POST_WITH_TOKEN(
+      `${DeleteJob}/${itemId}`,
+      {},
+      success => {
+        SimpleToast.show(
+          success?.message || 'Job deleted successfully',
+          SimpleToast.SHORT,
+        );
+        JobList();
+      },
+      error => {
+        // Fallback: RESTful admin delete endpoint.
+        DELETE_WITH_TOKEN(
+          `${AddJob}/${itemId}`,
+          {},
+          fallbackSuccess => {
+            SimpleToast.show(
+              fallbackSuccess?.message || 'Job deleted successfully',
+              SimpleToast.SHORT,
+            );
+            JobList();
+          },
+          fallbackError => {
+            const msg =
+              fallbackError?.data?.message ||
+              fallbackError?.message ||
+              error?.data?.message ||
+              error?.message ||
+              'Failed to delete job';
+            SimpleToast.show(msg, SimpleToast.SHORT);
+          },
+          () => {
+            SimpleToast.show('Network error while deleting job', SimpleToast.SHORT);
+          },
+        );
+      },
+      () => {
+        SimpleToast.show('Network error while deleting job', SimpleToast.SHORT);
+      },
+    );
+  };
+
   const renderJob = ({ item }) => (
     <View style={styles.card}>
       <View style={styles.row}>
@@ -139,21 +188,7 @@ const MyJobPosting = ({ navigation }) => {
                 {
                   text: 'OK',
                   onPress: () => {
-                    POST_WITH_TOKEN(
-                      `${DeleteJob}/${item?.id}`,
-                      {},
-                      success => {
-                        SimpleToast.show(
-                          success?.message || 'Job deleted successfully',
-                          SimpleToast.SHORT,
-                        );
-                        JobList();
-                      },
-                      error => {
-                      },
-                      fail => {
-                      },
-                    );
+                    deleteJob(item?.id);
                   },
                 },
               ],

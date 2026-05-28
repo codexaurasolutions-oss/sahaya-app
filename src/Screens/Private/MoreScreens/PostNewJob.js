@@ -551,6 +551,19 @@ const PostNewJob = ({ navigation, route }) => {
               ],
               { cancelable: true }
             );
+          } else if (success?.error_code === 'UPGRADE_REQUIRED') {
+            Alert.alert(
+              'Upgrade Required',
+              success?.message || 'Please upgrade your plan to post jobs.',
+              [
+                {text: 'Cancel', style: 'cancel'},
+                {
+                  text: 'Upgrade Plan',
+                  onPress: () => navigation.navigate('HouseholdManager'),
+                },
+              ],
+              {cancelable: true},
+            );
           } else {
             SimpleToast.show(success?.message || 'Failed to post job', SimpleToast.SHORT);
           }
@@ -890,8 +903,8 @@ const PostNewJob = ({ navigation, route }) => {
             icon={ImageConstant?.Dollar}
             title={LocalizedStrings.PostNewJob.compensation}
           />
-          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-            <View style={{ flex: 1.2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: '100%' }}>
+            <View style={{ flex: 1 }}>
               <Input
                 // placeholder="Enter expected compensation"
                 title={LocalizedStrings.PostNewJob.expected_compensation}
@@ -899,20 +912,22 @@ const PostNewJob = ({ navigation, route }) => {
                 onChange={handleCompensationChange}
                 keyboardType="numeric"
                 error={errors.expectedCompensation}
-                prefixText="₹"
+                prefixText={"\u20B9"}
               />
             </View>
-            <View style={{ flex: 0.8, marginLeft: 10 }}>
+            <View style={{ flex: 1, marginLeft: 10 }}>
               <DropdownComponent
                 title={' '}
                 // placeholder="Select Type"
                 MainBoxStyle={{ width: '100%' }}
                 style_title={{ textAlign: 'left' }}
                 data={compensationTypeOptions}
-                value="monthly"
-                disable={true}
+                value={compensationType?.value || compensationType}
+                onChange={item => handleCompensationTypeChange(item)}
+                disable={false}
                 marginHorizontal={0}
                 style_dropdown={{ marginHorizontal: 0 }}
+                selectedTextStyleNew={{ fontSize: 14, paddingLeft: 12 }}
                 error={errors.compensationType}
               />
             </View>
@@ -1350,3 +1365,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

@@ -33,7 +33,11 @@ const StepFirst = () => {
       case 1:
         return (
           <>
-            <KYCVerificationStaff ref={kycRef} userDetail={userDetail} />
+            <KYCVerificationStaff
+              ref={kycRef}
+              userDetail={userDetail}
+              prefillFromProfile={false}
+            />
           </>
         );
       case 2:

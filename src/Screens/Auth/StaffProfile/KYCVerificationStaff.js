@@ -17,7 +17,7 @@ import LocalizedStrings from '../../../Constants/localization';
 import { validators } from '../../../Backend/Validator';
 import SimpleToast from 'react-native-simple-toast';
 
-const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
+const KYCVerificationStaff = forwardRef(({ userDetail, prefillFromProfile = true }, ref) => {
   const [uploadedImages, setUploadedImages] = useState({
     verification_certificate: null,
     aadhar_front: null,
@@ -25,6 +25,15 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
   });
 
   useEffect(() => {
+    if (!prefillFromProfile) {
+      setUploadedImages({
+        verification_certificate: null,
+        aadhar_front: null,
+        aadhar_back: null,
+      });
+      return;
+    }
+
     const kycInfo = userDetail?.kyc_information || {};
 
     // Helper function to check if path is valid
@@ -61,7 +70,7 @@ const KYCVerificationStaff = forwardRef(({ userDetail }, ref) => {
         ? { uri: kycInfo.adharbackend_path }
         : null,
     });
-  }, [userDetail]);
+  }, [prefillFromProfile, userDetail]);
 
   const [currentImageType, setCurrentImageType] = useState('');
 

@@ -112,7 +112,7 @@ const Aadhaar = ({ navigation }) => {
   return (
     <CommanView>
       <Header
-        title={LocalizedStrings.AddStaff?.Aadhaar_Number || 'Aadhaar Number'}
+        title={LocalizedStrings.Auth?.aadhaar_number || 'Aadhaar Number'}
         style_title={{ fontFamily: Font?.Manrope_SemiBold }}
         source_arrow={ImageConstant?.BackArrow}
         onBackPressFun={confirmLogout}
@@ -137,14 +137,14 @@ const Aadhaar = ({ navigation }) => {
         <Input
           showTitle
           placeholder={
-            LocalizedStrings.AddStaff?.Aadhaar_Placeholder ||
+            LocalizedStrings.Auth?.aadhaar_placeholder ||
             'Enter 12-digit Aadhaar Number'
           }
           value={mobile}
           onChange={text => setMobile(text)}
           maxLength={12}
           style_input={styles.inputText}
-          title={LocalizedStrings.AddStaff?.Aadhaar_Number || 'Aadhaar Number'}
+          title={LocalizedStrings.Auth?.aadhaar_number || 'Aadhaar Number'}
           placeholderTextColor={'#00000080'}
           keyboardType="number-pad"
           error={error?.add_error}
@@ -160,7 +160,7 @@ const Aadhaar = ({ navigation }) => {
         />
 
         <Typography size={12} textAlign={'center'} style={{ marginTop: 30 }}>
-          {LocalizedStrings.AddStaff?.Aadhaar_Info ||
+          {LocalizedStrings.Auth?.aadhaar_info ||
             'We use Aadhaar for identity verification and to prevent fraudulent listings, enhancing trust within the Sahayya community.'}
         </Typography>
       </View>

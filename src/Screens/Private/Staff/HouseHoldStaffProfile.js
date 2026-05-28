@@ -23,7 +23,7 @@ import DropdownComponent from '../../../Component/DropdownComponent';
 import Input from '../../../Component/Input';
 import UploadBox from '../../../Component/UploadBox';
 import { POST_FORM_DATA, POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
-import { ReviewStore, StaffAvailableDetail, TerminateStaff, UpdateStaff, SUBSCRIPTION_USER_CURRENT } from '../../../Backend/api_routes';
+import { ReviewStore, StaffAvailableDetail, TerminateStaff, UpdateStaff } from '../../../Backend/api_routes';
 import Date_Picker from '../../../Component/Date_Picker';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -68,34 +68,12 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [newUpi, setNewUpi] = useState('');
   const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [isBlacklist, setIsBlacklist] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
-
-  useEffect(() => {
-    GET_WITH_TOKEN(
-      SUBSCRIPTION_USER_CURRENT,
-      res => {
-        const sub = res?.subscription;
-        const active = res?.is_active;
-        const price = sub?.subscription?.price ? parseFloat(sub.subscription.price) : 0;
-        if (active && sub && price > 0) {
-          setIsPremium(true);
-        } else {
-          setIsPremium(false);
-        }
-      },
-      () => {
-        setIsPremium(false);
-      },
-      () => {
-        setIsPremium(false);
-      }
-    );
-  }, []);
+  const [contactViewLocked, setContactViewLocked] = useState(false);
 
   const showUpgradeAlert = () => {
     Alert.alert(
       'Upgrade to Premium Plan',
-      'You are currently on the Standard (Free) plan. Upgrade to Premium to contact staff members directly.',
+      'Upgrade your plan to unlock unlimited profile views and direct staff contact.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -113,6 +91,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         `${StaffAvailableDetail}/${paramData.id}`,
         success => {
           console.log('StaffAvailableDetail response:', JSON.stringify(success));
+          setContactViewLocked(!!success?.contact_view_locked);
           // Handle nested response structures: data.data, data.staff, data.user, or data directly
           const raw = success?.data;
           const fetched = (raw?.data && typeof raw.data === 'object' && !Array.isArray(raw.data))
@@ -167,7 +146,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const verificationCertUrl = getDocUrl(data?.verification_certificate) || getDocUrl(kycInfo?.verification_certificate) || getDocUrl(kycInfo?.police_clearance_certificate_path) || getDocUrl(data?.user_detail?.verification_certificate);
 
   const openWhatsApp = async number => {
-    if (!isPremium) {
+    if (contactViewLocked) {
       showUpgradeAlert();
       return;
     }
@@ -186,7 +165,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   };
 
   const handleCall = number => {
-    if (!isPremium) {
+    if (contactViewLocked) {
       showUpgradeAlert();
       return;
     }
@@ -513,7 +492,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             <Image source={ImageConstant.phone} style={styles.icon} />
             <Typography style={styles.info}>
               {data?.phone_number
-                ? isPremium
+                ? !contactViewLocked
                   ? `${data?.phone_number_prefix || '+91'} ${data.phone_number}`
                   : '+91 **********'
                 : 'Not Available'}

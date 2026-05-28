@@ -128,6 +128,8 @@ const EditProfile = ({ navigation, route }) => {
     fetchProfile();
     fetchRoles();
     loadCurrentLanguage();
+    // This screen intentionally loads once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load current language from AsyncStorage
@@ -181,6 +183,8 @@ const EditProfile = ({ navigation, route }) => {
     if (userDetail && Object.keys(userDetail).length > 0) {
       loadProfileData();
     }
+    // Load profile data when store payload or roles change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userDetail, roles]); // Also depend on roles so it can match role when roles are loaded
 
   const fetchProfile = () => {
@@ -963,16 +967,14 @@ const EditProfile = ({ navigation, route }) => {
             title="First Name"
             value={firstName}
             onChange={text => setFirstName(text)}
-            editable={false}
-            style={{ opacity: 0.7 }}
+            editable={true}
           />
           <Input
             placeholder=""
             title="Last Name"
             value={lastName}
             onChange={text => setLastName(text)}
-            editable={false}
-            style={{ opacity: 0.7 }}
+            editable={true}
           />
           <DropdownComponent
             title="Gender"
