@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Image,
@@ -30,7 +30,7 @@ const StaffDashboard = ({ navigation }) => {
   const [walletBalance, setWalletBalance] = useState('0.00');
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
-  const fetchWalletBalance = () => {
+  const fetchWalletBalance = useCallback(() => {
     GET_WITH_TOKEN(
       ReferralCode,
       success => {
@@ -39,9 +39,9 @@ const StaffDashboard = ({ navigation }) => {
       error => {},
       () => {},
     );
-  };
+  }, []);
 
-  const fetchUnreadNotificationCount = () => {
+  const fetchUnreadNotificationCount = useCallback(() => {
     GET_WITH_TOKEN(
       NotificationUnreadCount,
       success => {
@@ -50,28 +50,9 @@ const StaffDashboard = ({ navigation }) => {
       error => {},
       () => {},
     );
-  };
+  }, []);
 
-  useEffect(() => {
-    if (isFocused) {
-      GetUser();
-      fetchJobCount();
-      fetchLeaveCount();
-      fetchWalletBalance();
-      fetchUnreadNotificationCount();
-      // Try to resolve houseownerId from userDetail first
-      const fromUser =
-        userDetail?.added_by ||
-        userDetail?.houseowner_id ||
-        userDetail?.employer_id ||
-        null;
-      if (fromUser) {
-        setHouseownerId(fromUser);
-      }
-    }
-  }, [isFocused]);
-
-  const GetUser = () => {
+  const GetUser = useCallback(() => {
     GET_WITH_TOKEN(
       customerDashbord,
       success => {
@@ -89,9 +70,9 @@ const StaffDashboard = ({ navigation }) => {
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
-  };
+  }, []);
 
-  const fetchJobCount = () => {
+  const fetchJobCount = useCallback(() => {
     GET_WITH_TOKEN(
       ListJob,
       success => {
@@ -101,9 +82,28 @@ const StaffDashboard = ({ navigation }) => {
       () => {},
       () => {},
     );
-  };
+  }, []);
 
-  const fetchLeaveCount = () => {
+  const fetchHouseownerFromProfile = useCallback(() => {
+    GET_WITH_TOKEN(
+      PROFILE,
+      success => {
+        const profile = success?.data;
+        const ownerId =
+          profile?.added_by ||
+          profile?.houseowner_id ||
+          profile?.employer_id ||
+          null;
+        if (ownerId) {
+          setHouseownerId(ownerId);
+        }
+      },
+      () => {},
+      () => {},
+    );
+  }, []);
+
+  const fetchLeaveCount = useCallback(() => {
     GET_WITH_TOKEN(
       myWork,
       success => {
@@ -137,26 +137,36 @@ const StaffDashboard = ({ navigation }) => {
       () => {},
       () => {},
     );
-  };
+  }, [fetchHouseownerFromProfile, houseownerId]);
 
-  const fetchHouseownerFromProfile = () => {
-    GET_WITH_TOKEN(
-      PROFILE,
-      success => {
-        const profile = success?.data;
-        const ownerId =
-          profile?.added_by ||
-          profile?.houseowner_id ||
-          profile?.employer_id ||
-          null;
-        if (ownerId) {
-          setHouseownerId(ownerId);
-        }
-      },
-      () => {},
-      () => {},
-    );
-  };
+  useEffect(() => {
+    if (isFocused) {
+      GetUser();
+      fetchJobCount();
+      fetchLeaveCount();
+      fetchWalletBalance();
+      fetchUnreadNotificationCount();
+      // Try to resolve houseownerId from userDetail first
+      const fromUser =
+        userDetail?.added_by ||
+        userDetail?.houseowner_id ||
+        userDetail?.employer_id ||
+        null;
+      if (fromUser) {
+        setHouseownerId(fromUser);
+      }
+    }
+  }, [
+    GetUser,
+    fetchJobCount,
+    fetchLeaveCount,
+    fetchUnreadNotificationCount,
+    fetchWalletBalance,
+    isFocused,
+    userDetail?.added_by,
+    userDetail?.employer_id,
+    userDetail?.houseowner_id,
+  ]);
 
   // Get user image and name - skip default/placeholder images from backend
   const imgUrl = userDetail?.image?.toLowerCase() || '';

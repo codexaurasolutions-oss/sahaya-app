@@ -1,3 +1,10 @@
+import SimpleToast from 'react-native-simple-toast';
+
+const showToast = (message, type = 'error') => {
+  const prefix = type === 'error' ? '' : '';
+  SimpleToast.show(`${prefix}${message}`, SimpleToast.SHORT);
+};
+
 export const VALIDATE = {
   EMAIL:
     /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
@@ -48,7 +55,7 @@ export const validators = {
     if (value) {
       if (!VALIDATE.ALPHABET_ONLY.test(value)) {
         return `${name} field is invalid.`;
-      } else if (value.length + 1 == max) {
+      } else if (value.length + 1 === max) {
         return `${name} can have ${max} characters.`;
       }
       return null;
@@ -67,7 +74,6 @@ export const validators = {
     } else {
       return `${name} field is required.`;
     }
-    return null;
   },
 
   checkNumber: (name, value) => {
@@ -97,7 +103,7 @@ export const validators = {
     if (value) {
       if (!VALIDATE.MOBILE.test(value)) {
         return `${name} field is invalid.`;
-      } else if (value.length != max) {
+      } else if (value.length !== max) {
         return `${name} should be ${max} digits.`;
       }
       return null;
@@ -127,7 +133,7 @@ export const validators = {
         return `${name} field is invalid.`;
 
         // return false;
-      } else if (value.length != max) {
+      } else if (value.length !== max) {
         return `${name} should be ${max} digits.`;
         // return false;
       }
@@ -261,7 +267,7 @@ export const validators = {
     var min = min || 7;
     var max = max || 15;
     if (value) {
-      if (VALIDATE.STREET.test(value)) {
+      if (!VALIDATE.STREET.test(value)) {
         showToast(`${name} field is invalid.`, 'error');
         return false;
       } else if (value.length < min || value.length > max) {
@@ -309,6 +315,5 @@ export const validators = {
     } else {
       return `${name} field is required.`;
     }
-    return null;
   },
 };

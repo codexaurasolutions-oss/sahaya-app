@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Modal } from 'react-native';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
@@ -32,19 +32,6 @@ const StaffProfileMain = ({ navigation }) => {
     const [previewImage, setPreviewImage] = useState(null);
     const isFocused = useIsFocused();
 
-    // Fetch profile data on component mount
-    useEffect(() => {
-        fetchProfile();
-    }, []);
-
-    // Fetch notification settings on component mount
-    useEffect(() => {
-        if (isFocused) {
-            fetchNotificationSettings();
-        }
-    }, [isFocused]);
-
-
     const downloadImage = async (url, name) => {
         try {
             if (!url) {
@@ -73,7 +60,7 @@ const StaffProfileMain = ({ navigation }) => {
         }
     };
 
-    const fetchProfile = () => {
+    const fetchProfile = useCallback(() => {
         setLoading(true);
         GET_WITH_TOKEN(
             PROFILE,
@@ -91,7 +78,19 @@ const StaffProfileMain = ({ navigation }) => {
                 setLoading(false);
             },
         );
-    };
+    }, [dispatch]);
+
+    // Fetch profile data on component mount
+    useEffect(() => {
+        fetchProfile();
+    }, [fetchProfile]);
+
+    // Fetch notification settings on component mount
+    useEffect(() => {
+        if (isFocused) {
+            fetchNotificationSettings();
+        }
+    }, [isFocused]);
 
     // Get user data from userDetails
     const imgUrl = userDetail?.image || '';

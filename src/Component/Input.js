@@ -11,7 +11,6 @@ import {Colors} from '../Constants/Colors';
 import Typography from './UI/Typography';
 import {CountryPicker} from 'react-native-country-codes-picker';
 
-import {ImageConstant} from '../Constants/ImageConstant';
 import {Font} from '../Constants/Font';
 import {useScrollContext} from './CommanView';
 
@@ -52,7 +51,7 @@ const Input = ({
 }) => {
   const [show, setShow] = useState(false);
   const [countryCode, setCountryCode] = useState({
-    flag: '🇮🇳',
+    flag: 'IN',
     dial_code: '+91',
   });
 
@@ -61,8 +60,10 @@ const Input = ({
   const scrollToNode = useScrollContext();
 
   useEffect(() => {
-    if (country?.dial_code && countryCode?.dial_code !== country?.dial_code) {
-      setCountryCode(country);
+    if (country?.dial_code) {
+      setCountryCode(prev =>
+        prev?.dial_code === country?.dial_code ? prev : country,
+      );
     }
   }, [country]);
 
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
   },
   txt_style: {
     color: Colors.lableColor,
-    fontize: 14,
+    fontSize: 14,
     fontFamily: Font.Poppins_Medium,
   },
   input_container: {
@@ -297,3 +298,4 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
 });
+
