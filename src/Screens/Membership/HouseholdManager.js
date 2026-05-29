@@ -358,12 +358,12 @@ const HouseholdManager = ({ navigation }) => {
                 <View style={styles.currentPlanDates}>
                   {currentPlan.start_date && (
                     <Typography type={Font.Poppins_Regular} style={styles.currentPlanDateText}>
-                      Start: {currentPlan.start_date}
+                      Start: {new Date(currentPlan.start_date).toLocaleDateString()}
                     </Typography>
                   )}
                   {currentPlan.end_date && (
                     <Typography type={Font.Poppins_Regular} style={styles.currentPlanDateText}>
-                      Expires: {currentPlan.end_date}
+                      Expires: {new Date(currentPlan.end_date).toLocaleDateString()}
                     </Typography>
                   )}
                 </View>
@@ -452,16 +452,24 @@ const HouseholdManager = ({ navigation }) => {
                 )}
 
                 <View style={styles.planButtons}>
-                  <Button
-                    title={
-                      paymentLoading && selectedPlanId === subscription.id
-                        ? 'Processing...'
-                        : LocalizedStrings.EditProfile?.Select_Plan || 'Select Plan'
-                    }
-                    main_style={styles.upgradeBtn}
-                    onPress={() => handleSelectPlan(subscription)}
-                    loader={paymentLoading && selectedPlanId === subscription.id}
-                  />
+                  {currentPlan?.subscription_id === subscription.id || currentPlan?.id === subscription.id ? (
+                    <View style={[styles.upgradeBtn, { backgroundColor: '#4CAF50', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }]}>
+                      <Typography type={Font.Poppins_Bold} style={{ color: 'white', fontSize: 16 }}>
+                        Active Plan
+                      </Typography>
+                    </View>
+                  ) : (
+                    <Button
+                      title={
+                        paymentLoading && selectedPlanId === subscription.id
+                          ? 'Processing...'
+                          : LocalizedStrings.EditProfile?.Select_Plan || 'Select Plan'
+                      }
+                      main_style={styles.upgradeBtn}
+                      onPress={() => handleSelectPlan(subscription)}
+                      loader={paymentLoading && selectedPlanId === subscription.id}
+                    />
+                  )}
                 </View>
               </View>
             );
