@@ -340,9 +340,16 @@ const HouseholdManager = ({ navigation }) => {
                 {currentPlan.subscription_name || currentPlan.subscription?.subscription_name || currentPlan.name || 'Active Plan'}
               </Typography>
               <Typography type={Font.Poppins_Regular} style={styles.currentPlanPrice}>
-                {formatPrice(currentPlan.price || currentPlan.amount)}
-                {(currentPlan.type || currentPlan.validity) &&
-                  ` / ${formatValidity(currentPlan.validity, currentPlan.type)}`}
+                {formatPrice(
+                  currentPlan?.subscription?.price ??
+                  currentPlan?.price ??
+                  currentPlan?.amount
+                )}
+                {(currentPlan?.subscription?.type || currentPlan?.subscription?.validity || currentPlan?.type || currentPlan?.validity) &&
+                  ` / ${formatValidity(
+                    currentPlan?.subscription?.validity ?? currentPlan?.validity,
+                    currentPlan?.subscription?.type ?? currentPlan?.type
+                  )}`}
               </Typography>
               <Typography type={Font.Poppins_Regular} style={styles.currentPlanDateText}>
                 Order: {currentPlan.order_number || ''}
