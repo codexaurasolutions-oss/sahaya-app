@@ -909,10 +909,25 @@ const EditProfile = ({ navigation, route }) => {
         navigation.goBack();
       },
       error => {
-        SimpleToast.show('Failed to update profile', SimpleToast.SHORT);
+        console.error('Profile update failed with error response:', error);
+        if (error && typeof error === 'object') {
+          if (error.errors) {
+            const errorMsgs = Object.entries(error.errors)
+              .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+              .join('\n');
+            Alert.alert('Validation Error', errorMsgs);
+          } else if (error.message) {
+            Alert.alert('Error', error.message);
+          } else {
+            Alert.alert('Error', JSON.stringify(error));
+          }
+        } else {
+          SimpleToast.show('Failed to update profile', SimpleToast.SHORT);
+        }
         setUpdating(false);
       },
       fail => {
+        console.error('Profile update fail (Network/Server crash):', fail);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
         setUpdating(false);
       },
