@@ -418,7 +418,7 @@ const HouseholdProfile = ({ navigation, route }) => {
     if (dob) {
       // Format date properly for API
       const formattedDob = formatDateWithDashes(dob);
-      formData.append('dob', formattedDob);
+      if (formattedDob) formData.append('dob', formattedDob);
     }
 
     // Profile Image - only upload if user PICKED a NEW image.

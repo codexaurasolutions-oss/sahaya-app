@@ -116,8 +116,11 @@ true; // note: this is needed to return a true value, preventing issues in WebVi
 
 export const formatDateWithDashes = dateString => {
     const date = new Date(dateString);
-    const formattedDate = date.toLocaleDateString('en-GB');
-    return formattedDate.replace(/\//g, '-');
+    if (isNaN(date.getTime())) return null;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
   };
 
 // Function to fetch state and city from pincode

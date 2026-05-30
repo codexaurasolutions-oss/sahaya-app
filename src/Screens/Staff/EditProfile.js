@@ -761,7 +761,7 @@ const EditProfile = ({ navigation, route }) => {
     if (gender?.value) formData.append('gender', gender.value);
     if (dob) {
       const formattedDob = formatDateWithDashes(dob);
-      formData.append('dob', formattedDob);
+      if (formattedDob) formData.append('dob', formattedDob);
     }
     if (email && email.trim() !== '') {
       formData.append('email', email.trim());
