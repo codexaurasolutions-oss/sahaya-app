@@ -69,7 +69,7 @@ const StaffPaymentHistory = ({ navigation }) => {
                 // Add monthly salary record
                 if (ed.net_salary || ed.base_salary) {
                   allRecords.push({
-                    id: `salary_${month}`,
+                    id: ed.payment_id || ed.id || `salary_${month}`,
                     amount: ed.net_salary || ed.base_salary || 0,
                     status: ed.payment_status || ed.status || 'Pending',
                     type: 'salary',
@@ -84,7 +84,7 @@ const StaffPaymentHistory = ({ navigation }) => {
                 const ph = ed.payment_history || [];
                 ph.forEach((p, i) => {
                   allRecords.push({
-                    id: `ph_${month}_${i}`,
+                    id: p.payment_id || p.id || `ph_${month}_${i}`,
                     amount: p.amount || p.net_salary || 0,
                     status: p.status || 'Paid',
                     type: p.type || 'salary',
@@ -139,7 +139,7 @@ const StaffPaymentHistory = ({ navigation }) => {
   }, [isFocused, fetchHistory]);
 
   const normalizeRecord = (p, i) => ({
-    id: `norm_${i}`,
+    id: p.payment_id || p.id || `norm_${i}`,
     amount: p.amount || p.net_salary || 0,
     status: p.status || 'Paid',
     type: p.type || 'salary',
