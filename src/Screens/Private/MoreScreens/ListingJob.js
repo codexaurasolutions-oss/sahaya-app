@@ -130,13 +130,22 @@ export default function ListingJob({ navigation, route }) {
   }, [isFocused]);
 
   const JobList = () => {
+    console.log('[JobList] Fetching applications for job ID:', id);
+    console.log('[JobList] API URL:', `${ApplicantsList}/${id}/applications`);
     GET_WITH_TOKEN(
       `${ApplicantsList}/${id}/applications`,
       success => {
-        setListAppList(success?.data);
+        console.log('[JobList] Success response:', JSON.stringify(success));
+        const apps = success?.data ?? [];
+        setListAppList(Array.isArray(apps) ? apps : []);
       },
-      error => {},
-      fail => {},
+      error => {
+        console.log('[JobList] Error response:', JSON.stringify(error));
+        console.log('[JobList] Error status:', error?.status, error?.data?.message);
+      },
+      fail => {
+        console.log('[JobList] Network fail:', JSON.stringify(fail));
+      },
     );
   };
 
