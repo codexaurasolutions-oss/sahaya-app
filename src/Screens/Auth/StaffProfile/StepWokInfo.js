@@ -42,6 +42,9 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
   const [workingDays, setWorkingDays] = useState([]); // Selected working days
   const [errors, setErrors] = useState({}); // Validation errors
   const [loader, setLoader] = useState(false); // Loading state
+  const [emergencyContactName, setEmergencyContactName] = useState(''); // Emergency Contact Name
+  const [emergencyContactNumber, setEmergencyContactNumber] = useState(''); // Emergency Contact Number
+  const [upiId, setUpiId] = useState(''); // UPI ID
 
   const DAYS_OPTIONS = [
     { label: 'Mon', value: 'Monday' },
@@ -160,6 +163,16 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
         } else {
           setVoiceNote(workInfo.voice_note);
         }
+      }
+
+      if (workInfo.emergency_contact_name) {
+        setEmergencyContactName(workInfo.emergency_contact_name);
+      }
+      if (workInfo.emergency_contact_number) {
+        setEmergencyContactNumber(workInfo.emergency_contact_number);
+      }
+      if (workInfo.upi_id || userDetail?.upi_id) {
+        setUpiId(workInfo.upi_id || userDetail?.upi_id);
       }
     } else {
     }
@@ -494,6 +507,17 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
         type: voiceNote.mime || 'audio/mpeg',
       });
     }
+
+    if (emergencyContactName) {
+      formData.append('emergency_contact_name', emergencyContactName);
+    }
+    if (emergencyContactNumber) {
+      formData.append('emergency_contact_number', emergencyContactNumber);
+    }
+    if (upiId) {
+      formData.append('upi_id', upiId);
+    }
+
     setLoader(true);
 
     console.log('formData-----',formData);
@@ -827,6 +851,37 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
           })}
         </View>
       </View>
+
+      <Input
+        title={'Emergency Contact Name'}
+        placeholder={'Enter emergency contact name'}
+        value={emergencyContactName}
+        onChange={text => setEmergencyContactName(text)}
+        showTitle={true}
+      />
+
+      <Input
+        title={'Emergency Contact Number'}
+        placeholder={'Enter emergency contact number'}
+        value={emergencyContactNumber}
+        onChange={text => {
+          const num = text.replace(/[^0-9]/g, '');
+          setEmergencyContactNumber(num);
+        }}
+        keyboardType="phone-pad"
+        maxLength={10}
+        showTitle={true}
+      />
+
+      <Input
+        title={'UPI ID'}
+        placeholder={'e.g. name@bank'}
+        value={upiId}
+        onChange={text => setUpiId(text)}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        showTitle={true}
+      />
 
       <Input
         title={LocalizedStrings.StaffProfile?.Experience || 'Total Experience'}
