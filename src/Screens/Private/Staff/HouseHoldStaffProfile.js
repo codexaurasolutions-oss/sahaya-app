@@ -114,6 +114,16 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const profileImageUrl = getProfileImage(data?.image);
   const fullName = `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || data?.name || 'User';
 
+  const workInfo = data?.user_work_info || data?.work_info || data?.staff?.user_work_info || {};
+  let displayRole = 'Staff';
+  if (Array.isArray(workInfo?.primary_role) && workInfo.primary_role.length > 0) {
+    displayRole = workInfo.primary_role.join(', ');
+  } else if (workInfo?.primary_role) {
+    displayRole = workInfo.primary_role;
+  } else if (data?.role) {
+    displayRole = data.role;
+  }
+
   // Address: try addresses array, then single address object, then nested structures, then flat fields
   const addr = data?.addresses?.[0]
     || data?.address
@@ -485,7 +495,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             {fullName}
           </Typography>
           <Typography style={styles.role}>
-            {data?.user_work_info?.primary_role}
+            {displayRole}
           </Typography>
 
           <View style={styles.flexRow}>
@@ -614,20 +624,20 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         </View>
 
 
-        {data?.user_work_info && (
+        {(data?.user_work_info || (displayRole && displayRole !== 'Staff')) && (
           <View style={styles.card}>
             <Typography style={styles.cardTitle}>
               Work Information
             </Typography>
-            {data?.user_work_info?.primary_role && (
+            {displayRole && displayRole !== 'Staff' && (
               <View style={styles.row}>
                 <Image source={ImageConstant.Briefcase} style={styles.icon} />
                 <View style={styles.textBox}>
                   <Typography style={styles.label}>Role</Typography>
                   <Typography style={styles.value}>
-                    {Array.isArray(data?.user_work_info?.primary_role)
-                      ? data.user_work_info.primary_role.join(', ')
-                      : data?.user_work_info?.primary_role}
+                    {displayRole}
+
+
                   </Typography>
                 </View>
               </View>

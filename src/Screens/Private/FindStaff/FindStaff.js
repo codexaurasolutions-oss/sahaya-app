@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import Typography from '../../../Component/UI/Typography';
@@ -18,7 +19,7 @@ import HeaderForUser from '../../../Component/HeaderForUser';
 import CommanView from '../../../Component/CommanView';
 import LocalizedStrings from '../../../Constants/localization';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
-import { StaffGetAIData, CATEGORY } from '../../../Backend/api_routes';
+import { StaffGetAIData, CATEGORY, SUBSCRIPTION_USER_CURRENT } from '../../../Backend/api_routes';
 
 const EXPERIENCE_OPTIONS = [
   { label: '0-1 Years', value: '0-1' },
@@ -68,6 +69,7 @@ const FindStaff = ({ navigation, route }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [roleOptions, setRoleOptions] = useState([]);
+  const [isPremium, setIsPremium] = useState(false);
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterExperience, setFilterExperience] = useState(null);
@@ -85,7 +87,45 @@ const FindStaff = ({ navigation, route }) => {
   useEffect(() => {
     fetchCandidates();
     fetchRoleOptions();
+    checkSubscription();
   }, []);
+
+  const checkSubscription = () => {
+    GET_WITH_TOKEN(
+      SUBSCRIPTION_USER_CURRENT,
+      res => {
+        const sub = res?.subscription;
+        const active = res?.is_active;
+        const price = sub?.subscription?.price ? parseFloat(sub.subscription.price) : 0;
+        if (active && sub && price > 0) {
+          setIsPremium(true);
+        } else {
+          setIsPremium(false);
+        }
+      },
+      () => {
+        setIsPremium(false);
+      },
+      () => {
+        setIsPremium(false);
+      }
+    );
+  };
+
+  const showUpgradeAlert = () => {
+    Alert.alert(
+      'Upgrade to Premium Plan',
+      'You are currently on the Standard (Free) plan. Upgrade to Premium to view staff profiles and connect with them.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Upgrade Now',
+          onPress: () => navigation.navigate('HouseholdManager'),
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const fetchRoleOptions = () => {
     GET_WITH_TOKEN(
@@ -672,9 +712,15 @@ const FindStaff = ({ navigation, route }) => {
                 </View>
               </View>
               <Button
-                title={LocalizedStrings.FindStaff.Contact}
+                title={LocalizedStrings.FindStaff.Contact || 'Connect'}
                 style={{ width: '90%', margin: 'auto' }}
-                onPress={() => navigation.navigate('HouseHoldStaffProfile', { item: c.raw, fromFindStaffAI: true })}
+                onPress={() => {
+                  if (!isPremium) {
+                    showUpgradeAlert();
+                  } else {
+                    navigation.navigate('HouseHoldStaffProfile', { item: c.raw, fromFindStaffAI: true });
+                  }
+                }}
               />
             </View>
           ))}
