@@ -15,8 +15,8 @@ import { launchImageLibrary } from 'react-native-image-picker';
 const ImageModal = ({
   showModal,
   multiple = false,
-  documents = false,
-  document,
+  documents = true,
+  document = true,
   close = () => { },
   selected = () => { },
   TimeVal,

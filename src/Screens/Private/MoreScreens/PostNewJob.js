@@ -593,7 +593,7 @@ const PostNewJob = ({ navigation, route }) => {
       SUBSCRIPTION_CREATE_EXTRA_JOB_ORDER,
       { amount: price },
       async success => {
-        if (!success?.success || !success?.order_id) {
+        if ((!success?.success && !success?.status) || !success?.order_id) {
           setLoading(false);
           SimpleToast.show(success?.message || 'Failed to create payment order', SimpleToast.SHORT);
           return;
@@ -647,7 +647,7 @@ const PostNewJob = ({ navigation, route }) => {
         razorpay_signature: paymentResult.signature,
       },
       success => {
-        if (success?.success) {
+        if (success?.success || success?.status) {
           SimpleToast.show('Payment verified! Posting your job...', SimpleToast.SHORT);
           POST_FORM_DATA(
             AddJob,
