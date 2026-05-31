@@ -656,11 +656,11 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                         setNewSalary(data.user_work_info.salary.toString());
                         setIsEditingSalary(true);
                       }}
-                      style={{ padding: 5 }}
+                      style={{ padding: 10 }}
                     >
                       <Image
                         source={ImageConstant.pencle}
-                        style={{ width: 14, height: 14, tintColor: '#D98579' }}
+                        style={{ width: 22, height: 22, tintColor: '#D98579' }}
                       />
                     </TouchableOpacity>
                   </View>
