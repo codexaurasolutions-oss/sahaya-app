@@ -123,7 +123,26 @@ const Staff = ({ navigation }) => {
     return filtered;
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({ item }) => {
+    const rawRole = item.user_work_info?.primary_role || item.work_info?.primary_role || item.role;
+    const role = Array.isArray(rawRole) ? rawRole.join(', ') : (rawRole || 'Staff');
+
+    const addr = item?.addresses?.[0] || item?.address || item?.user_detail?.addresses?.[0] || item?.staff?.addresses?.[0] || {};
+    let locationText = item?.address_title || addr?.title || addr?.name || item?.user_work_info?.address_title || item?.user_work_info?.location;
+    
+    if (!locationText) {
+      const city = addr?.city || item?.city || '';
+      const state = addr?.state || item?.state || '';
+      const street = addr?.street || item?.street_address || '';
+      if (city) {
+        locationText = city;
+        if (state) locationText += `, ${state}`;
+      } else if (street) {
+        locationText = street;
+      }
+    }
+
+    return (
     <TouchableOpacity
       style={styles.card}
       onPress={() =>
@@ -164,16 +183,16 @@ const Staff = ({ navigation }) => {
           color="#6B7280"
           style={styles.role}
         >
-          {Array.isArray(item.user_work_info?.primary_role) ? item.user_work_info.primary_role.join(', ') : (item.user_work_info?.primary_role || '')}
+          {role}
         </Typography>
-        {(item?.address_title || item?.address?.title || item?.address?.name || item?.user_work_info?.address_title || item?.user_work_info?.location) && (
+        {locationText ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, backgroundColor: '#FFF5F4', alignSelf: 'flex-start', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
-            <Image source={ImageConstant?.Location} style={{ width: 10, height: 10, marginRight: 4 }} tintColor="#D98579" />
+            <Image source={ImageConstant?.Location} style={{ width: 10, height: 10, marginRight: 4, tintColor: '#D98579' }} />
             <Typography type={Font?.Poppins_Medium} size={11} color="#D98579">
-              {item?.address_title || item?.address?.title || item?.address?.name || item?.user_work_info?.address_title || item?.user_work_info?.location}
+              {locationText}
             </Typography>
           </View>
-        )}
+        ) : null}
       </View>
       <View style={styles.statusRow}>
         <View
