@@ -586,7 +586,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               </Typography>
               <Typography style={styles.value}>
                 {data?.user_work_info?.emergency_contact_number
-                  ? `+91 ${data.user_work_info.emergency_contact_number}`
+                  ? (!contactViewLocked ? `+91 ${data.user_work_info.emergency_contact_number}` : '+91 **********')
                   : 'Not Available'}
               </Typography>
             </View>
