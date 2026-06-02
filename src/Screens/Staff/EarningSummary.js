@@ -40,7 +40,7 @@ const EarningSummary = ({ route }) => {
     ? userDetail.image
     : ImageConstant?.user;
 
-  const currencySymbol = summary2?.currency_symbol || '₹';
+  const currencySymbol = summary2?.currency_symbol || '\u20B9';
 
   const handleErrorMessage = useCallback(error => {
     const message =
@@ -273,6 +273,13 @@ const EarningSummary = ({ route }) => {
         </View>
       ) : (
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      {errorMessage ? (
+        <View style={styles.errorBox}>
+          <Typography size={13} color={Colors.red}>
+            {errorMessage}
+          </Typography>
+        </View>
+      ) : null}
       
       {/* Wallet Balance Card to match Dashboard */}
       <View style={[styles.summaryCard, { backgroundColor: '#FFF5EE', borderColor: '#D98579', borderStyle: 'dashed', marginBottom: 15 }]}>
@@ -282,11 +289,11 @@ const EarningSummary = ({ route }) => {
               Current Wallet Balance
             </Typography>
             <Typography type={Font.Poppins_Bold} size={24} color="#D98579">
-              ₹{walletBalance}
+              {"\u20B9"}{walletBalance}
             </Typography>
           </View>
-          <View style={{ height: 50, width: 50, borderRadius: 25, backgroundColor: '#FFF0EE', justifyContent: 'center', alignItems: 'center' }}>
-            <Typography type={Font.Poppins_Bold} size={20} color="#D98579">₹</Typography>
+          <View style={{ height: 50, width: 50, borderRadius: 25, backgroundColor: "#FFF0EE", justifyContent: "center", alignItems: "center" }}>
+            <Typography type={Font.Poppins_Bold} size={20} color="#D98579">{"\u20B9"}</Typography>
           </View>
         </View>
         <Typography size={11} color="#999" style={{ marginTop: 8 }}>

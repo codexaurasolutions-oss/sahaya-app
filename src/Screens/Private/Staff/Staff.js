@@ -128,18 +128,19 @@ const Staff = ({ navigation }) => {
     const role = Array.isArray(rawRole) ? rawRole.join(', ') : (rawRole || 'Staff');
 
     const addr = item?.addresses?.[0] || item?.address || item?.user_detail?.addresses?.[0] || item?.staff?.addresses?.[0] || {};
-    let locationText = item?.address_title || addr?.title || addr?.name || item?.user_work_info?.address_title || item?.user_work_info?.location;
     
+    const street = addr?.street || item?.street_address || item?.current_street || '';
+    const locality = addr?.locality || addr?.area || item?.locality || item?.area || '';
+    const city = addr?.city || item?.city || item?.current_city || '';
+    
+    let locationParts = [];
+    if (street) locationParts.push(street);
+    if (locality) locationParts.push(locality);
+    if (city) locationParts.push(city);
+    
+    let locationText = locationParts.join(', ');
     if (!locationText) {
-      const city = addr?.city || item?.city || '';
-      const state = addr?.state || item?.state || '';
-      const street = addr?.street || item?.street_address || '';
-      if (city) {
-        locationText = city;
-        if (state) locationText += `, ${state}`;
-      } else if (street) {
-        locationText = street;
-      }
+      locationText = item?.address_title || addr?.title || addr?.name || item?.user_work_info?.address_title || item?.user_work_info?.location || '';
     }
 
     return (
@@ -212,6 +213,7 @@ const Staff = ({ navigation }) => {
       </View>
     </TouchableOpacity>
   );
+  };
 
   return (
     <CommanView style={styles.container}>

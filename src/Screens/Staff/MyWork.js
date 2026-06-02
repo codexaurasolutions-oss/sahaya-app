@@ -59,7 +59,8 @@ const MyWork = () => {
     GET_WITH_TOKEN(
       `${EarningSummaryRoute}?job_id=${jobId}&month=${month}`,
       success => {
-        const earningData = success?.data;
+        const rawData = success?.data;
+        const earningData = Array.isArray(rawData) ? rawData[0] : rawData;
         if (earningData) {
           setEarningSummary(earningData);
           if (!employerName) {
@@ -119,7 +120,7 @@ const MyWork = () => {
           !!success?.current_employer ||
           !!userDetail?.added_by;
 
-        const hasJob = !!activeJob || (jobAppsArr.length > 0 && !!jobAppsArr[0]?.job_id) || directlyAdded;
+        const hasJob = !!activeJob || directlyAdded;
         setHasActiveJob(hasJob);
 
         // Determine employer name
@@ -138,7 +139,7 @@ const MyWork = () => {
         if (empName) setEmployerName(empName);
 
         // Fetch earning summary if we have a job ID
-        const jobId = jobAppsArr?.[0]?.job_id;
+        const jobId = activeJob?.job_id || myWorkData?.job_id || myWorkData?.id;
         if (jobId) {
           fetchEarningSummary(jobId);
         }
@@ -162,6 +163,11 @@ const MyWork = () => {
     const item = attendanceSummary.find(a => a.status === status);
     return item?.total || 0;
   };
+
+  const activeJobApplication = jobApplications.find(app => {
+    const status = (app?.status || app?.application_status || '').toLowerCase();
+    return status === 'accepted' || status === 'approved' || status === 'active';
+  });
 
   // Get user profile image from userDetails, fallback to default icon
   const profileIcon = userDetail?.image
@@ -226,7 +232,7 @@ const MyWork = () => {
                 {LocalizedStrings.staffSection?.MyWork?.role || 'Role'}:{' '}
               </Typography>
               <Typography type={Font.Poppins_SemiBold} size={13}>
-                {earningSummary?.job_details?.job_title || earningSummary?.role || jobApplications?.[0]?.job?.title || workData?.user_work_info?.primary_role || '--'}
+                {earningSummary?.job_details?.job_title || earningSummary?.role || activeJobApplication?.job?.title || jobApplications?.[0]?.job?.title || workData?.user_work_info?.primary_role || '--'}
               </Typography>
             </View>
             <View style={styles.rowInline}>
@@ -234,7 +240,7 @@ const MyWork = () => {
                 {LocalizedStrings.staffSection?.MyWork?.joined || 'Joined'}:{' '}
               </Typography>
               <Typography type={Font.Poppins_SemiBold} size={13}>
-                {formatDate(jobApplications?.[0]?.available_from || jobApplications?.[0]?.created_at || workData?.created_at)}
+                {formatDate(activeJobApplication?.available_from || activeJobApplication?.created_at || jobApplications?.[0]?.available_from || jobApplications?.[0]?.created_at || workData?.created_at)}
               </Typography>
             </View>
 
@@ -259,14 +265,14 @@ const MyWork = () => {
               size={20}
               style={styles.valueBig}
             >
-              ₹{userDetail?.user_work_info?.salary || jobApplications?.[0]?.expected_salary || workData?.lastsalary?.amount || workData?.last_exp?.salary || '0'}
+              {"\u20B9"}{userDetail?.user_work_info?.salary || activeJobApplication?.expected_salary || jobApplications?.[0]?.expected_salary || workData?.lastsalary?.amount || workData?.last_exp?.salary || '0'}
             </Typography>
 
             <TouchableOpacity
               style={styles.button}
               onPress={() =>
                 navigation.navigate('EarningSummary', {
-                  id: jobApplications?.[0]?.job_id || workData?.id,
+                  id: activeJobApplication?.job_id || workData?.job_id || workData?.id,
                 })
               }
             >
@@ -288,7 +294,7 @@ const MyWork = () => {
             <TouchableOpacity
               style={[styles.button, styles.quitButton]}
               onPress={() =>
-                navigation.navigate('QuitJob', { jobId: jobApplications?.[0]?.job_id || workData?.id })
+                navigation.navigate('QuitJob', { jobId: activeJobApplication?.job_id || workData?.job_id || workData?.id })
               }
             >
               <Image
@@ -514,7 +520,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#D98579',
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
     marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',

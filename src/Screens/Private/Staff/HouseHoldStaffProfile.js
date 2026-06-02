@@ -93,7 +93,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           console.log('StaffAvailableDetail response:', JSON.stringify(success));
           setContactViewLocked(!!success?.contact_view_locked);
           // Handle nested response structures: data.data, data.staff, data.user, or data directly
-          const raw = success?.data;
+          const raw = success?.data !== undefined ? success?.data : success;
           const fetched = (raw?.data && typeof raw.data === 'object' && !Array.isArray(raw.data))
             ? raw.data
             : (raw?.staff && typeof raw.staff === 'object')
@@ -118,8 +118,17 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   let displayRole = 'Staff';
   if (Array.isArray(workInfo?.primary_role) && workInfo.primary_role.length > 0) {
     displayRole = workInfo.primary_role.join(', ');
-  } else if (workInfo?.primary_role) {
-    displayRole = workInfo.primary_role;
+  } else if (typeof workInfo?.primary_role === 'string') {
+    try {
+      const parsed = JSON.parse(workInfo.primary_role);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        displayRole = parsed.join(', ');
+      } else {
+        displayRole = workInfo.primary_role;
+      }
+    } catch (e) {
+      displayRole = workInfo.primary_role;
+    }
   } else if (data?.role) {
     displayRole = data.role;
   }
@@ -574,7 +583,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 Emergency Contact Name
               </Typography>
               <Typography style={styles.value}>
-                {data?.user_work_info?.emergency_contact_name || 'Not Available'}
+                {(data?.user_work_info?.emergency_contact_name || data?.emergency_contact_name)
+                  ? (!contactViewLocked ? (data?.user_work_info?.emergency_contact_name || data?.emergency_contact_name) : '**********')
+                  : 'Not Available'}
               </Typography>
             </View>
           </View>
@@ -585,8 +596,8 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 Emergency Contact Number
               </Typography>
               <Typography style={styles.value}>
-                {data?.user_work_info?.emergency_contact_number
-                  ? (!contactViewLocked ? `+91 ${data.user_work_info.emergency_contact_number}` : '+91 **********')
+                {(data?.user_work_info?.emergency_contact_number || data?.emergency_contact_number)
+                  ? (!contactViewLocked ? `+91 ${data?.user_work_info?.emergency_contact_number || data?.emergency_contact_number}` : '+91 **********')
                   : 'Not Available'}
               </Typography>
             </View>
@@ -651,18 +662,31 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                     <Typography style={styles.value}>
                       ₹{Number(data.user_work_info.salary).toLocaleString('en-IN')}
                     </Typography>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setNewSalary(data.user_work_info.salary.toString());
-                        setIsEditingSalary(true);
-                      }}
-                      style={{ padding: 10 }}
-                    >
-                      <Image
-                        source={ImageConstant.pencle}
-                        style={{ width: 22, height: 22, tintColor: '#D98579' }}
-                      />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setNewSalary(data.user_work_info.salary.toString());
+                          setIsEditingSalary(true);
+                        }}
+                        style={{ padding: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF5EE', borderRadius: 6, borderWidth: 1, borderColor: '#D98579' }}
+                      >
+                        <Image
+                          source={ImageConstant.pencle}
+                          style={{ width: 14, height: 14, tintColor: '#D98579', marginRight: 4 }}
+                        />
+                        <Typography type={Font.Poppins_Medium} size={11} color="#D98579">
+                          Edit Base
+                        </Typography>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => navigation.navigate('Salary')}
+                        style={{ padding: 8, backgroundColor: '#D98579', borderRadius: 6 }}
+                      >
+                        <Typography type={Font.Poppins_Medium} size={11} color="#FFF">
+                          Pay
+                        </Typography>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -1134,13 +1158,16 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography size={18} color="#D98579">{'\u2715'}</Typography>
             </TouchableOpacity>
 
-            <Typography type={Font.Poppins_SemiBold} size={17} style={{ textAlign: 'center', marginBottom: 16 }}>
-              Edit Monthly Salary
+            <Typography type={Font.Poppins_SemiBold} size={17} style={{ textAlign: 'center', marginBottom: 5 }}>
+              Edit Base Salary
+            </Typography>
+            <Typography size={12} color="#DE3B40" style={{ textAlign: 'center', marginBottom: 16 }}>
+              (Do NOT use this to pay salary. This changes the fixed base salary only.)
             </Typography>
 
             <Input
-              title="Salary (₹)"
-              placeholder="Enter new salary"
+              title="Base Salary (₹)"
+              placeholder="Enter new base salary"
               value={newSalary}
               onChange={setNewSalary}
               keyboardType="numeric"

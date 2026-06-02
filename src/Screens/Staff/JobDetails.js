@@ -67,9 +67,9 @@ const JobDetails = ({ navigation, route }) => {
   // Format compensation display
   const formatCompensation = job => {
     if (job?.compensation && job?.compensation_type) {
-      return `₹${job.compensation} / ${job.compensation_type}`;
+      return `\u20B9${job.compensation} / ${job.compensation_type}`;
     }
-    return job?.expected_compensation ? `₹${job.expected_compensation}` : 'Not Found';
+    return job?.expected_compensation ? `\u20B9${job.expected_compensation}` : 'Not Found';
   };
 
   // Format location display
@@ -395,9 +395,14 @@ const JobDetails = ({ navigation, route }) => {
                 </Typography>
               </View>
 
-              <Typography type={Font.Poppins_Regular} style={styles.reqText}>
-                {jobData.additional_requirements}
-              </Typography>
+              {getRequirements(jobData).map((requirement, index) => (
+                <View key={`${requirement}-${index}`} style={styles.reqRow}>
+                  <View style={styles.dot} />
+                  <Typography type={Font.Poppins_Regular} style={styles.reqText}>
+                    {requirement}
+                  </Typography>
+                </View>
+              ))}
             </View>
           )}
 

@@ -137,7 +137,6 @@ const StaffProfileMain = ({ navigation }) => {
     const aadhaarFront = isPlaceholderImage(kycInfo?.aadhaar_front_path) ? null : kycInfo.aadhaar_front_path;
     const aadhaarBack = isPlaceholderImage(kycInfo?.aadhaar_back_path) ? null : kycInfo.aadhaar_back_path;
     const policeVerification = isPlaceholderImage(kycInfo?.police_verification_path) ? null : kycInfo.police_verification_path;
-    const policeVerificationStatus = policeVerification ? 'Verified' : 'Pending';
 
     // Fetch notification settings
     const fetchNotificationSettings = () => {
@@ -348,30 +347,30 @@ const StaffProfileMain = ({ navigation }) => {
                     <View style={styles.documentRow}>
                         <TouchableOpacity 
                             style={styles.docItem}
-                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_front) ? setPreviewImage(userDetail.user_work_info.aadhar_front) : null}
+                            onPress={() => aadhaarFront ? setPreviewImage(aadhaarFront) : null}
                         >
                             <Typography style={styles.docLabel}>Aadhar Front</Typography>
                             <Typography style={styles.docStatus}>
-                                {!isPlaceholderImage(userDetail?.user_work_info?.aadhar_front) ? 'View Card' : 'Not Uploaded'}
+                                {aadhaarFront ? 'View Card' : 'Not Uploaded'}
                             </Typography>
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={styles.docItem}
-                            onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.aadhar_back) ? setPreviewImage(userDetail.user_work_info.aadhar_back) : null}
+                            onPress={() => aadhaarBack ? setPreviewImage(aadhaarBack) : null}
                         >
                             <Typography style={styles.docLabel}>Aadhar Back</Typography>
                             <Typography style={styles.docStatus}>
-                                {!isPlaceholderImage(userDetail?.user_work_info?.aadhar_back) ? 'View Card' : 'Not Uploaded'}
+                                {aadhaarBack ? 'View Card' : 'Not Uploaded'}
                             </Typography>
                         </TouchableOpacity>
                     </View>
                     <TouchableOpacity 
                         style={[styles.docItem, { marginTop: 10 }]}
-                        onPress={() => !isPlaceholderImage(userDetail?.user_work_info?.verification_certificate) ? setPreviewImage(userDetail.user_work_info.verification_certificate) : null}
+                        onPress={() => policeVerification ? setPreviewImage(policeVerification) : null}
                     >
                         <Typography style={styles.docLabel}>Police Verification</Typography>
                         <Typography style={styles.docStatus}>
-                            {!isPlaceholderImage(userDetail?.user_work_info?.verification_certificate) ? 'View Certificate' : 'Not Uploaded'}
+                            {policeVerification ? 'View Certificate' : 'Not Uploaded'}
                         </Typography>
                     </TouchableOpacity>
                 </View>
@@ -446,8 +445,27 @@ const StaffProfileMain = ({ navigation }) => {
 
                 <View style={styles.card}>
                     <Typography style={styles.cardTitle}>{LocalizedStrings.EditProfile?.Notification_Preferences || 'Notification Preferences'}</Typography>
+                    <View style={styles.toggleRow}>
+                        <View style={{ flex: 1, paddingRight: 12 }}>
+                            <Typography style={styles.benefit}>SMS Alerts</Typography>
+                            <Typography style={styles.subText}>
+                                Receive important job, salary, and account updates on your phone.
+                            </Typography>
+                        </View>
+                        {notificationLoading || notificationSaving ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="small" color="#D98579" />
+                            </View>
+                        ) : (
+                            <Switch
+                                value={smsAlerts}
+                                onValueChange={handleSmsAlertsChange}
+                                trackColor={{ false: '#D1D5DB', true: '#F0B7AF' }}
+                                thumbColor={smsAlerts ? '#D98579' : '#ffffff'}
+                            />
+                        )}
+                    </View>
                 </View>
-
             </ScrollView>
 
 

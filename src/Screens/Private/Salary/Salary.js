@@ -9,6 +9,7 @@ import {
   Linking,
   Modal,
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import React, { useEffect, useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -57,6 +58,8 @@ const StaffManagement = ({ navigation }) => {
   const [isEditingAdjustments, setIsEditingAdjustments] = useState(false);
   const [isEditingDeductions, setIsEditingDeductions] = useState(false);
   const [isSavingAdjustments, setIsSavingAdjustments] = useState(false);
+  const [pendingPaymentToConfirm, setPendingPaymentToConfirm] = useState(null);
+  const [confirmReceiptFile, setConfirmReceiptFile] = useState(null);
   const [isSavingBaseSalary, setIsSavingBaseSalary] = useState(false);
   const [isSavingDeductions, setIsSavingDeductions] = useState(false);
   const [receiptPayment, setReceiptPayment] = useState(null);
@@ -276,15 +279,28 @@ const StaffManagement = ({ navigation }) => {
     );
   };
 
-  const markAsPaid = (paymentId) => {
+  const markAsPaid = (paymentId, receiptFile = null) => {
     console.log('markAsPaid called with paymentId --->', paymentId);
     if (!paymentId) {
       SimpleToast.show('Payment ID not found', SimpleToast.SHORT);
       return;
     }
-    PUT_WITH_TOKEN(
+
+    const formData = new FormData();
+    formData.append('_method', 'PUT');
+    formData.append('status', 'paid');
+    
+    if (receiptFile) {
+      formData.append('payment_receipt', {
+        uri: receiptFile.uri,
+        type: receiptFile.type || 'image/jpeg',
+        name: receiptFile.fileName || 'receipt.jpg',
+      });
+    }
+
+    POST_FORM_DATA(
       `${SalaryUpdateStatus}/${paymentId}/status`,
-      { status: 'paid' },
+      formData,
       success => {
         setListPastPayments(prev =>
           prev.map(item =>
@@ -292,6 +308,8 @@ const StaffManagement = ({ navigation }) => {
           ),
         );
         SimpleToast.show('Payment marked as paid', SimpleToast.SHORT);
+        setPendingPaymentToConfirm(null);
+        setConfirmReceiptFile(null);
       },
       error => {
         SimpleToast.show(
@@ -1539,17 +1557,8 @@ const StaffManagement = ({ navigation }) => {
                       style={styles.paymentRow}
                       activeOpacity={item.status?.toLowerCase() === 'pending' ? 0.6 : 1}
                       onPress={() => {
-                        if (item.status?.toLowerCase() === 'pending') {
-                          const staffDisplayName = item.staff_name || item.staff_member?.name || 'Staff';
-                          Alert.alert(
-                            'Mark as Paid',
-                            `Mark payment of ₹${(item.net_salary ?? item.amount ?? 0).toFixed(2)} to ${staffDisplayName} as paid?`,
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              { text: 'Mark as Paid', onPress: () => markAsPaid(itemId) },
-                            ],
-                          );
-                        }
+                        // The whole row no longer triggers the alert. 
+                        // The confirm button does.
                       }}
                     >
                       <View
@@ -1597,12 +1606,20 @@ const StaffManagement = ({ navigation }) => {
                           {item.status}
                         </Typography>
                         {item.status?.toLowerCase() === 'pending' && (
-                          <Typography
-                            type={Font.Poppins_Regular}
-                            style={{ fontSize: 10, color: '#D98579', marginTop: 2 }}
+                          <TouchableOpacity
+                            style={{ backgroundColor: '#D98579', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4, marginTop: 4 }}
+                            onPress={(e) => {
+                              e.stopPropagation && e.stopPropagation();
+                              setPendingPaymentToConfirm(item);
+                            }}
                           >
-                            Tap to mark paid
-                          </Typography>
+                            <Typography
+                              type={Font.Poppins_Regular}
+                              style={{ fontSize: 10, color: '#FFF' }}
+                            >
+                              Confirm
+                            </Typography>
+                          </TouchableOpacity>
                         )}
                         <TouchableOpacity
                           style={styles.downloadButton}
@@ -1637,6 +1654,72 @@ const StaffManagement = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
+
+      {/* Confirm Payment Modal */}
+      <Modal
+        transparent={true}
+        visible={!!pendingPaymentToConfirm}
+        animationType="fade"
+        onRequestClose={() => {
+          setPendingPaymentToConfirm(null);
+          setConfirmReceiptFile(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.upiModalContent}>
+            <View style={styles.upiModalHeader}>
+              <Typography type={Font.Poppins_SemiBold} size={18}>
+                Confirm Payment
+              </Typography>
+              <TouchableOpacity
+                onPress={() => {
+                  setPendingPaymentToConfirm(null);
+                  setConfirmReceiptFile(null);
+                }}
+              >
+                <Image source={ImageConstant.close} style={{ width: 16, height: 16, tintColor: '#000' }} />
+              </TouchableOpacity>
+            </View>
+
+            <Typography type={Font.Poppins_Regular} style={{ marginBottom: 20 }}>
+              Upload an optional payment receipt to confirm this payment.
+            </Typography>
+
+            <TouchableOpacity
+              style={styles.uploadContainer}
+              onPress={() => {
+                launchImageLibrary(
+                  { mediaType: 'photo', quality: 0.8 },
+                  (response) => {
+                    if (response.didCancel) {
+                      console.log('User cancelled image picker');
+                    } else if (response.errorMessage) {
+                      SimpleToast.show('ImagePicker Error: ' + response.errorMessage, SimpleToast.SHORT);
+                    } else if (response.assets && response.assets.length > 0) {
+                      setConfirmReceiptFile(response.assets[0]);
+                    }
+                  }
+                );
+              }}
+            >
+              <Typography type={Font.Poppins_Regular} color="#666">
+                {confirmReceiptFile ? confirmReceiptFile.fileName || 'Receipt Selected' : 'Tap to Upload Payment Receipt (Optional)'}
+              </Typography>
+            </TouchableOpacity>
+
+            <Button
+              title="Save & Confirm"
+              onPress={() => {
+                if (pendingPaymentToConfirm) {
+                  const itemId = pendingPaymentToConfirm.payment_id || pendingPaymentToConfirm.id || pendingPaymentToConfirm.salary_id;
+                  markAsPaid(itemId, confirmReceiptFile);
+                }
+              }}
+              style={{ marginTop: 20 }}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* Payment Receipt Modal */}
       <PaymentReceipt
@@ -2072,5 +2155,14 @@ const styles = StyleSheet.create({
   toggleButtonActive: {
     borderColor: '#D98579',
     backgroundColor: '#FFF5EE',
+  },
+  uploadContainer: {
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
   },
 });

@@ -1,4 +1,4 @@
-import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Text } from 'react-native';
+import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Text, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -12,17 +12,26 @@ import Date_Picker from '../../../Component/Date_Picker';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 import LocalizedStrings from '../../../Constants/localization';
-import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../../Backend/Backend';
+import { POST_FORM_DATA, GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../../Backend/Backend';
 import ImageModal from '../../../Component/Modals/ImageModal';
 import { validators } from '../../../Backend/Validator';
 import { fetchPincodeDetails } from '../../../Backend/Utility';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { AddStaff, UpdateStaff, CATEGORY } from '../../../Backend/api_routes';
+import { 
+  AddStaff, 
+  UpdateStaff, 
+  CATEGORY, 
+  SUBSCRIPTION_CREATE_EXTRA_STAFF_ORDER, 
+  SUBSCRIPTION_VERIFY_EXTRA_STAFF_PAYMENT 
+} from '../../../Backend/api_routes';
+import { initiatePayment } from '../../../Backend/razorpay';
+import { useSelector } from 'react-redux';
 
 const NewStaffForm = ({ navigation, route }) => {
   const data = route?.params?.userData;
+  const { userDetail } = useSelector(state => state.auth);
   const adharNumber = route?.params?.adharNumber;
 
   // Personal Details States
@@ -802,6 +811,35 @@ const NewStaffForm = ({ navigation, route }) => {
         setLoading(false);
         console.log('API Error Full:', JSON.stringify(error));
 
+        if (error?.error_code === 'LIMIT_EXCEEDED' || error?.data?.error_code === 'LIMIT_EXCEEDED') {
+          const price = error?.extra_staff_price || error?.data?.extra_staff_price || 500;
+          Alert.alert(
+            "Staff Limit Exceeded",
+            `Your subscription's staff limit has been reached. Would you like to add an extra staff member for ₹${price}?`,
+            [
+              { text: "Cancel", style: "cancel" },
+              { 
+                text: "Pay & Add", 
+                onPress: () => processExtraStaffPayment(price, formData)
+              }
+            ],
+            { cancelable: true }
+          );
+          return;
+        }
+
+        if (error?.limit_reached || error?.data?.limit_reached || error?.status === 403) {
+          Alert.alert(
+            "Limit Reached",
+            error?.message || error?.data?.message || "Staff limit reached. Please upgrade your plan.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Upgrade Plan", onPress: () => navigation.navigate("Subscriptions") }
+            ]
+          );
+          return;
+        }
+
         // Extract Laravel validation errors
         const validationErrors = error?.errors || error?.data?.errors;
         if (validationErrors && typeof validationErrors === 'object') {
@@ -833,6 +871,104 @@ const NewStaffForm = ({ navigation, route }) => {
         );
         console.log('Network Error:-----', fail);
       },
+    );
+  };
+
+  const processExtraStaffPayment = (price, originalFormData) => {
+    setLoading(true);
+    POST_WITH_TOKEN(
+      SUBSCRIPTION_CREATE_EXTRA_STAFF_ORDER,
+      { amount: price },
+      async success => {
+        if ((!success?.success && !success?.status) || !success?.order_id) {
+          setLoading(false);
+          SimpleToast.show(success?.message || 'Failed to create payment order', SimpleToast.SHORT);
+          return;
+        }
+
+        try {
+          const result = await initiatePayment({
+            amount: success.amount,
+            currency: success.currency,
+            orderId: success.order_id,
+            description: 'Extra Staff Limit Purchase',
+            prefill: {
+              name: userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}` : userDetail?.name || '',
+              email: userDetail?.email || '',
+              contact: userDetail?.phone || userDetail?.mobile || '',
+            },
+          });
+
+          if (result.success) {
+            verifyExtraStaffPayment(result, originalFormData);
+          } else {
+            setLoading(false);
+            if (result.code === 0 || result.code === 2) {
+              SimpleToast.show('Payment cancelled', SimpleToast.SHORT);
+            } else {
+              SimpleToast.show(result.description || 'Payment failed. Please try again.', SimpleToast.SHORT);
+            }
+          }
+        } catch (paymentErr) {
+          setLoading(false);
+          SimpleToast.show('Payment checkout error. Please try again.', SimpleToast.SHORT);
+        }
+      },
+      error => {
+        setLoading(false);
+        SimpleToast.show(error?.message || 'Failed to initialize payment', SimpleToast.SHORT);
+      },
+      fail => {
+        setLoading(false);
+        SimpleToast.show('Network error during payment initialization', SimpleToast.SHORT);
+      }
+    );
+  };
+
+  const verifyExtraStaffPayment = (paymentResult, originalFormData) => {
+    POST_WITH_TOKEN(
+      SUBSCRIPTION_VERIFY_EXTRA_STAFF_PAYMENT,
+      {
+        razorpay_order_id: paymentResult.orderId,
+        razorpay_payment_id: paymentResult.paymentId,
+        razorpay_signature: paymentResult.signature,
+      },
+      success => {
+        if (success?.success || success?.status) {
+          SimpleToast.show('Payment verified! Adding staff...', SimpleToast.SHORT);
+          const apiEndpoint = isEditMode ? `${UpdateStaff}/${staffId}` : AddStaff;
+          POST_FORM_DATA(
+            apiEndpoint,
+            originalFormData,
+            postSuccess => {
+              SimpleToast.show('Staff added successfully!', SimpleToast.SHORT);
+              setLoading(false);
+              navigation.navigate('TabNavigation', {
+                screen: 'Dashboard',
+              });
+            },
+            postErr => {
+              setLoading(false);
+              SimpleToast.show('Failed to add staff after payment', SimpleToast.SHORT);
+            },
+            postFail => {
+              setLoading(false);
+              SimpleToast.show('Network error adding staff after payment', SimpleToast.SHORT);
+            }
+          );
+        } else {
+          setLoading(false);
+          SimpleToast.show(success?.message || 'Payment verification failed', SimpleToast.SHORT);
+        }
+      },
+      error => {
+        setLoading(false);
+        SimpleToast.show(error?.message || 'Payment verification failed', SimpleToast.SHORT);
+      },
+      fail => {
+        setLoading(false);
+        SimpleToast.show('Network error verifying payment', SimpleToast.SHORT);
+      }
     );
   };
 

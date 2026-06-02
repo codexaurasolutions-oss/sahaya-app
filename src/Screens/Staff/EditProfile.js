@@ -105,6 +105,39 @@ const EditProfile = ({ navigation, route }) => {
   const [currentLanguage, setCurrentLanguage] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState(null);
 
+  const preferredWorkLocationOptions = React.useMemo(() => {
+    const options = [
+      { label: 'All India', value: 'All India' },
+      { label: 'South India', value: 'South India' },
+      { label: 'North India', value: 'North India' },
+      { label: 'East India', value: 'East India' },
+      { label: 'West India', value: 'West India' },
+      { label: 'Central India', value: 'Central India' },
+      { label: 'Metro Cities', value: 'Metro Cities' },
+    ];
+
+    if (currentCity) {
+      options.splice(1, 0, {
+        label: `Only ${currentCity}`,
+        value: currentCity,
+      });
+    }
+
+    if (currentState) {
+      options.splice(currentCity ? 2 : 1, 0, {
+        label: `Within ${currentState}`,
+        value: `Within ${currentState}`,
+      });
+    }
+
+    return options;
+  }, [currentCity, currentState]);
+
+  const selectedPreferredWorkLocation =
+    preferredWorkLocationOptions.find(
+      option => option.value === preferredWorkCity,
+    ) || null;
+
   // Languages list
   const languagesList = [
     { label: 'English', value: 'en' },
@@ -1070,14 +1103,20 @@ const EditProfile = ({ navigation, route }) => {
           <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
             Work Preferences
           </Typography>
-          <Input
-            placeholder="e.g. Vizag, Mumbai, Delhi"
+          <DropdownComponent
             title="Preferred Work Cities"
-            value={preferredWorkCity}
-            onChange={text => setPreferredWorkCity(text)}
+            placeholder="Select preferred work area"
+            width={'100%'}
+            style_dropdown={{ marginHorizontal: 0 }}
+            selectedTextStyleNew={{ marginLeft: 10 }}
+            marginHorizontal={0}
+            style_title={{ textAlign: 'left' }}
+            value={selectedPreferredWorkLocation}
+            onChange={item => setPreferredWorkCity(item?.value || '')}
+            data={preferredWorkLocationOptions}
           />
           <Typography size={11} color="#888" style={{ marginTop: -10, marginBottom: 10 }}>
-            Enter cities where you are ready to work (comma separated)
+            Choose from India-wide, state-wise, region-wise, or your current city options.
           </Typography>
           <View style={[styles.skillContainer, { marginBottom: 0 }]}>
             <TouchableOpacity 

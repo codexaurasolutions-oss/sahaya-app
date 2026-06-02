@@ -67,10 +67,11 @@ const StaffPaymentHistory = ({ navigation }) => {
               const ed = Array.isArray(d) && d.length > 0 ? d[0] : (d && !Array.isArray(d) ? d : null);
               if (ed) {
                 // Add monthly salary record
-                if (ed.net_salary || ed.base_salary) {
+                const amount = ed.total_payable_amount || ed.net_salary || ed.base_salary || 0;
+                if (amount > 0) {
                   allRecords.push({
                     id: ed.payment_id || ed.id || `salary_${month}`,
-                    amount: ed.net_salary || ed.base_salary || 0,
+                    amount: amount,
                     status: ed.payment_status || ed.status || 'Pending',
                     type: 'salary',
                     month: month,
@@ -169,20 +170,20 @@ const StaffPaymentHistory = ({ navigation }) => {
       onPress={() => setReceiptPayment(item?.raw || item)}
     >
       <View style={styles.iconCircle}>
-        <Typography type={Font?.Poppins_SemiBold} size={14} color="#D98579">₹</Typography>
+        <Typography type={Font?.Poppins_SemiBold} size={14} color="#D98579">{"\u20B9"}</Typography>
       </View>
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Typography type={Font?.Poppins_SemiBold} size={14}>
-          ₹{Number(item.amount || 0).toLocaleString('en-IN')}
+          {"\u20B9"}{Number(item.amount || 0).toLocaleString('en-IN')}
         </Typography>
         <Typography type={Font?.Poppins_Regular} size={12} color="#888">
-          {item.type === 'advance' ? 'Advance' : `Salary — ${item.month || ''}`}
+          {item.type === 'advance' ? 'Advance' : `Salary - ${item.month || ''}`}
         </Typography>
         <Typography type={Font?.Poppins_Regular} size={11} color="#aaa">
           {item.date ? moment(item.date).format('DD MMM YYYY') : '--'}
         </Typography>
         <Typography type={Font?.Poppins_Regular} size={11} color="#aaa">
-          Paid by: {item.paid_by || 'Employer'} · {item.payment_mode}
+          Paid by: {item.paid_by || 'Employer'} - {item.payment_mode}
         </Typography>
       </View>
       <View style={{ alignItems: 'flex-end' }}>

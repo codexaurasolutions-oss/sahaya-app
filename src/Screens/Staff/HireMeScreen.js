@@ -13,7 +13,7 @@ import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
 import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
-import { GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../Backend/Backend';
+import { GET_WITH_TOKEN, POST_FORM_DATA, POST_WITH_TOKEN } from '../../Backend/Backend';
 import {
   HireMeOptIn,
   HireMeUpdate,
@@ -24,7 +24,7 @@ import {
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import { useSelector } from 'react-redux';
-import Input from '../../Component/Input';
+import DropdownComponent from '../../Component/DropdownComponent';
 
 const HireMeScreen = ({ navigation }) => {
   const userDetail = useSelector(state => state?.userDetails);
@@ -44,7 +44,40 @@ const HireMeScreen = ({ navigation }) => {
   
   // Default to their current city if not set
   const defaultCity = userDetail?.user_work_info?.preferred_work_location || userDetail?.addresses?.[0]?.city || userDetail?.city || '';
+  const currentCity = userDetail?.addresses?.[0]?.city || userDetail?.city || '';
+  const currentState = userDetail?.addresses?.[0]?.state || userDetail?.state || '';
   const experience = userDetail?.user_work_info?.total_experience || 'Not set';
+
+  const preferredWorkLocationOptions = React.useMemo(() => {
+    const options = [
+      { label: 'All India', value: 'All India' },
+      { label: 'South India', value: 'South India' },
+      { label: 'North India', value: 'North India' },
+      { label: 'East India', value: 'East India' },
+      { label: 'West India', value: 'West India' },
+      { label: 'Central India', value: 'Central India' },
+      { label: 'Metro Cities', value: 'Metro Cities' },
+    ];
+
+    if (currentCity) {
+      options.splice(1, 0, {
+        label: `Only ${currentCity}`,
+        value: currentCity,
+      });
+    }
+
+    if (currentState) {
+      options.splice(currentCity ? 2 : 1, 0, {
+        label: `Within ${currentState}`,
+        value: `Within ${currentState}`,
+      });
+    }
+
+    return options;
+  }, [currentCity, currentState]);
+
+  const selectedPreferredWorkLocation =
+    preferredWorkLocationOptions.find(option => option.value === workCity) || null;
 
   useEffect(() => {
     fetchStatus();
@@ -212,12 +245,17 @@ const HireMeScreen = ({ navigation }) => {
             In which city are you looking for work?
           </Typography>
           
-          <Input
-            placeholder="e.g. Vizag, Mumbai, Delhi"
-            value={workCity}
-            onChangeText={setWorkCity}
-            style={{ marginTop: 0 }}
-            editable={!saving}
+          <DropdownComponent
+            title="Preferred Work Area"
+            placeholder="Select preferred work area"
+            width={'100%'}
+            style_dropdown={{ marginHorizontal: 0 }}
+            selectedTextStyleNew={{ marginLeft: 10 }}
+            marginHorizontal={0}
+            style_title={{ textAlign: 'left' }}
+            value={selectedPreferredWorkLocation}
+            onChange={item => setWorkCity(item?.value || '')}
+            data={preferredWorkLocationOptions}
           />
         </View>
 

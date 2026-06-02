@@ -138,6 +138,9 @@ export const SUBSCRIPTION_HISTORY = 'subscription/history';
 export const SUBSCRIPTION_CREATE_EXTRA_JOB_ORDER = 'subscription/create-extra-job-order';
 export const SUBSCRIPTION_VERIFY_EXTRA_JOB_PAYMENT = 'subscription/verify-extra-job-payment';
 
+export const SUBSCRIPTION_CREATE_EXTRA_STAFF_ORDER = 'subscription/create-extra-staff-order';
+export const SUBSCRIPTION_VERIFY_EXTRA_STAFF_PAYMENT = 'subscription/verify-extra-staff-payment';
+
 
 // ===========================================
 // TERMINATIONS
