@@ -1365,12 +1365,17 @@ const StaffManagement = ({ navigation }) => {
               </View>
 
               <View style={styles.salaryRow}>
-                <Typography type={Font.Poppins_Regular} style={styles.label}>
-                  Advance Katauti (Deduct Taken Advance)
-                </Typography>
+                <View style={styles.amountLabelWrap}>
+                  <Typography type={Font.Poppins_Regular} style={styles.label}>
+                    Advance Katauti
+                  </Typography>
+                  <Typography type={Font.Poppins_Regular} style={styles.amountHelpText}>
+                    Deduct taken advance
+                  </Typography>
+                </View>
                 {isEditingDeductions ? (
                   <TextInput
-                    style={[styles.amountInput, { color: '#D98579' }]}
+                    style={[styles.amountInput, styles.deductionInput]}
                     keyboardType="numeric"
                     value={getSanitizedValue(advance)}
                     onChangeText={handleAmountChange(setAdvance)}
@@ -1383,6 +1388,34 @@ const StaffManagement = ({ navigation }) => {
                     style={{ color: '#D98579' }}
                   >
                     {Number(advance) > 0 ? `-${getSanitizedValue(advance)}` : '0'}
+                  </Typography>
+                )}
+              </View>
+
+              <View style={styles.salaryRow}>
+                <View style={styles.amountLabelWrap}>
+                  <Typography type={Font.Poppins_Regular} style={styles.label}>
+                    Other Deduction
+                  </Typography>
+                  <Typography type={Font.Poppins_Regular} style={styles.amountHelpText}>
+                    Tax or manual deduction
+                  </Typography>
+                </View>
+                {isEditingDeductions ? (
+                  <TextInput
+                    style={[styles.amountInput, styles.deductionInput]}
+                    keyboardType="numeric"
+                    value={getSanitizedValue(deduction)}
+                    onChangeText={handleAmountChange(setDeduction)}
+                    placeholder="0"
+                    placeholderTextColor="#D98579"
+                  />
+                ) : (
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={{ color: '#D98579' }}
+                  >
+                    {Number(deduction) > 0 ? `-${getSanitizedValue(deduction)}` : '0'}
                   </Typography>
                 )}
               </View>
@@ -1903,12 +1936,23 @@ const styles = StyleSheet.create({
   salaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginVertical: 6,
+    gap: 12,
+  },
+  amountLabelWrap: {
+    flex: 1,
+    paddingRight: 8,
   },
   label: {
     fontSize: 13,
     color: '#333',
     marginTop: 5,
+  },
+  amountHelpText: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
   },
   subText: {
     fontSize: 12,
@@ -1921,12 +1965,16 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     minWidth: 80,
+    width: 110,
     textAlign: 'right',
     fontSize: 14,
     borderBottomWidth: 1,
     borderColor: '#EBEBEA',
     paddingVertical: 2,
     fontFamily: Font.Poppins_SemiBold,
+  },
+  deductionInput: {
+    color: '#D98579',
   },
   amountPositive: {
     color: '#333',
