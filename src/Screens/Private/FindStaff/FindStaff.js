@@ -236,7 +236,7 @@ const FindStaff = ({ navigation, route }) => {
               kw.toLowerCase().includes(role.split('/')[0].trim())
             );
           });
-          if (roleFiltered.length > 0) finalList = roleFiltered;
+          finalList = roleFiltered;
         }
 
         // Filter out completely empty/junk profiles (no role and no location)
@@ -259,7 +259,7 @@ const FindStaff = ({ navigation, route }) => {
             const stateMatch = userState && (staffState.includes(userState.toLowerCase()) || loc.includes(userState.toLowerCase()));
             return cityMatch || stateMatch;
           });
-          if (locFiltered.length > 0) finalList = locFiltered;
+          finalList = locFiltered;
         }
 
         setAllCandidates(finalList);
