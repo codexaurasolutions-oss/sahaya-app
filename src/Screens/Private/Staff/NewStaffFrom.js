@@ -33,6 +33,29 @@ const NewStaffForm = ({ navigation, route }) => {
   const data = route?.params?.userData;
   const { userDetail } = useSelector(state => state.auth);
   const adharNumber = route?.params?.adharNumber;
+  const kycInfo = data?.kyc_information || data?.kycInformation || {};
+  const existingPoliceClearance =
+    data?.verification_certificate ||
+    data?.police_clearance_certificate ||
+    kycInfo?.police_verification_path ||
+    kycInfo?.verification_certificate ||
+    '';
+  const existingAadharFront =
+    data?.aadhar_front || data?.aadhaar_front || kycInfo?.aadhaar_front_path || '';
+  const existingAadharBack =
+    data?.aadhar_back || data?.aadhaar_back || kycInfo?.aadhaar_back_path || '';
+  const existingPhoneNumber =
+    data?.phone_number ||
+    data?.mobile_number ||
+    data?.mobile ||
+    data?.phone ||
+    data?.contact_number ||
+    '';
+  const existingPhoneCountryCode =
+    data?.phone_number_country_code ||
+    data?.phone_number_prefix ||
+    data?.country_code ||
+    '+91';
 
   // Personal Details States
   const [firstName, setFirstName] = useState('');
@@ -158,9 +181,9 @@ const NewStaffForm = ({ navigation, route }) => {
       }
 
       if (data.email) setEmail(data.email);
-      if (data.phone_number || data.mobile) setPhoneNumber(data.phone_number || data.mobile);
-      if (data.phone_number_country_code || data.country_code) {
-        setPhoneNumberCountryCode(data.phone_number_country_code || data.country_code);
+      if (existingPhoneNumber) setPhoneNumber(String(existingPhoneNumber));
+      if (existingPhoneCountryCode) {
+        setPhoneNumberCountryCode(existingPhoneCountryCode);
       }
       if (data.aadhar_number || data.aadhaar) setAadharNumber(data.aadhar_number || data.aadhaar);
 
@@ -254,17 +277,14 @@ const NewStaffForm = ({ navigation, route }) => {
       if (data.image && !isPlaceholderImage(data.image)) {
         setStaffPhoto({ uri: data.image });
       }
-      if (data.aadhar_front && !isPlaceholderImage(data.aadhar_front)) {
-        setAadharCard({ uri: data.aadhar_front });
+      if (existingAadharFront && !isPlaceholderImage(existingAadharFront)) {
+        setAadharCard({ uri: existingAadharFront });
       }
-      if (data.aadhar_back && !isPlaceholderImage(data.aadhar_back)) {
-        setAadharBack({ uri: data.aadhar_back });
+      if (existingAadharBack && !isPlaceholderImage(existingAadharBack)) {
+        setAadharBack({ uri: existingAadharBack });
       }
-      if (
-        data.verification_certificate &&
-        !isPlaceholderImage(data.verification_certificate)
-      ) {
-        setPoliceClearance({ uri: data.verification_certificate });
+      if (existingPoliceClearance && !isPlaceholderImage(existingPoliceClearance)) {
+        setPoliceClearance({ uri: existingPoliceClearance });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -752,7 +772,7 @@ const NewStaffForm = ({ navigation, route }) => {
       });
     }
 
-    if (!data?.verification_certificate && policeClearance && policeClearance.uri && policeClearance.type) {
+    if (!existingPoliceClearance && policeClearance && policeClearance.uri && policeClearance.type) {
       formData.append('police_clearance_certificate', {
         uri: policeClearance.uri,
         name: policeClearance.name || 'police_clearance_certificate.jpg',
@@ -760,7 +780,7 @@ const NewStaffForm = ({ navigation, route }) => {
       });
     }
 
-    if (!data?.aadhar_front && aadharCard && aadharCard.uri && aadharCard.type) {
+    if (!existingAadharFront && aadharCard && aadharCard.uri && aadharCard.type) {
       formData.append('aadhar_front', {
         uri: aadharCard.uri,
         name: aadharCard.name || 'aadhar_front.jpg',
@@ -768,7 +788,7 @@ const NewStaffForm = ({ navigation, route }) => {
       });
     }
 
-    if (!data?.aadhar_back && aadharBack && aadharBack.uri && aadharBack.type) {
+    if (!existingAadharBack && aadharBack && aadharBack.uri && aadharBack.type) {
       formData.append('aadhar_back', {
         uri: aadharBack.uri,
         name: aadharBack.name || 'aadhar_back.jpg',
@@ -1408,28 +1428,28 @@ const NewStaffForm = ({ navigation, route }) => {
           </View>
 
           {/* Police Clearance & Aadhaar - show read-only if staff already uploaded them */}
-          {(!isPlaceholderImage(data?.aadhar_front) || !isPlaceholderImage(data?.verification_certificate)) ? (
+          {(!isPlaceholderImage(existingAadharFront) || !isPlaceholderImage(existingPoliceClearance)) ? (
             <>
-              {!isPlaceholderImage(data?.verification_certificate) && (
+              {!isPlaceholderImage(existingPoliceClearance) && (
                 <View style={styles.readOnlyDocRow}>
                   <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
                     {LocalizedStrings.NewStaffForm.Police_Clearance_Certificate || 'Police Clearance'}
                   </Typography>
                   <Image
-                    source={{ uri: data.verification_certificate }}
+                    source={{ uri: existingPoliceClearance }}
                     style={styles.readOnlyDocImage}
                     resizeMode="cover"
                   />
                 </View>
               )}
               <View style={styles.uploadRow}>
-                {!isPlaceholderImage(data?.aadhar_front) ? (
+                {!isPlaceholderImage(existingAadharFront) ? (
                   <View style={[styles.uploadBox, styles.readOnlyDocContainer]}>
                     <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
                       {LocalizedStrings.NewStaffForm.Aadhaar_Card_Details || 'Aadhaar Front'}
                     </Typography>
                     <Image
-                      source={{ uri: data.aadhar_front }}
+                      source={{ uri: existingAadharFront }}
                       style={styles.readOnlyDocImage}
                       resizeMode="cover"
                     />
@@ -1443,13 +1463,13 @@ const NewStaffForm = ({ navigation, route }) => {
                     image={aadharCard}
                   />
                 )}
-                {!isPlaceholderImage(data?.aadhar_back) ? (
+                {!isPlaceholderImage(existingAadharBack) ? (
                   <View style={[styles.uploadBox, styles.readOnlyDocContainer]}>
                     <Typography type={Font?.Poppins_Medium} style={styles.readOnlyDocLabel}>
                       {'Aadhaar Card Back'}
                     </Typography>
                     <Image
-                      source={{ uri: data.aadhar_back }}
+                      source={{ uri: existingAadharBack }}
                       style={styles.readOnlyDocImage}
                       resizeMode="cover"
                     />

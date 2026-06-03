@@ -140,7 +140,54 @@ const StepLocation = React.forwardRef((props, ref) => {
   };
 
   // Clear city and state when pincode is cleared or changed (removed - not needed anymore)
-  // City and State are now entered first, before pincode
+  useEffect(() => {
+    if (!pinCode || pinCode.length < 6) {
+      setCity('');
+      setState('');
+    }
+  }, [pinCode]);
+
+  useEffect(() => {
+    if (!show) return;
+    if (!pinCode2 || pinCode2.length < 6) {
+      setCity2('');
+      setState2('');
+    }
+  }, [pinCode2, show]);
+
+  useEffect(() => {
+    const loadPrimaryPincodeDetails = async () => {
+      if (pinCode && pinCode.length === 6) {
+        try {
+          const details = await fetchPincodeDetails(pinCode);
+          setCity(details?.city || '');
+          setState(details?.state || '');
+          setError(prev => (prev?.city || prev?.state ? {...prev, city: null, state: null} : prev));
+        } catch (e) {
+          console.error('Primary pincode lookup failed:', e);
+        }
+      }
+    };
+
+    loadPrimaryPincodeDetails();
+  }, [pinCode]);
+
+  useEffect(() => {
+    const loadSecondaryPincodeDetails = async () => {
+      if (show && pinCode2 && pinCode2.length === 6) {
+        try {
+          const details = await fetchPincodeDetails(pinCode2);
+          setCity2(details?.city || '');
+          setState2(details?.state || '');
+          setError(prev => (prev?.city2 || prev?.state2 ? {...prev, city2: null, state2: null} : prev));
+        } catch (e) {
+          console.error('Secondary pincode lookup failed:', e);
+        }
+      }
+    };
+
+    loadSecondaryPincodeDetails();
+  }, [pinCode2, show]);
 
 
   // Validation function for address fields
@@ -251,24 +298,24 @@ const StepLocation = React.forwardRef((props, ref) => {
           <View style={styles.cityContainer}>
             <Input 
               title={LocalizedStrings.EditProfile?.City || LocalizedStrings.StaffProfile?.City || 'City'} 
-              placeholder={'Enter city'}
+              placeholder={'Auto-filled from pincode'}
               value={city}
-              onChange={(text) => {
-                setCity(text);
-                if (error?.city) setError({...error, city: null});
-              }}
+              editable={false}
+              borderColor="#E5E7EB"
+              style_input={styles.disabledInputText}
+              style_inputContainer={styles.disabledInputContainer}
               error={error?.city}
             />
           </View>
           <View style={styles.stateContainer}>
             <Input 
               title={LocalizedStrings.EditProfile?.State || LocalizedStrings.StaffProfile?.State || 'State'} 
-              placeholder={'Enter state'}
+              placeholder={'Auto-filled from pincode'}
               value={state}
-              onChange={(text) => {
-                setState(text);
-                if (error?.state) setError({...error, state: null});
-              }}
+              editable={false}
+              borderColor="#E5E7EB"
+              style_input={styles.disabledInputText}
+              style_inputContainer={styles.disabledInputContainer}
               error={error?.state}
             />
           </View>
@@ -281,7 +328,8 @@ const StepLocation = React.forwardRef((props, ref) => {
           keyboardType="numeric"
           value={pinCode}
           onChange={(text) => {
-            setPinCode(text);
+            const numericValue = text.replace(/[^0-9]/g, '');
+            setPinCode(numericValue);
             if (error?.pinCode) setError({...error, pinCode: null});
           }}
           error={error?.pinCode}
@@ -334,24 +382,24 @@ const StepLocation = React.forwardRef((props, ref) => {
             <View style={styles.cityContainer}>
               <Input 
                 title={LocalizedStrings.EditProfile?.City || LocalizedStrings.StaffProfile?.City || 'City'} 
-                placeholder={'Enter city'}
+                placeholder={'Auto-filled from pincode'}
                 value={city2}
-                onChange={(text) => {
-                  setCity2(text);
-                  if (error?.city2) setError({...error, city2: null});
-                }}
+                editable={false}
+                borderColor="#E5E7EB"
+                style_input={styles.disabledInputText}
+                style_inputContainer={styles.disabledInputContainer}
                 error={error?.city2}
               />
             </View>
             <View style={styles.stateContainer}>
               <Input 
                 title={LocalizedStrings.EditProfile?.State || LocalizedStrings.StaffProfile?.State || 'State'} 
-                placeholder={'Enter state'}
+                placeholder={'Auto-filled from pincode'}
                 value={state2}
-                onChange={(text) => {
-                  setState2(text);
-                  if (error?.state2) setError({...error, state2: null});
-                }}
+                editable={false}
+                borderColor="#E5E7EB"
+                style_input={styles.disabledInputText}
+                style_inputContainer={styles.disabledInputContainer}
                 error={error?.state2}
               />
             </View>
@@ -364,7 +412,8 @@ const StepLocation = React.forwardRef((props, ref) => {
             keyboardType="numeric"
             value={pinCode2}
             onChange={(text) => {
-              setPinCode2(text);
+              const numericValue = text.replace(/[^0-9]/g, '');
+              setPinCode2(numericValue);
               if (error?.pinCode2) setError({...error, pinCode2: null});
             }}
             error={error?.pinCode2}
@@ -428,6 +477,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(217, 133, 121, 0.3)',
     backgroundColor: 'rgba(217, 133, 121, 0.05)',
+  },
+  disabledInputContainer: {
+    backgroundColor: '#F9FAFB',
+  },
+  disabledInputText: {
+    color: '#6B7280',
   },
   locationIcon: {
     height: 16,

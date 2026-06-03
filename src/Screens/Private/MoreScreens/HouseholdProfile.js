@@ -29,7 +29,7 @@ import { userDetails } from '../../../Redux/action';
 import SimpleToast from 'react-native-simple-toast';
 import ImageModal from '../../../Modals/ImageModal';
 import LocalizedStrings from '../../../Constants/localization';
-import { formatDateWithDashes } from '../../../Backend/Utility';
+import { fetchPincodeDetails, formatDateWithDashes } from '../../../Backend/Utility';
 import { setLanguage } from '../../../Constants/AsyncStorage';
 
 const HouseholdProfile = ({ navigation, route }) => {
@@ -170,6 +170,39 @@ const HouseholdProfile = ({ navigation, route }) => {
       updated[index] = { ...updated[index], [field]: value };
       return updated;
     });
+  };
+
+  const handlePincodeChange = async (index, value) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+
+    setAddresses(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        pincode: numericValue,
+        city: numericValue.length < 6 ? '' : updated[index].city,
+        state: numericValue.length < 6 ? '' : updated[index].state,
+      };
+      return updated;
+    });
+
+    if (numericValue.length === 6) {
+      try {
+        const details = await fetchPincodeDetails(numericValue);
+        setAddresses(prev => {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            pincode: numericValue,
+            city: details?.city || '',
+            state: details?.state || '',
+          };
+          return updated;
+        });
+      } catch (e) {
+        console.error('Owner address pincode lookup failed:', e);
+      }
+    }
   };
 
   const addAddress = () => {
@@ -753,14 +786,20 @@ const HouseholdProfile = ({ navigation, route }) => {
                   <Input
                     title={LocalizedStrings.EditProfile.City || 'City'}
                     value={address.city}
-                    onChange={value => updateAddress(index, 'city', value)}
+                    editable={false}
+                    borderColor="#E5E7EB"
+                    style_input={styles.disabledInputText}
+                    style_inputContainer={styles.disabledInputContainer}
                   />
                 </View>
                 <View style={{ flex: 1, marginLeft: 8 }}>
                   <Input
                     title={LocalizedStrings.EditProfile.State || 'State'}
                     value={address.state}
-                    onChange={value => updateAddress(index, 'state', value)}
+                    editable={false}
+                    borderColor="#E5E7EB"
+                    style_input={styles.disabledInputText}
+                    style_inputContainer={styles.disabledInputContainer}
                   />
                 </View>
               </View>
@@ -769,7 +808,8 @@ const HouseholdProfile = ({ navigation, route }) => {
                 title={LocalizedStrings.EditProfile.Pincode || 'Pincode'}
                 keyboardType="number-pad"
                 value={address.pincode}
-                onChange={value => updateAddress(index, 'pincode', value)}
+                onChange={value => handlePincodeChange(index, value)}
+                maxLength={6}
               />
 
               {addresses.length > 1 && (
@@ -1139,6 +1179,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(217, 133, 121, 0.3)',
     backgroundColor: 'rgba(217, 133, 121, 0.05)',
+  },
+  disabledInputContainer: {
+    backgroundColor: '#F9FAFB',
+  },
+  disabledInputText: {
+    color: '#6B7280',
   },
   locationIcon: {
     height: 14,

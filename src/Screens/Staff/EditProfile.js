@@ -105,6 +105,11 @@ const EditProfile = ({ navigation, route }) => {
   const [currentLanguage, setCurrentLanguage] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState(null);
 
+  const isAadhaarVerified =
+    userDetail?.aadhar__verify === 1 || userDetail?.aadhar__verify === true;
+  const isAadhaarImageMissing =
+    isAadhaarVerified && (!aadhaarFront || !aadhaarBack);
+
   const preferredWorkLocationOptions = React.useMemo(() => {
     const options = [
       { label: 'All India', value: 'All India' },
@@ -1480,6 +1485,28 @@ const EditProfile = ({ navigation, route }) => {
               KYC Documents
             </Typography>
           </View>
+          {isAadhaarVerified ? (
+            <View style={styles.verifiedInfoCard}>
+              <Typography
+                type={Font?.Poppins_SemiBold}
+                size={13}
+                color="#1F7A4D"
+              >
+                Aadhaar Verified
+              </Typography>
+              <Typography
+                type={Font?.Poppins_Regular}
+                size={12}
+                color="#4B5563"
+                style={styles.verifiedInfoText}
+              >
+                Your Aadhaar verification is complete.
+                {isAadhaarImageMissing
+                  ? ' Front and back card images are still empty, so you can upload them here if needed.'
+                  : ' Aadhaar document images are available below.'}
+              </Typography>
+            </View>
+          ) : null}
           <View style={styles.docRowThree}>
             <View style={styles.uploadWrapperThree}>
               <UploadBox
@@ -1614,6 +1641,20 @@ const styles = StyleSheet.create({
   uploadWrapperThree: {
     width: '31%',
     alignItems: 'center',
+  },
+  verifiedInfoCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  verifiedInfoText: {
+    marginTop: 4,
+    lineHeight: 18,
   },
   imagePreviewContainer: {
     marginTop: 8,

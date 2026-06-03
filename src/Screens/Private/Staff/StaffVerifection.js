@@ -98,12 +98,24 @@ const StaffVerifection = ({ navigation, route }) => {
       data,
       success => {
         setLoading(false);
-        if (success?.user) {
-          dispatch(userDetails(success?.user));
+        const verifiedUser = success?.data?.user || success?.user || null;
+        const mergedUserData = verifiedUser
+          ? {
+              ...userData,
+              ...verifiedUser,
+              addresses: verifiedUser?.addresses || userData?.addresses,
+              user_work_info:
+                verifiedUser?.user_work_info || userData?.user_work_info,
+              kyc_information:
+                verifiedUser?.kyc_information || userData?.kyc_information,
+            }
+          : userData;
+        if (verifiedUser) {
+          dispatch(userDetails(verifiedUser));
         }
         navigation.navigate('NewStaffFrom', {
           adharNumber: adharNumber,
-          userData: success?.user || userData,
+          userData: mergedUserData,
         });
       },
       error => {
