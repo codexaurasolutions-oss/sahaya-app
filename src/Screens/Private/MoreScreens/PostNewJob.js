@@ -9,7 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -49,16 +49,17 @@ const PostNewJob = ({ navigation, route }) => {
 
   const userDetail = useSelector(state => state?.userDetails);
   const userAddresses = userDetail?.addresses || [];
-  
-  const addressOptionsList = [...userAddresses];
-  if (selectedAddress && !userAddresses.some(addr => (addr.street === selectedAddress.street || addr.streetAddress === selectedAddress.streetAddress) && addr.city === selectedAddress.city)) {
-    addressOptionsList.push(selectedAddress);
-  }
 
-  const mappedAddressOptions = addressOptionsList.map(addr => ({
-    label: addr?.title || addr?.name || `${addr?.street || addr?.streetAddress || ''}, ${addr?.city || ''}`,
-    value: addr,
-  }));
+  const getAddressKey = addr =>
+    [
+      addr?.id || '',
+      addr?.street || addr?.streetAddress || '',
+      addr?.city || '',
+      typeof addr?.state === 'string' ? addr?.state : addr?.state?.label || '',
+      addr?.pincode || addr?.zip_code || '',
+    ]
+      .join('|')
+      .toLowerCase();
 
   // Compensation
   const [expectedCompensation, setExpectedCompensation] = useState('');
@@ -66,6 +67,26 @@ const PostNewJob = ({ navigation, route }) => {
 
   // Location
   const [selectedAddress, setSelectedAddress] = useState(null);
+  const [selectedAddressKey, setSelectedAddressKey] = useState(null);
+
+  const mappedAddressOptions = useMemo(() => {
+    const addressOptionsList = [...userAddresses];
+    if (
+      selectedAddress &&
+      !userAddresses.some(addr => getAddressKey(addr) === getAddressKey(selectedAddress))
+    ) {
+      addressOptionsList.push(selectedAddress);
+    }
+
+    return addressOptionsList.map(addr => ({
+      label:
+        addr?.title ||
+        addr?.name ||
+        `${addr?.street || addr?.streetAddress || ''}, ${addr?.city || ''}`,
+      value: getAddressKey(addr),
+      address: addr,
+    }));
+  }, [selectedAddress, userAddresses]);
 
   // Working Schedule
   const [startTime, setStartTime] = useState(null);
@@ -178,6 +199,7 @@ const PostNewJob = ({ navigation, route }) => {
       );
       if (matchedAddr) {
         setSelectedAddress(matchedAddr);
+        setSelectedAddressKey(getAddressKey(matchedAddr));
       } else {
         const fallbackAddr = {
           street: jobData.street_address || '',
@@ -186,6 +208,7 @@ const PostNewJob = ({ navigation, route }) => {
           pincode: jobData.zip_code ? String(jobData.zip_code) : '',
         };
         setSelectedAddress(fallbackAddr);
+        setSelectedAddressKey(getAddressKey(fallbackAddr));
       }
     }
 
@@ -943,9 +966,10 @@ const PostNewJob = ({ navigation, route }) => {
             title="Select Address"
             placeholder="Select from your existing addresses"
             data={mappedAddressOptions}
-            value={selectedAddress}
+            value={selectedAddressKey}
             onChange={item => {
-              setSelectedAddress(item.value);
+              setSelectedAddress(item.address);
+              setSelectedAddressKey(item.value);
               if (errors.selectedAddress) {
                 setErrors({ ...errors, selectedAddress: null });
               }
