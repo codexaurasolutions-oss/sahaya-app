@@ -35,6 +35,7 @@ const EarningSummary = ({ route }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [attendanceSummary, setAttendanceSummary] = useState({ totalWorked: 0, daysInMonth: 30, last30Days: 0 });
   const [accruedSalary, setAccruedSalary] = useState(0);
+  const [retriedWithoutJobId, setRetriedWithoutJobId] = useState(false);
 
   const profileIcon = userDetail?.image
     ? userDetail.image
@@ -117,7 +118,10 @@ const EarningSummary = ({ route }) => {
 
   const fetchEarnings = useCallback((id) => {
     const month = getCurrentMonth();
-    const url = `${EarningSummaryRoute}?job_id=${id}&month=${month}`;
+    const hasValidJobId = id !== undefined && id !== null && id !== '' && id !== 'null' && id !== 'undefined' && Number(id) > 0;
+    const url = hasValidJobId
+      ? `${EarningSummaryRoute}?job_id=${id}&month=${month}`
+      : `${EarningSummaryRoute}?month=${month}`;
 
     fetchAttendanceSummary(userDetail?.id);
 
@@ -135,6 +139,16 @@ const EarningSummary = ({ route }) => {
         }
       },
       error => {
+        const validationError =
+          error?.data?.message === 'Validation error' ||
+          error?.response?.data?.message === 'Validation error';
+
+        if (validationError && hasValidJobId && !retriedWithoutJobId) {
+          setRetriedWithoutJobId(true);
+          fetchEarnings(null);
+          return;
+        }
+
         setIsLoading(false);
         handleErrorMessage(error);
       },
@@ -142,11 +156,12 @@ const EarningSummary = ({ route }) => {
         setIsLoading(false);
       },
     );
-  }, [handleErrorMessage]);
+  }, [fetchAttendanceSummary, handleErrorMessage, retriedWithoutJobId, userDetail?.id]);
 
   const fetchSummary = useCallback(() => {
     setIsLoading(true);
     setErrorMessage('');
+    setRetriedWithoutJobId(false);
 
     if (jobID) {
       // job_id passed from navigation, use it directly
@@ -157,10 +172,19 @@ const EarningSummary = ({ route }) => {
         myWork,
         success => {
           const data = success?.data;
-          // data can be a single object or an array
-          const job = Array.isArray(data) ? data[0] : data;
-          if (job?.id) {
-            fetchEarnings(job.id);
+          const myWorkData = Array.isArray(data) ? data[0] : data;
+          const jobApps = success?.jobApplications || myWorkData?.jobApplications || success?.job_applications || [];
+          const jobAppsArr = Array.isArray(jobApps) ? jobApps : [];
+          const activeJob = jobAppsArr.find(app => {
+            const status = (app?.status || app?.application_status || '').toLowerCase();
+            return status === 'accepted' || status === 'approved' || status === 'active';
+          });
+          const resolvedJobId = activeJob?.job_id || myWorkData?.job_id || null;
+
+          if (resolvedJobId) {
+            fetchEarnings(resolvedJobId);
+          } else if (myWorkData) {
+            fetchEarnings(null);
           } else {
             setIsLoading(false);
             setErrorMessage('No approved jobs found.');
@@ -252,6 +276,13 @@ const EarningSummary = ({ route }) => {
     statusLabel?.toLowerCase() === 'paid'
       ? styles.statusPaid
       : styles.statusPending;
+
+  const totalPayableAmount =
+    Number(summary2?.total_payable_amount) > 0
+      ? Number(summary2?.total_payable_amount)
+      : accruedSalary > 0
+        ? accruedSalary
+        : 0;
 
   return (
     <CommanView>
@@ -355,7 +386,7 @@ const EarningSummary = ({ route }) => {
                 ?.total_payable_amount || 'Total Payable Amount'}
             </Typography>
             <Typography type={Font.Poppins_Bold} size={32}>
-              {formatCurrency(summary2?.total_payable_amount)}
+              {formatCurrency(totalPayableAmount)}
             </Typography>
           </View>
           <View style={[styles.statusPill, statusStyle]}>
@@ -363,13 +394,13 @@ const EarningSummary = ({ route }) => {
               type={Font.Poppins_SemiBold}
               size={13}
               color={
-                summary2?.job_details?.application_status?.toLowerCase() ===
-                'accepted'
+                statusLabel?.toLowerCase() ===
+                'paid'
                   ? '#0F5132'
                   : Colors.white
               }
             >
-              {summary2?.job_details?.application_status || 'Pending'}
+              {statusLabel ? statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1) : 'Pending'}
             </Typography>
           </View>
         </View>
