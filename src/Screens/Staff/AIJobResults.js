@@ -51,6 +51,7 @@ const AIJobResults = ({ navigation, route }) => {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const [filterRole, setFilterRole] = useState(null);
@@ -83,6 +84,7 @@ const AIJobResults = ({ navigation, route }) => {
   const fetchJobs = () => {
     setIsLoading(true);
     setErrorMessage('');
+    setStatusMessage('');
 
     console.log('AIJobResults - API Request:', { url: JobGetAIData, body: { query: description } });
 
@@ -94,6 +96,7 @@ const AIJobResults = ({ navigation, route }) => {
         if (response?.success === false) {
           setErrorMessage(response?.message || 'Something went wrong. Please try again.');
           setJobs([]);
+          setAllJobs([]);
           setIsLoading(false);
           return;
         }
@@ -132,22 +135,35 @@ const AIJobResults = ({ navigation, route }) => {
               
               return cityMatch || stateMatch;
            });
-           if (locFiltered.length > 0) finalList = locFiltered;
+           finalList = locFiltered;
         }
 
+        const backendMessage = response?.message || '';
+        setStatusMessage(
+          finalList.length === 0
+            ? (backendMessage || 'No matching jobs found. Try adjusting your search.')
+            : (response?.fallback ? backendMessage : '')
+        );
         setAllJobs(finalList);
         setJobs(finalList);
         setIsLoading(false);
       },
       (error) => {
         console.log('AIJobResults - API Error:', JSON.stringify(error));
-        setErrorMessage('Failed to load jobs. Please try again.');
+        setErrorMessage(
+          error?.data?.message ||
+            error?.data?.error ||
+            'Could not load jobs right now. Please try again.'
+        );
         setJobs([]);
+        setAllJobs([]);
         setIsLoading(false);
       },
       (fail) => {
         console.log('AIJobResults - API Fail:', JSON.stringify(fail));
+        setErrorMessage('Network error. Please check your connection and try again.');
         setJobs([]);
+        setAllJobs([]);
         setIsLoading(false);
       },
     );
@@ -376,6 +392,12 @@ const AIJobResults = ({ navigation, route }) => {
             <View style={styles.errorContainer}>
               <Typography size={14} color="#D98579" textAlign="center">
                 {errorMessage}
+              </Typography>
+            </View>
+          ) : statusMessage ? (
+            <View style={styles.emptyContainer}>
+              <Typography size={14} color="#555" textAlign="center">
+                {statusMessage}
               </Typography>
             </View>
           ) : jobs.length === 0 ? (
