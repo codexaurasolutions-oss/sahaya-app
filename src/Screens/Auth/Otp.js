@@ -170,15 +170,7 @@ const Otp = ({ navigation, route }) => {
     setOtpError('');
     var formdata = new FormData();
     formdata?.append('otp', otp);
-    if (user_id) {
-      formdata?.append('user_id', user_id);
-    }
-    if (mobile) {
-      formdata?.append('phone_number', mobile);
-    }
-    if (countryCode) {
-      formdata?.append('country_code', countryCode);
-    }
+    formdata?.append('user_id', user_id);
     formdata?.append('device_token', FcmToken);
     formdata?.append(
       'device_type',
@@ -225,11 +217,6 @@ const Otp = ({ navigation, route }) => {
           if (error.data.debug_stored) {
             errorMsg += `\n(Expect: ${error.data.debug_stored} | Sent: ${error.data.debug_sent})`;
           }
-        } else if (error?.data?.errors && typeof error.data.errors === 'object') {
-          errorMsg = Object.values(error.data.errors)
-            .flat()
-            .filter(Boolean)
-            .join('\n');
         } else if (error?.data?.message) {
           errorMsg = error.data.message;
         } else if (error?.message) {
@@ -241,8 +228,6 @@ const Otp = ({ navigation, route }) => {
       },
       fail => {
         console.log('API Fail:', fail);
-        setIsLoading(false);
-        setOtpError('Network error. Please try again.');
       },
     );
   };
