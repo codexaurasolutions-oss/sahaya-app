@@ -616,6 +616,27 @@ const PostNewJob = ({ navigation, route }) => {
       SUBSCRIPTION_CREATE_EXTRA_JOB_ORDER,
       { amount: price },
       async success => {
+        if ((success?.success || success?.status) && success?.free) {
+          POST_FORM_DATA(
+            AddJob,
+            originalFormData,
+            () => {
+              setLoading(false);
+              SimpleToast.show('Extra job limit added. Job posted successfully!', SimpleToast.SHORT);
+              navigation?.goBack();
+            },
+            () => {
+              setLoading(false);
+              SimpleToast.show('Extra job limit added. Please try posting the job again.', SimpleToast.SHORT);
+            },
+            () => {
+              setLoading(false);
+              SimpleToast.show('Extra job limit added. Please try posting the job again.', SimpleToast.SHORT);
+            }
+          );
+          return;
+        }
+
         if ((!success?.success && !success?.status) || !success?.order_id) {
           setLoading(false);
           SimpleToast.show(success?.message || 'Failed to create payment order', SimpleToast.SHORT);
