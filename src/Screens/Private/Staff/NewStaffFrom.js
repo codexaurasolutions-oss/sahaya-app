@@ -900,6 +900,30 @@ const NewStaffForm = ({ navigation, route }) => {
       SUBSCRIPTION_CREATE_EXTRA_STAFF_ORDER,
       { amount: price },
       async success => {
+        if ((success?.success || success?.status) && success?.free) {
+          const apiEndpoint = isEditMode ? `${UpdateStaff}/${staffId}` : AddStaff;
+          POST_FORM_DATA(
+            apiEndpoint,
+            originalFormData,
+            () => {
+              setLoading(false);
+              SimpleToast.show('Extra staff limit added. Staff added successfully!', SimpleToast.SHORT);
+              navigation.navigate('TabNavigation', {
+                screen: 'Dashboard',
+              });
+            },
+            () => {
+              setLoading(false);
+              SimpleToast.show('Extra staff limit added. Please try adding the staff again.', SimpleToast.SHORT);
+            },
+            () => {
+              setLoading(false);
+              SimpleToast.show('Extra staff limit added. Please try adding the staff again.', SimpleToast.SHORT);
+            }
+          );
+          return;
+        }
+
         if ((!success?.success && !success?.status) || !success?.order_id) {
           setLoading(false);
           SimpleToast.show(success?.message || 'Failed to create payment order', SimpleToast.SHORT);
