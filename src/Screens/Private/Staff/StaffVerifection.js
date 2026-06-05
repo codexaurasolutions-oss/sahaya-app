@@ -11,8 +11,72 @@ import { OtpInput } from 'react-native-otp-entry';
 import LocalizedStrings from '../../../Constants/localization';
 import { POST_FORM_DATA } from '../../../Backend/Backend';
 import { AADHAR_SAVE, AADHAR_VERFIY } from '../../../Backend/api_routes';
-import { useDispatch } from 'react-redux';
-import { userDetails } from '../../../Redux/action';
+
+const buildSafeStaffPayload = (baseUser = {}, verifiedUser = {}) => {
+  const nextUser = verifiedUser && typeof verifiedUser === 'object' ? verifiedUser : {};
+  const prevUser = baseUser && typeof baseUser === 'object' ? baseUser : {};
+
+  return {
+    id: nextUser?.id || prevUser?.id,
+    user_id: nextUser?.user_id || prevUser?.user_id,
+    name: nextUser?.name || prevUser?.name,
+    first_name: nextUser?.first_name || prevUser?.first_name,
+    last_name: nextUser?.last_name || prevUser?.last_name,
+    email: nextUser?.email || prevUser?.email,
+    phone_number:
+      nextUser?.phone_number ||
+      nextUser?.mobile_number ||
+      prevUser?.phone_number ||
+      prevUser?.mobile_number,
+    phone_number_prefix:
+      nextUser?.phone_number_prefix ||
+      nextUser?.phone_number_country_code ||
+      prevUser?.phone_number_prefix ||
+      prevUser?.phone_number_country_code,
+    gender: nextUser?.gender || prevUser?.gender,
+    dob: nextUser?.dob || prevUser?.dob,
+    aadhar_number: nextUser?.aadhar_number || prevUser?.aadhar_number,
+    aadhar__verify:
+      nextUser?.aadhar__verify !== undefined
+        ? nextUser?.aadhar__verify
+        : prevUser?.aadhar__verify,
+    image: nextUser?.image || prevUser?.image,
+    upi_id: nextUser?.upi_id || prevUser?.upi_id,
+    addresses: Array.isArray(nextUser?.addresses)
+      ? nextUser.addresses
+      : Array.isArray(prevUser?.addresses)
+        ? prevUser.addresses
+        : [],
+    user_work_info:
+      nextUser?.user_work_info ||
+      nextUser?.userWorkInfo ||
+      prevUser?.user_work_info ||
+      prevUser?.userWorkInfo ||
+      null,
+    kyc_information:
+      nextUser?.kyc_information ||
+      nextUser?.kycInformation ||
+      prevUser?.kyc_information ||
+      prevUser?.kycInformation ||
+      null,
+    aadhar_front:
+      nextUser?.aadhar_front ||
+      nextUser?.aadhaar_front ||
+      prevUser?.aadhar_front ||
+      prevUser?.aadhaar_front ||
+      null,
+    aadhar_back:
+      nextUser?.aadhar_back ||
+      nextUser?.aadhaar_back ||
+      prevUser?.aadhar_back ||
+      prevUser?.aadhaar_back ||
+      null,
+    verification_certificate:
+      nextUser?.verification_certificate ||
+      prevUser?.verification_certificate ||
+      null,
+  };
+};
 
 const StaffVerifection = ({ navigation, route }) => {
   const userData = route?.params?.userData;
@@ -21,7 +85,6 @@ const StaffVerifection = ({ navigation, route }) => {
   const [otp, setOtp] = useState('');
   const [Verify, setVerify] = useState(false);
   const [loading, setLoading] = useState(false);
-  const dispatch = useDispatch();
   const [otpError, setOtpError] = useState('');
   const [resendTimer, setResendTimer] = useState(60);
   const last4 = adharNumber?.slice(-4) || '****';
@@ -99,20 +162,7 @@ const StaffVerifection = ({ navigation, route }) => {
       success => {
         setLoading(false);
         const verifiedUser = success?.data?.user || success?.user || null;
-        const mergedUserData = verifiedUser
-          ? {
-              ...userData,
-              ...verifiedUser,
-              addresses: verifiedUser?.addresses || userData?.addresses,
-              user_work_info:
-                verifiedUser?.user_work_info || userData?.user_work_info,
-              kyc_information:
-                verifiedUser?.kyc_information || userData?.kyc_information,
-            }
-          : userData;
-        if (verifiedUser) {
-          dispatch(userDetails(verifiedUser));
-        }
+        const mergedUserData = buildSafeStaffPayload(userData, verifiedUser);
         navigation.navigate('NewStaffFrom', {
           adharNumber: adharNumber,
           userData: mergedUserData,
