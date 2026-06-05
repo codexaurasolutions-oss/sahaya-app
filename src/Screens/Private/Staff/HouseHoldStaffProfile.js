@@ -678,14 +678,6 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                           Edit Base
                         </Typography>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => navigation.navigate('Salary')}
-                        style={{ padding: 8, backgroundColor: '#D98579', borderRadius: 6 }}
-                      >
-                        <Typography type={Font.Poppins_Medium} size={11} color="#FFF">
-                          Pay
-                        </Typography>
-                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>
