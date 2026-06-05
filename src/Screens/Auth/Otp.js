@@ -1,5 +1,5 @@
 import { StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import CommanView from '../../Component/CommanView';
 import Header from '../../Component/Header';
 import { Font } from '../../Constants/Font';
@@ -21,6 +21,7 @@ const Otp = ({ navigation, route }) => {
   const [resendTimer, setResendTimer] = useState(60); // 60 sec timer
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const otpRef = useRef('');
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -147,8 +148,9 @@ const Otp = ({ navigation, route }) => {
   // Verify OTP function
   const handleVerify = async () => {
     const FcmToken = await AsyncStorage.getItem('fcm_token');
+    const currentOtp = String(otpRef.current || otp || '').trim();
 
-    if (otp.length !== 6) {
+    if (currentOtp.length !== 6) {
       setOtpError(
         LocalizedStrings.Auth?.otp_placeholder ||
         LocalizedStrings.AddStaff?.OTP_Placeholders ||
@@ -169,7 +171,7 @@ const Otp = ({ navigation, route }) => {
     setIsLoading(true);
     setOtpError('');
     var formdata = new FormData();
-    formdata?.append('otp', otp);
+    formdata?.append('otp', currentOtp);
     formdata?.append('user_id', user_id);
     formdata?.append('device_token', FcmToken);
     formdata?.append(
@@ -177,7 +179,7 @@ const Otp = ({ navigation, route }) => {
       Platform.OS == 'android' ? 'android' : 'ios',
     );
 
-    console.log('Sending OTP:', otp, 'Length:', otp.length);
+    console.log('Sending OTP:', currentOtp, 'Length:', currentOtp.length);
     console.log('-----formdata-----', formdata);
 
     POST(
@@ -277,10 +279,15 @@ const Otp = ({ navigation, route }) => {
           numberOfDigits={6}
           focusColor="#D98579"
           onTextChange={text => {
+            otpRef.current = text;
             setOtp(text);
             if (otpError) {
               setOtpError('');
             }
+          }}
+          onFilled={text => {
+            otpRef.current = text;
+            setOtp(text);
           }}
           textInputProps={{
             keyboardType: 'number-pad',
