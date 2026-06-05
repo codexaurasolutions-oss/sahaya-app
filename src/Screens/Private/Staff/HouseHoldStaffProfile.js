@@ -48,6 +48,7 @@ const getProfileImage = (img) => {
 const HouseHoldStaffProfile = ({ navigation, route }) => {
   const paramData = route?.params?.item || {};
   const fromFindStaffAI = route?.params?.fromFindStaffAI || false;
+  const isReadOnlyPreview = !!fromFindStaffAI;
   const [data, setData] = useState(paramData);
   const [modalMode, setModalMode] = useState(null);
   const [reason, setReason] = useState(null);
@@ -492,13 +493,15 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               </View>
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={styles.editImageBtn}
-              onPress={handlePickProfileImage}
-              activeOpacity={0.8}
-            >
-              <Image source={ImageConstant.NewCamera} style={styles.editImageIcon} />
-            </TouchableOpacity>
+            {!isReadOnlyPreview && (
+              <TouchableOpacity 
+                style={styles.editImageBtn}
+                onPress={handlePickProfileImage}
+                activeOpacity={0.8}
+              >
+                <Image source={ImageConstant.NewCamera} style={styles.editImageIcon} />
+              </TouchableOpacity>
+            )}
           </View>
           <Typography style={styles.name} size={22}>
             {fullName}
@@ -617,18 +620,20 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                    data?.staff?.upi_id ||
                    'Not Available'}
                 </Typography>
-                <TouchableOpacity
-                  onPress={() => {
-                    setNewUpi(data?.upi_id || data?.user_work_info?.upi_id || '');
-                    setIsEditingUpi(true);
-                  }}
-                  style={{ padding: 5 }}
-                >
-                  <Image
-                    source={ImageConstant.pencle}
-                    style={{ width: 14, height: 14, tintColor: '#D98579' }}
-                  />
-                </TouchableOpacity>
+                {!isReadOnlyPreview && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setNewUpi(data?.upi_id || data?.user_work_info?.upi_id || '');
+                      setIsEditingUpi(true);
+                    }}
+                    style={{ padding: 5 }}
+                  >
+                    <Image
+                      source={ImageConstant.pencle}
+                      style={{ width: 14, height: 14, tintColor: '#D98579' }}
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
@@ -662,23 +667,25 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                     <Typography style={styles.value}>
                       ₹{Number(data.user_work_info.salary).toLocaleString('en-IN')}
                     </Typography>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setNewSalary(data.user_work_info.salary.toString());
-                          setIsEditingSalary(true);
-                        }}
-                        style={{ padding: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF5EE', borderRadius: 6, borderWidth: 1, borderColor: '#D98579' }}
-                      >
-                        <Image
-                          source={ImageConstant.pencle}
-                          style={{ width: 14, height: 14, tintColor: '#D98579', marginRight: 4 }}
-                        />
-                        <Typography type={Font.Poppins_Medium} size={11} color="#D98579">
-                          Edit Base
-                        </Typography>
-                      </TouchableOpacity>
-                    </View>
+                    {!isReadOnlyPreview && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setNewSalary(data.user_work_info.salary.toString());
+                            setIsEditingSalary(true);
+                          }}
+                          style={{ padding: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF5EE', borderRadius: 6, borderWidth: 1, borderColor: '#D98579' }}
+                        >
+                          <Image
+                            source={ImageConstant.pencle}
+                            style={{ width: 14, height: 14, tintColor: '#D98579', marginRight: 4 }}
+                          />
+                          <Typography type={Font.Poppins_Medium} size={11} color="#D98579">
+                            Edit Base
+                          </Typography>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 </View>
               </View>
@@ -938,56 +945,58 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           </View>
         )}
  
-        <View style={[styles.card, { marginTop: 20, borderColor: '#D98579', borderStyle: 'dashed' }]}>
-           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#eee', paddingBottom: 8, marginBottom: 12 }}>
-             <Typography type={Font.Poppins_Bold} size={16} color="#D98579">
-               Private Documents (Only visible to you)
+        {!isReadOnlyPreview && (
+          <View style={[styles.card, { marginTop: 20, borderColor: '#D98579', borderStyle: 'dashed' }]}>
+             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderColor: '#eee', paddingBottom: 8, marginBottom: 12 }}>
+               <Typography type={Font.Poppins_Bold} size={16} color="#D98579">
+                 Private Documents (Only visible to you)
+               </Typography>
+               <Image source={ImageConstant.Verify} style={{ width: 16, height: 16, tintColor: '#D98579' }} />
+             </View>
+             
+             <Typography size={12} color="#888" style={{ marginBottom: 15 }}>
+               {"Manage documents specifically for your records. These changes will not affect the staff's global profile."}
              </Typography>
-             <Image source={ImageConstant.Verify} style={{ width: 16, height: 16, tintColor: '#D98579' }} />
-           </View>
-           
-           <Typography size={12} color="#888" style={{ marginBottom: 15 }}>
-             Manage documents specifically for your records. These changes will not affect the staff's global profile.
-           </Typography>
- 
-           <View style={styles.docGrid}>
-              {(Array.isArray(data?.private_docs_list) ? data.private_docs_list : [
-                { label: 'Aadhaar Front', field: 'employer_aadhar_front', url: getDocUrl(data?.employer_aadhar_front) },
-                { label: 'Aadhaar Back', field: 'employer_aadhar_back', url: getDocUrl(data?.employer_aadhar_back) },
-                { label: 'Police Verification', field: 'employer_police_verification', url: getDocUrl(data?.employer_police_verification) },
-                { label: 'Contract/Other', field: 'employer_other_doc', url: getDocUrl(data?.employer_other_doc) },
-              ]).map((doc) => (
-                <View key={doc.field} style={styles.docItem}>
-                   <TouchableOpacity
-                    style={[styles.docImage, { justifyContent: 'center', alignItems: 'center' }]}
-                    onPress={() => doc.url ? setPreviewImage(doc.url) : handlePickDocument(doc.field)}
-                   >
-                    {doc.url ? (
-                      <Image source={{ uri: doc.url }} style={styles.docImage} resizeMode="cover" />
-                    ) : (
-                      <View style={{ alignItems: 'center' }}>
-                        {uploadingDoc === doc.field ? (
-                          <ActivityIndicator size="small" color="#D98579" />
-                        ) : (
-                          <Image source={ImageConstant.NewCamera} style={{ width: 24, height: 24, tintColor: '#ccc' }} />
-                        )}
-                        <Typography size={10} color="#999" style={{ marginTop: 4 }}>Tap to upload</Typography>
-                      </View>
-                    )}
-                    {doc.url && (
-                       <TouchableOpacity 
-                         style={{ position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10, padding: 2, elevation: 2 }}
-                         onPress={() => handlePickDocument(doc.field)}
-                       >
-                         <Image source={ImageConstant.pencle} style={{ width: 12, height: 12, tintColor: '#D98579' }} />
-                       </TouchableOpacity>
-                    )}
-                   </TouchableOpacity>
-                   <Typography style={styles.docLabel}>{doc.label}</Typography>
-                </View>
-              ))}
-           </View>
-        </View>
+   
+             <View style={styles.docGrid}>
+                {(Array.isArray(data?.private_docs_list) ? data.private_docs_list : [
+                  { label: 'Aadhaar Front', field: 'employer_aadhar_front', url: getDocUrl(data?.employer_aadhar_front) },
+                  { label: 'Aadhaar Back', field: 'employer_aadhar_back', url: getDocUrl(data?.employer_aadhar_back) },
+                  { label: 'Police Verification', field: 'employer_police_verification', url: getDocUrl(data?.employer_police_verification) },
+                  { label: 'Contract/Other', field: 'employer_other_doc', url: getDocUrl(data?.employer_other_doc) },
+                ]).map((doc) => (
+                  <View key={doc.field} style={styles.docItem}>
+                     <TouchableOpacity
+                      style={[styles.docImage, { justifyContent: 'center', alignItems: 'center' }]}
+                      onPress={() => doc.url ? setPreviewImage(doc.url) : handlePickDocument(doc.field)}
+                     >
+                      {doc.url ? (
+                        <Image source={{ uri: doc.url }} style={styles.docImage} resizeMode="cover" />
+                      ) : (
+                        <View style={{ alignItems: 'center' }}>
+                          {uploadingDoc === doc.field ? (
+                            <ActivityIndicator size="small" color="#D98579" />
+                          ) : (
+                            <Image source={ImageConstant.NewCamera} style={{ width: 24, height: 24, tintColor: '#ccc' }} />
+                          )}
+                          <Typography size={10} color="#999" style={{ marginTop: 4 }}>Tap to upload</Typography>
+                        </View>
+                      )}
+                      {doc.url && (
+                         <TouchableOpacity 
+                           style={{ position: 'absolute', top: -5, right: -5, backgroundColor: '#fff', borderRadius: 10, padding: 2, elevation: 2 }}
+                           onPress={() => handlePickDocument(doc.field)}
+                         >
+                           <Image source={ImageConstant.pencle} style={{ width: 12, height: 12, tintColor: '#D98579' }} />
+                         </TouchableOpacity>
+                      )}
+                     </TouchableOpacity>
+                     <Typography style={styles.docLabel}>{doc.label}</Typography>
+                  </View>
+                ))}
+             </View>
+          </View>
+        )}
 
         {!fromFindStaffAI && data?.status !== 'inactive' && data?.status !== 'absent' && (
           <View style={styles.actionFooter}>
