@@ -10,7 +10,7 @@ import Button from '../../../Component/Button';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { POST_FORM_DATA } from '../../../Backend/Backend';
 import { AADHAR_SAVE, AADHAR_VERFIY } from '../../../Backend/api_routes';
-import { Token, userDetails } from '../../../Redux/action';
+import { userDetails } from '../../../Redux/action';
 import LocalizedStrings from '../../../Constants/localization';
 
 const AadharOtp = ({ navigation, route }) => {
@@ -95,7 +95,10 @@ const AadharOtp = ({ navigation, route }) => {
         AADHAR_VERFIY,
         data,
         sucess => {
-          dispatch(userDetails(sucess?.user));
+          const verifiedUser = sucess?.data?.user || sucess?.user || sucess?.data || null;
+          if (verifiedUser && typeof verifiedUser === 'object') {
+            dispatch(userDetails(verifiedUser));
+          }
           navigation?.navigate('StepFirst');
         },
         error => {
