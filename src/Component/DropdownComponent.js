@@ -26,7 +26,8 @@ const DropdownComponent = ({
   placeholder = " ",
   leftIcons = ImageConstant.BackArrow,
   leftIconsShow=false,
-  selectedTextStyleNew={}
+  selectedTextStyleNew={},
+  dropdownPosition = 'auto',
 }) => {
   const renderItem = (item, index) => {
     return (
@@ -92,6 +93,7 @@ const DropdownComponent = ({
           labelField="label"
           valueField="value"
           placeholder={placeholder}
+          dropdownPosition={dropdownPosition}
           iconColor={iconColor}
           onChange={item => {
             onChange(item);

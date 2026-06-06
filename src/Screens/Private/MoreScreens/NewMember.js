@@ -293,6 +293,7 @@ const NewMember = ({ navigation, route }) => {
             // placeholder={LocalizedStrings.AddNewMember.select_relation || 'Select Relation'}
             width={'100%'}
             style_dropdown={{ marginHorizontal: 0 }}
+            dropdownPosition="top"
             selectedTextStyleNew={{ marginLeft: 10 }}
             marginHorizontal={0}
             style_title={{ textAlign: 'left' }}
