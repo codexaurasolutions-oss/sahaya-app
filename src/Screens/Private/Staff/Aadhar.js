@@ -14,6 +14,36 @@ import { POST_FORM_DATA } from '../../../Backend/Backend';
 import { AADHAR_SAVE } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 
+const buildSafeStaffPayload = rawUser => {
+  const user = rawUser && typeof rawUser === 'object' ? rawUser : {};
+
+  return {
+    id: user?.id,
+    user_id: user?.user_id || user?.id,
+    name: user?.name,
+    first_name: user?.first_name,
+    last_name: user?.last_name,
+    email: user?.email,
+    phone_number: user?.phone_number || user?.mobile_number || user?.mobile,
+    phone_number_prefix:
+      user?.phone_number_prefix ||
+      user?.phone_number_country_code ||
+      user?.country_code,
+    gender: user?.gender,
+    dob: user?.dob,
+    aadhar_number: user?.aadhar_number || user?.aadhaar,
+    aadhar__verify: user?.aadhar__verify,
+    image: user?.image,
+    upi_id: user?.upi_id,
+    addresses: Array.isArray(user?.addresses) ? user.addresses : [],
+    user_work_info: user?.user_work_info || user?.userWorkInfo || null,
+    kyc_information: user?.kyc_information || user?.kycInformation || null,
+    aadhar_front: user?.aadhar_front || user?.aadhaar_front || null,
+    aadhar_back: user?.aadhar_back || user?.aadhaar_back || null,
+    verification_certificate: user?.verification_certificate || null,
+  };
+};
+
 const Aadhar = () => {
   const navigation = useNavigation();
   const [adharNumber, setAdharNumber] = useState('');
@@ -45,7 +75,7 @@ const Aadhar = () => {
         SimpleToast.show(sucess?.message, SimpleToast.SHORT);
         navigation?.navigate('StaffVerifection', {
           adharNumber: adharNumber,
-          userData: sucess?.data,
+          userData: buildSafeStaffPayload(sucess?.data),
         });
       },
       error => {
