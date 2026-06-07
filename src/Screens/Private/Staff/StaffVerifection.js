@@ -165,14 +165,13 @@ const StaffVerifection = ({ navigation, route }) => {
     setLoading(true);
 
     let data = new FormData();
-    data.append('otp', otp);
-    // Send user_id if available (try both field names from API response)
+    data.append('otp', String(otp));
     const userId = userData?.user_id || userData?.id;
     if (userId) {
-      data.append('user_id', userId);
+      data.append('user_id', String(userId));
     }
-    data.append('aadhar_number', adharNumber);
-    data.append('is_staff_add', 1);
+    data.append('aadhar_number', String(adharNumber));
+    data.append('is_staff_add', '1');
 
     POST_FORM_DATA(
       AADHAR_VERFIY,
@@ -453,4 +452,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
+
+
 
