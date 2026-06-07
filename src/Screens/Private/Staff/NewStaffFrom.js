@@ -171,7 +171,7 @@ const NewStaffForm = ({ navigation, route }) => {
       // If first_name is missing but name or full_name is present (common in Aadhaar verified data), split it
       const displayName = data.name || data.full_name || data.fullname;
       if (displayName && !data.first_name && !firstName) {
-        const nameParts = displayName.trim().split(/\s+/);
+        const nameParts = String(displayName).trim().split(/\s+/);
         if (nameParts.length > 0) {
           setFirstName(nameParts[0]);
           if (nameParts.length > 1) {
@@ -193,15 +193,15 @@ const NewStaffForm = ({ navigation, route }) => {
         const genderOption = genderOptions.find(
           opt =>
             opt.value === userGender ||
-            opt.value.toLowerCase() === userGender.toLowerCase() ||
-            opt.label.toLowerCase() === userGender.toLowerCase()
+            opt.value.toLowerCase() === String(userGender).toLowerCase() ||
+            opt.label.toLowerCase() === String(userGender).toLowerCase()
         );
         if (genderOption) {
           setGender(genderOption);
         } else {
           setGender({
-            label: userGender.charAt(0).toUpperCase() + userGender.slice(1),
-            value: userGender.toLowerCase(),
+            label: String(userGender).charAt(0).toUpperCase() + String(userGender).slice(1),
+            value: String(userGender).toLowerCase(),
           });
         }
       }
@@ -225,10 +225,10 @@ const NewStaffForm = ({ navigation, route }) => {
       // Address from addresses array
       if (data.addresses && data.addresses.length > 0) {
         const address = data.addresses[0];
-        if (address.street) setStreet(address.street);
-        if (address.city) setCity(address.city);
-        if (address.state) setStateName(address.state);
-        if (address.pincode) setPincode(String(address.pincode));
+        if (address && address.street) setStreet(address.street);
+        if (address && address.city) setCity(address.city);
+        if (address && address.state) setStateName(address.state);
+        if (address && address.pincode) setPincode(String(address.pincode));
       }
 
       // Relation
@@ -242,8 +242,8 @@ const NewStaffForm = ({ navigation, route }) => {
         } else {
           // If relation is a name string, try to find or create option
           setRelation({
-            label: data.relation,
-            value: data.relation.toLowerCase(),
+            label: String(data.relation),
+            value: String(data.relation).toLowerCase(),
           });
         }
       }
@@ -1689,3 +1689,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+
+
+
+
+
+

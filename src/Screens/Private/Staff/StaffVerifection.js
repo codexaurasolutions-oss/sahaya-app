@@ -122,11 +122,29 @@ const StaffVerifection = ({ navigation, route }) => {
         setOtpError('');
       },
       error => {
-        setOtpError(
-          error?.data?.errors?.aadhar_number
-            ? error.data.errors.aadhar_number[0]
-            : error?.data?.message || 'Failed to resend OTP',
-        );
+        setLoading(false);
+        let errorMsg = 'Invalid OTP. Please try again.';
+        if (error?.data?.message) {
+          errorMsg = error.data.message;
+        } else if (error?.data?.error) {
+          errorMsg = error.data.error;
+        } else if (error?.data?.errors) {
+          const errs = error.data.errors;
+          errorMsg = Object.values(errs).flat().join('\n');
+        } else if (error?.message) {
+          errorMsg = error.message;
+        } else if (error?.error) {
+          errorMsg = error.error;
+        }
+        
+        if (typeof errorMsg !== 'string') {
+          try {
+            errorMsg = JSON.stringify(errorMsg);
+          } catch(e) {
+            errorMsg = 'An unknown error occurred';
+          }
+        }
+        setOtpError(errorMsg);
       },
       fail => {
         setOtpError('Network error. Please try again.');
@@ -170,15 +188,28 @@ const StaffVerifection = ({ navigation, route }) => {
       },
       error => {
         setLoading(false);
+        let errorMsg = 'Invalid OTP. Please try again.';
         if (error?.data?.message) {
-          setOtpError(error?.data?.message);
+          errorMsg = error.data.message;
         } else if (error?.data?.error) {
-          setOtpError(error?.data?.error);
+          errorMsg = error.data.error;
+        } else if (error?.data?.errors) {
+          const errs = error.data.errors;
+          errorMsg = Object.values(errs).flat().join('\n');
         } else if (error?.message) {
-          setOtpError(error.message);
-        } else {
-          setOtpError(error?.error || 'Invalid OTP. Please try again.');
+          errorMsg = error.message;
+        } else if (error?.error) {
+          errorMsg = error.error;
         }
+        
+        if (typeof errorMsg !== 'string') {
+          try {
+            errorMsg = JSON.stringify(errorMsg);
+          } catch(e) {
+            errorMsg = 'An unknown error occurred';
+          }
+        }
+        setOtpError(errorMsg);
       },
       fail => {
         setLoading(false);
@@ -422,3 +453,4 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
+
