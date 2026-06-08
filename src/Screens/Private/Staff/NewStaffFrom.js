@@ -31,7 +31,7 @@ import { useSelector } from 'react-redux';
 
 const NewStaffForm = ({ navigation, route }) => {
   const data = route?.params?.userData;
-  const { userDetail } = useSelector(state => state.auth);
+  const userDetail = useSelector(state => state.userDetails);
   const adharNumber = route?.params?.adharNumber;
   const kycInfo = data?.kyc_information || data?.kycInformation || {};
   const existingPoliceClearance =
