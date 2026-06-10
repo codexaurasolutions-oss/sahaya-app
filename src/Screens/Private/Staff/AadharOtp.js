@@ -58,7 +58,7 @@ const AadharOtp = ({ navigation, route }) => {
         }, 1000);
       },
       error => {
-        setLoading(false);
+
         let errorMsg = 'Invalid OTP. Please try again.';
         if (error?.data?.message) {
           errorMsg = error.data.message;
@@ -120,7 +120,7 @@ const AadharOtp = ({ navigation, route }) => {
           navigation?.navigate('StepFirst');
         },
         error => {
-        setLoading(false);
+
         let errorMsg = 'Invalid OTP. Please try again.';
         if (error?.data?.message) {
           errorMsg = error.data.message;

@@ -81,7 +81,7 @@ const Aadhar = () => {
       error => {
         console.log('error----', error);
         setError({
-          add_error: error?.data?.errors?.aadhar_number[0],
+          add_error: error?.data?.errors?.aadhar_number?.[0] || error?.data?.message || error?.message || 'Something went wrong',
         });
       },
       fail => {
