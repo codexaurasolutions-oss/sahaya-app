@@ -5,6 +5,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
@@ -90,7 +91,7 @@ const Notification = ({ navigation }) => {
 
   useEffect(() => {
     if (isFocused) fetchNotifications();
-  }, [isFocused]);
+  }, [fetchNotifications, isFocused]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -104,17 +105,39 @@ const Notification = ({ navigation }) => {
     );
   };
 
+  const getNotificationJobId = item => {
+    if (item?.job_id) return item.job_id;
+
+    const message = item?.message || '';
+    const parts = message.split(/has applied for the job:\s*/i);
+    return parts.length > 1 ? parts[1].trim() : null;
+  };
+
+  const handleNotificationPress = item => {
+    if (!item) return;
+
+    if (!item.read_at) {
+      markAsRead(item.id);
+    }
+
+    if (item?.type === 'job_application') {
+      const jobId = getNotificationJobId(item);
+      if (typeof jobId === 'number' || /^\d+$/.test(String(jobId || ''))) {
+        navigation.navigate('ListingJob', { id: Number(jobId) });
+        return;
+      }
+    }
+  };
+
   const renderItem = ({ item }) => {
     const config = getIconConfig(item.type);
     const isUnread = !item.read_at;
 
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.75}
         style={[styles.card, isUnread && styles.unreadCard]}
-        onStartShouldSetResponder={() => {
-          if (isUnread) markAsRead(item.id);
-          return false;
-        }}>
+        onPress={() => handleNotificationPress(item)}>
         <View style={[styles.iconCircle, { backgroundColor: config.bg }]}>
           <Typography
             style={[styles.iconLabel, { color: config.color }]}
@@ -132,7 +155,7 @@ const Notification = ({ navigation }) => {
             {formatTime(item.created_at || item.time)}
           </Typography>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

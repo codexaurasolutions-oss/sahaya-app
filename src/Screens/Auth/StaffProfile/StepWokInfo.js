@@ -885,13 +885,11 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
 
       <Input
         title={LocalizedStrings.StaffProfile?.Experience || 'Total Experience'}
-        placeholder={'Enter years (max 10)'}
+        placeholder={'Enter years'}
         value={totalExperience ? String(totalExperience) : ''}
         onChange={text => {
           const num = text.replace(/[^0-9]/g, '');
-          if (num === '' || parseInt(num) <= 10) {
-            setTotalExperience(num);
-          }
+          setTotalExperience(num);
         }}
         keyboardType="numeric"
         maxLength={2}

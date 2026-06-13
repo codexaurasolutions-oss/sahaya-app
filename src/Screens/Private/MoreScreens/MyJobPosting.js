@@ -28,11 +28,12 @@ import LocalizedStrings from '../../../Constants/localization';
 import EmptyView from '../../../Component/UI/EmptyView';
 import { useSelector } from 'react-redux';
 
-const MyJobPosting = ({ navigation }) => {
+const MyJobPosting = ({ navigation, route }) => {
   const [jobData, setJobData] = useState([]);
   const isFocused = useIsFocused();
   const data = useSelector(state => state?.userDetails);
   const [isPremium, setIsPremium] = useState(false);
+  const showBackButton = route?.params?.showBackButton ?? navigation.canGoBack();
   
   useEffect(() => {
     if (isFocused) {
@@ -296,11 +297,13 @@ const MyJobPosting = ({ navigation }) => {
   return (
     <CommanView>
       <HeaderForUser
-        source_arrow={ImageConstant?.BackArrow}
+        source_arrow={showBackButton ? ImageConstant?.BackArrow : null}
         source_logo={ImageConstant?.notification}
         title={LocalizedStrings.MyJobPostings.title}
         onPressLeftIcon={() => {
-          navigation?.goBack();
+          if (showBackButton) {
+            navigation?.goBack();
+          }
         }}
         style_title={{ fontSize: 18 }}
         onPressRightIcon={() => navigation.navigate('Notification')}

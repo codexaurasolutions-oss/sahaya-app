@@ -45,6 +45,31 @@ const getProfileImage = (img) => {
   return `${baseUrl}${img}`;
 };
 
+const getResolvedProfileImage = data => {
+  return (
+    getProfileImage(data?.image) ||
+    getProfileImage(data?.photo) ||
+    getProfileImage(data?.avatar) ||
+    getProfileImage(data?.profile_image) ||
+    getProfileImage(data?.profile_picture) ||
+    getProfileImage(data?.user_detail?.image) ||
+    getProfileImage(data?.user_detail?.photo) ||
+    getProfileImage(data?.user_detail?.avatar) ||
+    getProfileImage(data?.user_detail?.profile_image) ||
+    getProfileImage(data?.user_detail?.profile_picture) ||
+    getProfileImage(data?.staff?.image) ||
+    getProfileImage(data?.staff?.photo) ||
+    getProfileImage(data?.staff?.avatar) ||
+    getProfileImage(data?.staff?.profile_image) ||
+    getProfileImage(data?.staff?.profile_picture) ||
+    getProfileImage(data?.user?.image) ||
+    getProfileImage(data?.user?.photo) ||
+    getProfileImage(data?.user?.avatar) ||
+    getProfileImage(data?.user?.profile_image) ||
+    getProfileImage(data?.user?.profile_picture)
+  );
+};
+
 const HouseHoldStaffProfile = ({ navigation, route }) => {
   const paramData = route?.params?.item || {};
   const fromFindStaffAI = route?.params?.fromFindStaffAI || false;
@@ -112,7 +137,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     }
   }, [paramData?.id]);
 
-  const profileImageUrl = getProfileImage(data?.image);
+  const profileImageUrl = getResolvedProfileImage(data);
   const fullName = `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || data?.name || 'User';
 
   const workInfo = data?.user_work_info || data?.work_info || data?.staff?.user_work_info || {};
@@ -147,6 +172,63 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const addrCity = addr?.city || data?.city || data?.location || data?.city_name || data?.region || '';
   const addrState = addr?.state || data?.state || data?.state_name || '';
   const addrPincode = addr?.pincode || addr?.zip || data?.pincode || data?.zip_code || data?.postal_code || '';
+  const displayAadharNumber =
+    data?.aadhar_number ||
+    data?.aadhaar_number ||
+    data?.aadhar_no ||
+    data?.aadhaar_no ||
+    data?.user_detail?.aadhar_number ||
+    data?.user_detail?.aadhaar_number ||
+    data?.user_detail?.aadhar_no ||
+    data?.staff?.aadhar_number ||
+    data?.staff?.aadhaar_number ||
+    data?.staff?.aadhar_no ||
+    '';
+  const permanentAddress =
+    data?.addresses?.find?.(item =>
+      String(item?.address_type || item?.type || item?.title || item?.name || '')
+        .toLowerCase()
+        .includes('permanent'),
+    ) ||
+    data?.permanent_address ||
+    data?.user_detail?.permanent_address ||
+    addr;
+  const originalHomeCity = permanentAddress?.city || data?.permanent_city || data?.city || data?.current_city || '';
+  const originalHomeState = permanentAddress?.state || data?.permanent_state || data?.state || '';
+  const displayDob =
+    data?.dob ||
+    data?.date_of_birth ||
+    data?.user_detail?.dob ||
+    data?.user_detail?.date_of_birth ||
+    data?.staff?.dob ||
+    data?.staff?.date_of_birth ||
+    '';
+  const lastExperience =
+    data?.lastExp ||
+    data?.last_exp ||
+    data?.last_work_experience ||
+    data?.user_detail?.lastExp ||
+    data?.user_detail?.last_exp ||
+    null;
+  const previousWorkSummary = [
+    lastExperience?.role || lastExperience?.designation || lastExperience?.title,
+    lastExperience?.salary ? `Salary: ₹${Number(lastExperience.salary).toLocaleString('en-IN')}` : '',
+    lastExperience?.join_date && lastExperience?.end_date
+      ? `${moment(lastExperience.join_date).format('DD MMM YYYY')} - ${moment(lastExperience.end_date).format('DD MMM YYYY')}`
+      : '',
+  ].filter(Boolean).join('\n');
+  const reviews =
+    data?.reviews_received ||
+    data?.reviewsReceived ||
+    data?.user?.reviews_received ||
+    data?.user?.reviewsReceived ||
+    [];
+  const totalReviews = Array.isArray(reviews) ? reviews.length : 0;
+  const averageRating = totalReviews > 0
+    ? (
+        reviews.reduce((sum, item) => sum + Number(item?.rating || 0), 0) / totalReviews
+      ).toFixed(1)
+    : null;
 
   const maskAadhar = num => num ? String(num).replace(/\d(?=\d{4})/g, 'x') : '';
 
@@ -523,28 +605,41 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           <View style={styles.flexRow}>
             <Image source={ImageConstant.Location} style={styles.icon} />
             <Typography style={styles.info}>
-              {addrCity || 'Not Available'} {addrState}
+              {originalHomeCity || addrCity || 'Not Available'} {originalHomeState || addrState}
             </Typography>
           </View>
-          <View style={styles.flexRow}>
-            <Image source={ImageConstant.mail} style={styles.icon} />
-            <Typography style={styles.info}>{data?.email || 'Not Available'}</Typography>
-          </View>
+          {fromFindStaffAI && (
+            <View style={styles.flexRow}>
+              <Image source={ImageConstant.date} style={styles.icon} />
+              <Typography style={styles.info}>
+                {displayDob || 'Not Available'}
+              </Typography>
+            </View>
+          )}
 
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => handleCall(data?.phone_number)}
-            >
-              <Image source={ImageConstant.phone} style={styles.icon} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => openWhatsApp(data?.phone_number)}
-            >
-              <Image source={ImageConstant.WhatsApp} style={styles.icon} />
-            </TouchableOpacity>
-          </View>
+          {!fromFindStaffAI && (
+            <>
+              <View style={styles.flexRow}>
+                <Image source={ImageConstant.mail} style={styles.icon} />
+                <Typography style={styles.info}>{data?.email || 'Not Available'}</Typography>
+              </View>
+
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => handleCall(data?.phone_number)}
+                >
+                  <Image source={ImageConstant.phone} style={styles.icon} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => openWhatsApp(data?.phone_number)}
+                >
+                  <Image source={ImageConstant.WhatsApp} style={styles.icon} />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
           {!fromFindStaffAI && (
             <Button
               onPress={() => navigation.navigate('AttendanceScreen', {
@@ -557,6 +652,80 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             />
           )}
         </View>
+        {fromFindStaffAI ? (
+          <>
+            <View style={styles.card}>
+              <Typography style={styles.cardTitle}>
+                Personal Information
+              </Typography>
+              <View style={styles.row}>
+                <Image source={ImageConstant.date} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Date of Birth</Typography>
+                  <Typography style={styles.value}>{displayDob || 'Not Available'}</Typography>
+                </View>
+              </View>
+              <View style={styles.rowNoBorder}>
+                <Image source={ImageConstant.Location} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Original Home City / State</Typography>
+                  <Typography style={styles.value}>
+                    {(originalHomeCity || originalHomeState)
+                      ? `${originalHomeCity || 'Not Available'}${originalHomeState ? `, ${originalHomeState}` : ''}`
+                      : 'Not Available'}
+                  </Typography>
+                </View>
+              </View>
+              <View style={styles.rowNoBorder}>
+                <Image source={ImageConstant.hash} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Aadhaar Number</Typography>
+                  <Typography style={styles.value}>
+                    {displayAadharNumber ? maskAadhar(displayAadharNumber) : 'Not Available'}
+                  </Typography>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <Typography style={styles.cardTitle}>
+                Previous Work Experience
+              </Typography>
+              <View style={styles.rowNoBorder}>
+                <Image source={ImageConstant.Briefcase} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.value}>
+                    {previousWorkSummary || 'Not Available'}
+                  </Typography>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <Typography style={styles.cardTitle}>
+                Reviews & Ratings
+              </Typography>
+              <View style={styles.row}>
+                <Image source={ImageConstant.star || ImageConstant.Verify} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Average Rating</Typography>
+                  <Typography style={styles.value}>
+                    {averageRating ? `${averageRating} / 5` : 'No ratings yet'}
+                  </Typography>
+                </View>
+              </View>
+              <View style={styles.rowNoBorder}>
+                <Image source={ImageConstant.Users} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Reviews</Typography>
+                  <Typography style={styles.value}>
+                    {totalReviews > 0 ? `${totalReviews} review${totalReviews === 1 ? '' : 's'}` : 'No reviews yet'}
+                  </Typography>
+                </View>
+              </View>
+            </View>
+          </>
+        ) : (
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>
             {LocalizedStrings.StaffProfile.Personal_Information}
@@ -638,9 +807,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+        )}
 
 
-        {(data?.user_work_info || (displayRole && displayRole !== 'Staff')) && (
+        {!fromFindStaffAI && ((data?.user_work_info || (displayRole && displayRole !== 'Staff')) && (
           <View style={styles.card}>
             <Typography style={styles.cardTitle}>
               Work Information
@@ -726,8 +896,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               </View>
             )}
           </View>
-        )}
+        ))}
 
+        {!fromFindStaffAI && (
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>
             {LocalizedStrings.StaffProfile.Aadhaar_Details}
@@ -762,7 +933,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+        )}
 
+        {!fromFindStaffAI && (
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>
             {LocalizedStrings.StaffProfile.Residential_Address}
@@ -801,7 +974,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </View>
           ))}
         </View>
+        )}
 
+        {!fromFindStaffAI && (
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>
             {LocalizedStrings.StaffProfile.KYC_Status}
@@ -895,8 +1070,9 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             </View>
           </View>
         </View>
+        )}
 
-        {(aadhaarFrontUrl || aadhaarBackUrl || verificationCertUrl) && (
+        {!fromFindStaffAI && (aadhaarFrontUrl || aadhaarBackUrl || verificationCertUrl) && (
           <View style={styles.card}>
             <Typography style={styles.cardTitle}>
               KYC Documents

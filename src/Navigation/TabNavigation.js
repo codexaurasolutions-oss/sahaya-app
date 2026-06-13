@@ -22,10 +22,10 @@ import { createStackNavigator } from '@react-navigation/stack';
 import Dashboard from '../Screens/Private/Dashboard/Dashboard';
 import More from '../Screens/Private/MoreScreens/More';
 import Staff from "../Screens/Private/Staff/Staff"
-import Salary from "../Screens/Private/Salary/Salary"
-import RecentSalaryList from "../Screens/Private/Salary/RecentSalaryList"
-import AdvanceManagement from "../Screens/Private/Salary/AdvanceManagement"
 import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
+import MyJobPosting from '../Screens/Private/MoreScreens/MyJobPosting';
+import PostNewJob from '../Screens/Private/MoreScreens/PostNewJob';
+import ListingJob from '../Screens/Private/MoreScreens/ListingJob';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -37,6 +37,7 @@ const DashboardStack = () => {
       initialRouteName="Dashboard"
     >
       <Stack.Screen name="Dashboard" component={Dashboard} />
+      <Stack.Screen name="StaffManagement" component={Staff} />
     </Stack.Navigator>
   );
 };
@@ -54,29 +55,19 @@ const MoreStack = () => {
 };
 
 
-const StaffStack = ()=>{
-    return (
-    <Stack.Navigator
-      screenOptions={{ headerShown: false }}
-      initialRouteName="Staff"
-    >
-
-      <Stack.Screen name="Staff" component={Staff} />
-
-    </Stack.Navigator>
-  );
-}
-
-
-const SalaryStack = ()=>{
+const JobPostingStack = ()=>{
   return(
       <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      initialRouteName="Salary"
+      initialRouteName="MyJobPosting"
     >
-      <Stack.Screen name="Salary" component={Salary} />
-      <Stack.Screen name="RecentSalaryList" component={RecentSalaryList} />
-      <Stack.Screen name="AdvanceManagement" component={AdvanceManagement} />
+      <Stack.Screen
+        name="MyJobPosting"
+        component={MyJobPosting}
+        initialParams={{ showBackButton: false }}
+      />
+      <Stack.Screen name="PostNewJob" component={PostNewJob} />
+      <Stack.Screen name="ListingJob" component={ListingJob} />
     </Stack.Navigator>
   )
 } 
@@ -156,13 +147,13 @@ export const TabNavigation = () => {
         }}
       />
       <Tab.Screen
-        name="Staff"
-        component={StaffStack}
+        name="Jobs"
+        component={JobPostingStack}
         options={{
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
             <View style={styles.tab}>
-              <LinearImage isFocused={focused} image={ImageConstant?.staff} />
+              <LinearImage isFocused={focused} image={ImageConstant?.joblisting} />
               <Typography
                 size={focused ? 11 : 10}
                 color={focused ? '#D98579' : Colors?.black}
@@ -171,29 +162,7 @@ export const TabNavigation = () => {
                 numberOfLines={1}
                 textAlign={'center'}
               >
-                Staff
-              </Typography>
-            </View>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Salary"
-        component={SalaryStack}
-        options={{
-          tabBarLabel: '',
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.tab}>
-              <LinearImage isFocused={focused} image={ImageConstant?.Salary} />
-              <Typography
-                size={focused ? 11 : 10}
-                color={focused ? '#D98579' : Colors?.black}
-                type={focused ? Font.Poppins_SemiBold : Font.Poppins_Regular}
-                style={styles.text}
-                numberOfLines={1}
-                textAlign={'center'}
-              >
-                Salary
+                Jobs
               </Typography>
             </View>
           ),
@@ -253,10 +222,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    width: widthPercentageToDP(20),
+    width: widthPercentageToDP(25),
     height: 55,
   },
   text: {
-    width: widthPercentageToDP(18),
+    width: widthPercentageToDP(22),
   },
 });

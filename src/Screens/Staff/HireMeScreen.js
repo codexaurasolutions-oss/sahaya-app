@@ -11,6 +11,7 @@ import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
 import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
+import Input from '../../Component/Input';
 import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import { GET_WITH_TOKEN, POST_FORM_DATA, POST_WITH_TOKEN } from '../../Backend/Backend';
@@ -78,6 +79,9 @@ const HireMeScreen = ({ navigation }) => {
 
   const selectedPreferredWorkLocation =
     preferredWorkLocationOptions.find(option => option.value === workCity) || null;
+  const isPresetPreferredWorkLocation = preferredWorkLocationOptions.some(
+    option => option.value === workCity,
+  );
 
   useEffect(() => {
     fetchStatus();
@@ -256,6 +260,12 @@ const HireMeScreen = ({ navigation }) => {
             value={selectedPreferredWorkLocation}
             onChange={item => setWorkCity(item?.value || '')}
             data={preferredWorkLocationOptions}
+          />
+          <Input
+            title="Or Enter City Name"
+            placeholder="Enter preferred city name"
+            value={isPresetPreferredWorkLocation ? '' : workCity}
+            onChange={text => setWorkCity(text)}
           />
         </View>
 

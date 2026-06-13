@@ -35,8 +35,8 @@ import { setLanguage } from '../../../Constants/AsyncStorage';
 const HouseholdProfile = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const scrollRef = useRef(null);
-  const addressSectionRef = useRef(null);
   const [addressY, setAddressY] = useState(0);
+  const [autoAttendanceY, setAutoAttendanceY] = useState(0);
   // Basic Information State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -210,6 +210,13 @@ const HouseholdProfile = ({ navigation, route }) => {
       ...prev,
       { name: '', street: '', city: '', state: '', pincode: '' },
     ]);
+  };
+
+  const addAddressFromHouseholdSection = () => {
+    addAddress();
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(addressY - 16, 0), animated: true });
+    }, 150);
   };
 
   const removeAddress = index => {
@@ -390,6 +397,14 @@ const HouseholdProfile = ({ navigation, route }) => {
       }, 500);
     }
   }, [route?.params?.focusSection, addressY]);
+
+  useEffect(() => {
+    if (route?.params?.focusSection === 'autoAttendance' && autoAttendanceY > 0) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: autoAttendanceY, animated: true });
+      }, 500);
+    }
+  }, [route?.params?.focusSection, autoAttendanceY]);
 
   // Handle language change
   const handleLanguageChange = async item => {
@@ -836,10 +851,20 @@ const HouseholdProfile = ({ navigation, route }) => {
         </View>
 
         <View style={styles.section}>
-          <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
-            {LocalizedStrings.EditProfile.Household_Information ||
-              'Household Information'}
-          </Typography>
+          <View style={styles.sectionHeaderRow}>
+            <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
+              {LocalizedStrings.EditProfile.Household_Information ||
+                'Household Information'}
+            </Typography>
+            <TouchableOpacity onPress={addAddressFromHouseholdSection}>
+              <Typography
+                style={styles.inlineAddAddressBtn}
+                type={Font?.Poppins_Medium}
+              >
+                + Add New Address
+              </Typography>
+            </TouchableOpacity>
+          </View>
           <DropdownComponent
             title={
               LocalizedStrings.EditProfile.Residence_Type || 'Residence Type'
@@ -1002,7 +1027,13 @@ const HouseholdProfile = ({ navigation, route }) => {
         </View>
 
 
-      <View style={styles.section}>
+      <View
+        style={styles.section}
+        onLayout={(event) => {
+          const layout = event.nativeEvent.layout;
+          setAutoAttendanceY(layout.y);
+        }}
+      >
         <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
           Auto Attendance
         </Typography>
@@ -1083,6 +1114,16 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
+    marginBottom: 10,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  inlineAddAddressBtn: {
+    color: '#D98579',
+    fontSize: 13,
     marginBottom: 10,
   },
   smallTitle: {

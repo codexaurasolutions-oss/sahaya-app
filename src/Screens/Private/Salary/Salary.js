@@ -95,6 +95,13 @@ const StaffManagement = ({ navigation }) => {
   const [canProcessAnyway, setCanProcessAnyway] = useState(false);
   const [totalPaidThisMonth, setTotalPaidThisMonth] = useState(0);
   const [remainingBalance, setRemainingBalance] = useState(0);
+  const getPayableAmount = () => {
+    if (customAmount === '' || customAmount === null || customAmount === undefined) {
+      return Number(totalNet) || 0;
+    }
+    const parsedAmount = Number(customAmount);
+    return Number.isNaN(parsedAmount) ? 0 : parsedAmount;
+  };
 
   const savePaymentToLocal = async (record) => {
     try {
@@ -172,8 +179,11 @@ const StaffManagement = ({ navigation }) => {
     });
     const paidSum = staffPayments?.reduce((sum, p) => sum + (Number(p.net_salary || p.amount) || 0), 0) || 0;
     setTotalPaidThisMonth(paidSum);
-    setRemainingBalance(Math.max(0, netSalary - paidSum));
   }, [overtime, baseSalary, bonus, advance, deduction, leaveType, listPastPayments]);
+
+  useEffect(() => {
+    setRemainingBalance(Math.max(0, getPayableAmount() - totalPaidThisMonth));
+  }, [customAmount, totalNet, totalPaidThisMonth]);
 
   // Reset custom amount when staff changes
   useEffect(() => {
@@ -648,7 +658,7 @@ const StaffManagement = ({ navigation }) => {
     if (leaveType?.upi_id) {
       // UPI ID exists, directly process payment without modal
       const upiId = leaveType.upi_id.trim();
-      const amountToPay = Number(customAmount) || totalNet;
+      const amountToPay = getPayableAmount();
       const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(leaveType?.label || 'Staff')}&am=${amountToPay.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Salary payment for ${moment().format('MMMM YYYY')}`)}`;
       Linking.openURL(upiUrl)
         .then(() => {
@@ -751,7 +761,7 @@ const StaffManagement = ({ navigation }) => {
     setShowUpiModal(false);
 
     const isAdvancePayment = paymentType?.value === 'advance';
-    const amountToPay = Number(customAmount) || totalNet;
+    const amountToPay = getPayableAmount();
     const amount = isAdvancePayment ? Number(advanceAmount) : amountToPay;
     const transactionNote = isAdvancePayment 
       ? `Advance payment - ${moment().format('DD MMM YYYY')}`
@@ -814,7 +824,7 @@ const StaffManagement = ({ navigation }) => {
       tax: Number(deduction) || 0,
       advance_payment: Number(advance) || 0,
       payment_mode: paymentMode,
-      amount: Number(customAmount) || totalNet,
+      amount: getPayableAmount(),
       status: isPaid ? 'paid' : 'pending',
     };
     POST_WITH_TOKEN(
@@ -828,8 +838,8 @@ const StaffManagement = ({ navigation }) => {
           const newPayment = {
             payment_id: savedData.id || savedData.payment_id,
             staff_id: leaveType?.value,
-            amount: savedData.net_salary || totalNet,
-            net_salary: savedData.net_salary || totalNet,
+            amount: savedData.net_salary || getPayableAmount(),
+            net_salary: savedData.net_salary || getPayableAmount(),
             status: savedData.status || (isPaid ? 'paid' : 'pending'),
             payment_mode: savedData.payment_mode || selectedMethod,
             created_at: savedData.created_at || new Date().toISOString(),
@@ -848,7 +858,7 @@ const StaffManagement = ({ navigation }) => {
           const paymentRecord = {
             staff_id: leaveType?.value,
             staff_name: leaveType?.label,
-            amount: savedData.net_salary || totalNet,
+            amount: savedData.net_salary || getPayableAmount(),
             type: 'payment',
             payment_mode: savedData.payment_mode || selectedMethod,
             status: savedData.status || (isPaid ? 'paid' : 'pending'),

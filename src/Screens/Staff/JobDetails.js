@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -41,13 +41,7 @@ const JobDetails = ({ navigation, route }) => {
     availableFrom: '',
   });
 
-  useEffect(() => {
-    if (isFocused && jobId) {
-      fetchJobDetails();
-    }
-  }, [isFocused, jobId]);
-
-  const fetchJobDetails = () => {
+  const fetchJobDetails = useCallback(() => {
     setLoading(true);
     GET_WITH_TOKEN(
       `${ListJob}/${jobId}`,
@@ -62,7 +56,13 @@ const JobDetails = ({ navigation, route }) => {
         setLoading(false);
       },
     );
-  };
+  }, [jobId]);
+
+  useEffect(() => {
+    if (isFocused && jobId) {
+      fetchJobDetails();
+    }
+  }, [fetchJobDetails, isFocused, jobId]);
 
   // Format compensation display
   const formatCompensation = job => {
@@ -120,10 +120,22 @@ const JobDetails = ({ navigation, route }) => {
     return 'Not specified';
   };
 
+  const getOwnerResidenceSummary = job => {
+    const owner = job?.owner_summary || {};
+    const location = [owner.locality, owner.city, owner.state].filter(Boolean).join(', ');
+
+    return [
+      { label: 'Owner Name', value: owner.name || 'Not specified' },
+      { label: 'Residence Type', value: owner.residence_type || 'Not specified' },
+      { label: 'Number of Rooms', value: owner.number_of_rooms ? String(owner.number_of_rooms) : 'Not specified' },
+      { label: 'Area', value: location || 'Not specified' },
+    ];
+  };
+
   // Handle Apply Job — requires an active membership. If free plan is exhausted
   // (no active subscription), route staff to the membership plan screen.
   const handleApplyJob = () => {
-    if (jobStatus == 1) {
+    if (Number(jobStatus) === 1) {
       SimpleToast.show('You have already applied for this job.',
         SimpleToast.SHORT,
       );
@@ -374,6 +386,37 @@ const JobDetails = ({ navigation, route }) => {
             </Typography>
           </View>
 
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Image
+                  source={ImageConstant.Home}
+                style={{
+                  height: 20,
+                  width: 20,
+                  tintColor: '#D98579',
+                  marginRight: 10,
+                }}
+              />
+              <Typography
+                type={Font.Poppins_SemiBold}
+                style={styles.sectionTitle}
+              >
+                Owner Residence Summary
+              </Typography>
+            </View>
+
+            {getOwnerResidenceSummary(jobData).map(item => (
+              <View key={item.label} style={styles.summaryRow}>
+                <Typography type={Font.Poppins_Medium} style={styles.summaryLabel}>
+                  {item.label}
+                </Typography>
+                <Typography type={Font.Poppins_Regular} style={styles.summaryValue}>
+                  {item.value}
+                </Typography>
+              </View>
+            ))}
+          </View>
+
           {getRequirements(jobData).length > 0 && (
             <View style={styles.card}>
               <View style={styles.sectionHeader}>
@@ -609,6 +652,19 @@ const styles = StyleSheet.create({
     color: '#555',
     lineHeight: 22,
     marginTop: 4,
+  },
+  summaryRow: {
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 2,
+  },
+  summaryValue: {
+    fontSize: 15,
+    color: '#222',
+    lineHeight: 21,
   },
   reqRow: {
     flexDirection: 'row',

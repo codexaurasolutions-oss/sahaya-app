@@ -639,7 +639,16 @@ const Dashboard = ({ navigation }) => {
           />
         </View>
       </SimpleModal>
-      <View style={{ marginTop: 70, marginBottom: 100 }}>
+      <View style={styles.staffActions}>
+        <Button
+          onPress={() => {
+            navigation.navigate('StaffManagement');
+          }}
+          linerColor={['#F3F4F6', '#F3F4F6']}
+          title={'Manage Staff'}
+          title_style={{ color: '#242524' }}
+          main_style={{ width: '100%' }}
+        />
         <Button
           onPress={() => {
             navigation.navigate('AllStaff');
@@ -744,5 +753,9 @@ const styles = StyleSheet.create({
     height: 45,
     borderRadius: 22,
     marginRight: 12,
+  },
+  staffActions: {
+    marginTop: 30,
+    marginBottom: 100,
   },
 });

@@ -203,6 +203,17 @@ const More = ({ navigation }) => {
           onPress={() => navigation.navigate('AttendanceScreen')}
         />
         <Option
+          Images={ImageConstant?.Calendar}
+          isBorder={true}
+          title={'Auto Attendance'}
+          subtitle={'Manage auto present setting'}
+          onPress={() =>
+            navigation.navigate('HouseholdProfile', {
+              focusSection: 'autoAttendance',
+            })
+          }
+        />
+        <Option
           Images={ImageConstant?.Dollar}
           title={LocalizedStrings.MoreOptions.membership || 'Membership'}
           subtitle={LocalizedStrings.MoreOptions.membership_subtitle || 'View and manage your membership'}

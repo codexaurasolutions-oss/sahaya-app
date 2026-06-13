@@ -69,16 +69,20 @@ const HeaderForUser = ({
             </View>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          onPress={() => {
-            onPressLeftIcon();
-          }}
-        >
-          <Image
-            source={source_arrow}
-            style={[styles.back_img, style_backarrow]}
-          />
-        </TouchableOpacity>
+        {source_arrow ? (
+          <TouchableOpacity
+            onPress={() => {
+              onPressLeftIcon();
+            }}
+          >
+            <Image
+              source={source_arrow}
+              style={[styles.back_img, style_backarrow]}
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.back_img, style_backarrow]} />
+        )}
         <Typography
           type={Font.Poppins_Medium}
           style={[styles.txt_style, style_title]}

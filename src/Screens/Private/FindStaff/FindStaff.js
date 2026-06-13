@@ -20,6 +20,7 @@ import CommanView from '../../../Component/CommanView';
 import LocalizedStrings from '../../../Constants/localization';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
 import { StaffGetAIData, CATEGORY, SUBSCRIPTION_USER_CURRENT } from '../../../Backend/api_routes';
+import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 
 const EXPERIENCE_OPTIONS = [
   { label: '0-1 Years', value: '0-1' },
@@ -56,6 +57,17 @@ const SALARY_OPTIONS = [
   { label: '₹20,000 - ₹50,000', value: '20000-50000' },
   { label: 'Above ₹50,000', value: '50000+' },
 ];
+
+const normalizeStaffSearchQuery = (query = '') =>
+  String(query)
+    .toLowerCase()
+    .replace(/\bhouse\s+keeper\b/g, 'housekeeper')
+    .replace(/\bhouse\s+keeping\b/g, 'housekeeping')
+    .replace(/\bbaby\s+sitter\b/g, 'babysitter')
+    .replace(/\bdog\s+walking\b/g, 'dog walker')
+    .replace(/\bpet\s+care\b/g, 'pet caretaker')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const FindStaff = ({ navigation, route }) => {
   const description = route?.params?.description || '';
@@ -144,10 +156,23 @@ const FindStaff = ({ navigation, route }) => {
   };
 
   const getImageUrl = (img) => {
-    if (!img || img.includes('noimage')) return null;
-    if (img.startsWith('http')) return img;
+    if (!img || isPlaceholderImage(img)) return null;
+    if (typeof img === 'string' && img.startsWith('http')) return img;
     const baseUrl = API.replace('/api/', '');
     return `${baseUrl}${img}`;
+  };
+
+  const getCandidateImage = item => {
+    return (
+      getImageUrl(item?.image) ||
+      getImageUrl(item?.profile_picture) ||
+      getImageUrl(item?.user_detail?.image) ||
+      getImageUrl(item?.user_detail?.profile_picture) ||
+      getImageUrl(item?.staff?.image) ||
+      getImageUrl(item?.staff?.profile_picture) ||
+      getImageUrl(item?.user?.image) ||
+      getImageUrl(item?.user?.profile_picture)
+    );
   };
 
   const formatSalary = (salary) => {
@@ -211,13 +236,13 @@ const FindStaff = ({ navigation, route }) => {
             age: getAge(item?.dob),
             salaryNum: Number(workInfo?.salary) || 0,
             salary: formatSalary(workInfo?.salary),
-            image: getImageUrl(item?.image),
+            image: getCandidateImage(item),
             isJobSeeking: (item?.is_job_seeking === true || item?.is_job_seeking === 1 || item?.is_available === true || item?.is_available === 1),
             raw: item,
           };
         }).filter(c => c.isJobSeeking);
 
-        const descLower = description.toLowerCase();
+        const descLower = normalizeStaffSearchQuery(description);
 
         // Extract role keywords from query
         const roleKeywords = extractRoleFromQuery(descLower);
@@ -290,21 +315,23 @@ const FindStaff = ({ navigation, route }) => {
 
   // Extract location keywords from natural language query
   const extractLocationFromQuery = (query) => {
+    query = normalizeStaffSearchQuery(query);
     const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female', 'show', 'dikhao', 'chahiye', 'near me', 'nearby'];
-    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher', 'driving', 'plumber', 'electrician', 'carpenter', 'painter', 'sweeper', 'laundry', 'walker', 'attendant', 'dog', 'pet'];
+    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'housekeeping', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher', 'driving', 'plumber', 'electrician', 'carpenter', 'painter', 'sweeper', 'laundry', 'walker', 'attendant', 'dog', 'pet'];
     const words = query.replace('near me', '').replace('nearby', '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w) && !roleWords.includes(w));
     return words;
   };
 
   // Extract role keywords from natural language query
   const extractRoleFromQuery = (query) => {
+    query = normalizeStaffSearchQuery(query);
     const roleMap = {
       'driver': ['driver', 'driving', 'chauffeur'],
       'cook': ['cook', 'chef', 'cooking', 'baker'],
       'chef': ['chef', 'cook', 'cooking', 'baker'],
       'maid': ['maid', 'house cleaner', 'housecleaner', 'cleaner', 'cleaning'],
       'nanny': ['nanny', 'babysitter', 'baby sitter', 'childcare'],
-      'housekeeper': ['housekeeper', 'housekeeping'],
+      'housekeeper': ['housekeeper', 'housekeeping', 'house keeper'],
       'gardener': ['gardener', 'gardening'],
       'security': ['security', 'guard', 'watchman'],
       'nurse': ['nurse', 'nursing', 'caretaker'],

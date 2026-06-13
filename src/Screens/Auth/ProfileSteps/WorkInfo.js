@@ -80,7 +80,7 @@ const LastWorkExperience = ({ navigation }) => {
 
             <Input
                 title={LocalizedStrings.StaffProfile?.Experience || 'Total Experience'}
-                placeholder={'Enter years (max 10)'}
+                placeholder={'Enter years'}
                 value=""
                 onChangeText={() => { }}
                 keyboardType="numeric"

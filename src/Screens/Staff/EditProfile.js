@@ -30,7 +30,10 @@ import {
   SUB_CATEGORY,
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
-import { formatDateWithDashes } from '../../Backend/Utility';
+import {
+  formatDateWithDashes,
+  fetchPincodeDetails,
+} from '../../Backend/Utility';
 import Date_Picker from '../../Component/Date_Picker';
 import moment from 'moment';
 import ImageModal from '../../Component/Modals/ImageModal';
@@ -143,6 +146,10 @@ const EditProfile = ({ navigation, route }) => {
       option => option.value === preferredWorkCity,
     ) || null;
 
+  const isPresetPreferredWorkLocation = preferredWorkLocationOptions.some(
+    option => option.value === preferredWorkCity,
+  );
+
   // Languages list
   const languagesList = [
     { label: 'English', value: 'en' },
@@ -224,6 +231,44 @@ const EditProfile = ({ navigation, route }) => {
     // Load profile data when store payload or roles change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userDetail, roles]); // Also depend on roles so it can match role when roles are loaded
+
+  useEffect(() => {
+    const syncCurrentAddressFromPincode = async () => {
+      if (currentPincode?.length !== 6) {
+        return;
+      }
+
+      const details = await fetchPincodeDetails(currentPincode);
+      if (details?.city) {
+        setCurrentCity(details.city);
+      }
+      if (details?.state) {
+        setCurrentState(details.state);
+      }
+    };
+
+    const timer = setTimeout(syncCurrentAddressFromPincode, 300);
+    return () => clearTimeout(timer);
+  }, [currentPincode]);
+
+  useEffect(() => {
+    const syncPermanentAddressFromPincode = async () => {
+      if (permanentPincode?.length !== 6) {
+        return;
+      }
+
+      const details = await fetchPincodeDetails(permanentPincode);
+      if (details?.city) {
+        setPermanentCity(details.city);
+      }
+      if (details?.state) {
+        setPermanentState(details.state);
+      }
+    };
+
+    const timer = setTimeout(syncPermanentAddressFromPincode, 300);
+    return () => clearTimeout(timer);
+  }, [permanentPincode]);
 
   const fetchProfile = () => {
     GET_WITH_TOKEN(
@@ -1120,8 +1165,14 @@ const EditProfile = ({ navigation, route }) => {
             onChange={item => setPreferredWorkCity(item?.value || '')}
             data={preferredWorkLocationOptions}
           />
+          <Input
+            title="Or Enter City Name"
+            placeholder="Enter preferred city name"
+            value={isPresetPreferredWorkLocation ? '' : preferredWorkCity}
+            onChange={text => setPreferredWorkCity(text)}
+          />
           <Typography size={11} color="#888" style={{ marginTop: -10, marginBottom: 10 }}>
-            Choose from India-wide, state-wise, region-wise, or your current city options.
+            Choose a preset option, or enter the exact city name manually.
           </Typography>
           <View style={[styles.skillContainer, { marginBottom: 0 }]}>
             <TouchableOpacity 
@@ -1409,13 +1460,11 @@ const EditProfile = ({ navigation, route }) => {
 
           <Input
             title="Total Experience"
-            placeholder="Enter years (max 10)"
+            placeholder="Enter years"
             value={totalExperience ? String(totalExperience?.value || totalExperience) : ''}
             onChange={text => {
               const num = text.replace(/[^0-9]/g, '');
-              if (num === '' || parseInt(num) <= 10) {
-                setTotalExperience(num ? { label: `${num} Years`, value: num } : null);
-              }
+              setTotalExperience(num ? { label: `${num} Years`, value: num } : null);
             }}
             keyboardType="numeric"
             maxLength={2}

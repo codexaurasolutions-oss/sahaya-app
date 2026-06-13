@@ -181,30 +181,23 @@ const Login = ({ navigation }) => {
         ) : null}
 
         <Button
-          title={LocalizedStrings.Auth.verify}
+          title="Log In"
           onPress={handleVerify}
           style={{ marginTop: 20 }}
           icon={ImageConstant?.Arrow}
           disabled={isLoading}
           loader={isLoading}
         />
-      </View>
 
-      {/* Bottom Signup Section */}
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.createAccountContainer}>
           <Typography style={{ textAlign: 'center' }}>
-            {LocalizedStrings.Auth.no_account}{' '}
+            {LocalizedStrings.Auth.no_account}
           </Typography>
-          <TouchableOpacity onPress={() => navigation?.navigate('SiginUp')}>
-            <Typography color="#D98579" style={{ textAlign: 'center' }}>
+          <TouchableOpacity
+            onPress={() => navigation?.navigate('SiginUp')}
+            style={styles.createAccountButton}
+          >
+            <Typography color="#D98579" type={Font?.Poppins_SemiBold}>
               {LocalizedStrings.Auth.create_account}
             </Typography>
           </TouchableOpacity>
@@ -228,5 +221,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginTop: 15,
+  },
+  createAccountContainer: {
+    marginTop: 18,
+    alignItems: 'center',
+  },
+  createAccountButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: '#FFF5F4',
+    borderWidth: 1,
+    borderColor: '#F1C3BC',
   },
 });
