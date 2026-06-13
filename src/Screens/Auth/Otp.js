@@ -53,13 +53,14 @@ const Otp = ({ navigation, route }) => {
     }
     setIsLoading(true);
     setOtpError('');
-    var formdata = new FormData();
-    formdata.append('phone_number', mobile);
-    formdata.append('country_code', countryCode);
+    const payload = {
+      phone_number: String(mobile),
+      country_code: String(countryCode),
+    };
 
     POST(
       RESEND_OTP,
-      formdata,
+      payload,
       response => {
         setIsLoading(false);
         SimpleToast.show(
@@ -146,6 +147,75 @@ const Otp = ({ navigation, route }) => {
   };
 
   // Verify OTP function
+  const submitOtpVerification = (payload, currentOtp, retryCount = 0) => {
+    POST(
+      VERIFY_OTP,
+      payload,
+      async response => {
+        await dispatch(Token(response?.token));
+        console.log('OTP', response);
+        if (response) {
+          dispatch(userDetails(response?.user));
+          dispatch(userType(response?.user?.user_role_id));
+          SimpleToast.show(response?.message, SimpleToast.SHORT);
+          if (!response?.user?.user_role_id || type === 'signup') {
+            setIsLoading(false);
+            navigation?.navigate('ChooseUser');
+          } else {
+            fetchProfileAndProceed(response?.user?.user_role_id);
+          }
+        } else {
+          setIsLoading(false);
+          setOtpError(
+            response?.message ||
+            LocalizedStrings.Auth?.mobile_invalid ||
+            'Invalid OTP. Please try again.',
+          );
+        }
+      },
+      error => {
+        console.log('Verify OTP Error:', error);
+
+        const isNetworkIssue =
+          error?.message === 'Network Error' ||
+          error?.code === 'ERR_NETWORK' ||
+          error?.code === 'NETWORK_ERROR' ||
+          error?.data?.msg === 'Network Error';
+
+        if (isNetworkIssue && retryCount < 1) {
+          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 800);
+          return;
+        }
+
+        setIsLoading(false);
+        let errorMsg = '';
+
+        if (error?.data?.error) {
+          errorMsg = error.data.error;
+          if (error.data.debug_stored) {
+            errorMsg += `\n(Expect: ${error.data.debug_stored} | Sent: ${error.data.debug_sent})`;
+          }
+        } else if (error?.data?.message) {
+          errorMsg = error.data.message;
+        } else if (error?.message) {
+          errorMsg = error.message;
+        } else {
+          errorMsg = 'Network Error. Please try again.';
+        }
+        setOtpError(errorMsg);
+      },
+      fail => {
+        console.log('API Fail:', fail);
+        if (retryCount < 1) {
+          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 800);
+          return;
+        }
+        setIsLoading(false);
+        setOtpError('Network Error. Please try again.');
+      },
+    );
+  };
+
   const handleVerify = async () => {
     const FcmToken = await AsyncStorage.getItem('fcm_token');
     const currentOtp = String(otpRef.current || otp || '').trim();
@@ -170,68 +240,20 @@ const Otp = ({ navigation, route }) => {
     }
     setIsLoading(true);
     setOtpError('');
-    var formdata = new FormData();
-    formdata?.append('otp', currentOtp);
-    formdata?.append('user_id', user_id);
-    formdata?.append('device_token', FcmToken);
-    formdata?.append(
-      'device_type',
-      Platform.OS == 'android' ? 'android' : 'ios',
-    );
+    const payload = {
+      otp: currentOtp,
+      user_id,
+      device_type: Platform.OS === 'android' ? 'android' : 'ios',
+    };
+
+    if (FcmToken) {
+      payload.device_token = FcmToken;
+    }
 
     console.log('Sending OTP:', currentOtp, 'Length:', currentOtp.length);
-    console.log('-----formdata-----', formdata);
+    console.log('-----payload-----', payload);
 
-    POST(
-      VERIFY_OTP,
-      formdata,
-      async response => {
-        await dispatch(Token(response?.token));
-        console.log('OTP', response);
-        if (response) {
-          dispatch(userDetails(response?.user));
-          dispatch(userType(response?.user?.user_role_id));
-          SimpleToast.show(response?.message, SimpleToast.SHORT);
-          if (!response?.user?.user_role_id || type === 'signup') {
-            setIsLoading(false);
-            navigation?.navigate('ChooseUser');
-          } else {
-            // Returning user - fetch full profile first, then check subscription
-            fetchProfileAndProceed(response?.user?.user_role_id);
-          }
-        } else {
-          setIsLoading(false);
-          setOtpError(
-            response.message ||
-            LocalizedStrings.Auth?.mobile_invalid ||
-            'Invalid OTP. Please try again.',
-          );
-        }
-      },
-      error => {
-        setIsLoading(false);
-        console.log('Verify OTP Error:', error);
-        let errorMsg = '';
-
-        if (error?.data?.error) {
-          errorMsg = error.data.error;
-          // Display what the server actually expected (if provided by backend)
-          if (error.data.debug_stored) {
-            errorMsg += `\n(Expect: ${error.data.debug_stored} | Sent: ${error.data.debug_sent})`;
-          }
-        } else if (error?.data?.message) {
-          errorMsg = error.data.message;
-        } else if (error?.message) {
-          errorMsg = error.message;
-        } else {
-          errorMsg = 'Something went wrong. Please try again.';
-        }
-        setOtpError(errorMsg);
-      },
-      fail => {
-        console.log('API Fail:', fail);
-      },
-    );
+    submitOtpVerification(payload, currentOtp);
   };
 
   return (
