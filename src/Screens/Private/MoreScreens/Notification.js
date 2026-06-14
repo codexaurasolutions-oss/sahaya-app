@@ -108,7 +108,7 @@ const Notification = ({ navigation }) => {
   const getNotificationJobId = item => {
     if (item?.job_id) return item.job_id;
 
-    const message = item?.message || '';
+    const message = item?.message || item?.title || item?.body || '';
     const parts = message.split(/has applied for the job:\s*/i);
     return parts.length > 1 ? parts[1].trim() : null;
   };
@@ -120,12 +120,22 @@ const Notification = ({ navigation }) => {
       markAsRead(item.id);
     }
 
-    if (item?.type === 'job_application') {
+    const typeStr = (item?.type || '').toLowerCase();
+    const messageStr = (item?.message || item?.title || item?.body || '').toLowerCase();
+
+    if (typeStr === 'job_application' || messageStr.includes('has applied for the job')) {
       const jobId = getNotificationJobId(item);
-      if (typeof jobId === 'number' || /^\d+$/.test(String(jobId || ''))) {
+      
+      // If we have a direct numeric job_id, navigate
+      if (jobId && (typeof jobId === 'number' || /^\d+$/.test(String(jobId).trim()))) {
         navigation.navigate('ListingJob', { id: Number(jobId) });
         return;
       }
+      
+      // Fallback: If jobId is not numeric (e.g. it's the job title like "Cook"), 
+      // navigate to the MyJobPosting screen instead so they can find the job themselves
+      navigation.navigate('MyJobPosting');
+      return;
     }
   };
 
