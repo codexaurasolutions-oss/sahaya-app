@@ -96,6 +96,7 @@ const EditProfile = ({ navigation, route }) => {
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [preferredWorkCity, setPreferredWorkCity] = useState('');
+  const [stayType, setStayType] = useState([]);
 
   // Image modal states
   const [currentImageType, setCurrentImageType] = useState('');
@@ -388,6 +389,7 @@ const EditProfile = ({ navigation, route }) => {
       });
     if (workInfo?.emergency_contact_name) setEmergencyName(workInfo.emergency_contact_name);
     if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
+    if (workInfo?.stay_type) setStayType([workInfo.stay_type]);
     if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
     if (userDetail?.upi_id) setUpiId(userDetail.upi_id);
 
@@ -461,6 +463,7 @@ const EditProfile = ({ navigation, route }) => {
 
     if (workInfo?.emergency_contact_name) setEmergencyName(workInfo.emergency_contact_name);
     if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
+    if (workInfo?.stay_type) setStayType([workInfo.stay_type]);
     if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
     else if (userDetail?.preferred_work_location) setPreferredWorkCity(userDetail.preferred_work_location);
   };
@@ -854,6 +857,7 @@ const EditProfile = ({ navigation, route }) => {
     if (upiId) formData.append('upi_id', upiId);
     if (emergencyName) formData.append('emergency_contact_name', emergencyName);
     if (emergencyPhone) formData.append('emergency_contact_number', emergencyPhone);
+    if (stayType.length > 0) formData.append('stay_type', stayType[0]);
     if (preferredWorkCity) formData.append('preferred_work_location', preferredWorkCity);
 
     // Profile Image (only if new image selected, not a remote URL)
@@ -1153,6 +1157,31 @@ const EditProfile = ({ navigation, route }) => {
           <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
             Work Preferences
           </Typography>
+          <View style={{ marginBottom: 15 }}>
+            <Typography type={Font?.Poppins_SemiBold} size={14} style={{ marginBottom: 10 }}>
+              Stay Type
+            </Typography>
+            {[
+              'Inhouse (Live-in)',
+              'Come and Go (Outhouse)'
+            ].map((option, index) => {
+              const val = index === 0 ? 'inhouse' : 'come_and_go';
+              const isSelected = stayType.includes(val);
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.checkboxRow, { marginBottom: 10 }]}
+                  onPress={() => setStayType([val])}
+                >
+                  <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                    {isSelected && <View style={styles.checkboxInner} />}
+                  </View>
+                  <Typography size={14} style={{ marginLeft: 10 }}>{option}</Typography>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
           <DropdownComponent
             title="Preferred Work Cities"
             placeholder="Select preferred work area"
@@ -1832,5 +1861,29 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     marginRight: 5,
     tintColor: 'rgba(217, 133, 121, 1)',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#D98579',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  checkboxSelected: {
+    backgroundColor: '#D98579',
+  },
+  checkboxInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: '#FFF',
   },
 });

@@ -53,10 +53,9 @@ const Otp = ({ navigation, route }) => {
     }
     setIsLoading(true);
     setOtpError('');
-    const payload = {
-      phone_number: String(mobile),
-      country_code: String(countryCode),
-    };
+    const payload = new FormData();
+    payload.append('phone_number', String(mobile));
+    payload.append('country_code', String(countryCode));
 
     POST(
       RESEND_OTP,
@@ -176,42 +175,33 @@ const Otp = ({ navigation, route }) => {
       error => {
         console.log('Verify OTP Error:', error);
 
-        const isNetworkIssue =
-          error?.message === 'Network Error' ||
-          error?.code === 'ERR_NETWORK' ||
-          error?.code === 'NETWORK_ERROR' ||
-          error?.data?.msg === 'Network Error';
-
-        if (isNetworkIssue && retryCount < 1) {
-          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 800);
-          return;
-        }
-
         setIsLoading(false);
         let errorMsg = '';
 
-        if (error?.data?.error) {
-          errorMsg = error.data.error;
-          if (error.data.debug_stored) {
-            errorMsg += `\n(Expect: ${error.data.debug_stored} | Sent: ${error.data.debug_sent})`;
+        // error is now res.data (the JSON body from the server)
+        if (error?.error) {
+          errorMsg = error.error;
+          if (error.debug_stored) {
+            errorMsg += `\n(Expect: ${error.debug_stored} | Sent: ${error.debug_sent})`;
           }
-        } else if (error?.data?.message) {
-          errorMsg = error.data.message;
         } else if (error?.message) {
           errorMsg = error.message;
+        } else if (error?.errors) {
+          const errs = error.errors;
+          errorMsg = Object.values(errs).flat().join('\n');
         } else {
-          errorMsg = 'Network Error. Please try again.';
+          errorMsg = 'Invalid OTP. Please try again.';
         }
         setOtpError(errorMsg);
       },
       fail => {
-        console.log('API Fail:', fail);
+        console.log('API Fail (network):', fail);
         if (retryCount < 1) {
-          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 800);
+          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 1000);
           return;
         }
         setIsLoading(false);
-        setOtpError('Network Error. Please try again.');
+        setOtpError('Network error. Please check your connection and try again.');
       },
     );
   };
@@ -240,14 +230,13 @@ const Otp = ({ navigation, route }) => {
     }
     setIsLoading(true);
     setOtpError('');
-    const payload = {
-      otp: currentOtp,
-      user_id,
-      device_type: Platform.OS === 'android' ? 'android' : 'ios',
-    };
+    const payload = new FormData();
+    payload.append('otp', currentOtp);
+    payload.append('user_id', user_id);
+    payload.append('device_type', Platform.OS === 'android' ? 'android' : 'ios');
 
     if (FcmToken) {
-      payload.device_token = FcmToken;
+      payload.append('device_token', FcmToken);
     }
 
     console.log('Sending OTP:', currentOtp, 'Length:', currentOtp.length);

@@ -227,8 +227,15 @@ const More = ({ navigation }) => {
           onPress={() => navigation.navigate('ManageAddresses')}
         />
         <Option
-          Images={ImageConstant?.lines}
+          Images={ImageConstant?.Dollar}
           isBorder={true}
+          title={'Pay Salary'}
+          subtitle={'Manage and pay staff salary'}
+          onPress={() => navigation.navigate('Salary')}
+        />
+        <Option
+          Images={ImageConstant?.lines}
+          isBorder={false}
           title={'Payment History'}
           subtitle={'View all salary payments and dates'}
           onPress={() => navigation.navigate('RecentSalaryList')}

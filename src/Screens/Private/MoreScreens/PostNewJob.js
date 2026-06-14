@@ -95,6 +95,7 @@ const PostNewJob = ({ navigation, route }) => {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [selectedDays, setSelectedDays] = useState([]);
   const [commitment, setCommitment] = useState([]);
+  const [stayType, setStayType] = useState([]);
 
   const daysOfWeek = [
     'Monday',
@@ -213,6 +214,9 @@ const PostNewJob = ({ navigation, route }) => {
     }
 
     // Working Schedule
+    if (jobData.stay_type) {
+      setStayType([jobData.stay_type]);
+    }
     const commitRaw = jobData.commitment_type || '';
     setCommitment(commitRaw ? [commitRaw] : []);
     if (jobData.preferred_hours) {
@@ -517,6 +521,9 @@ const PostNewJob = ({ navigation, route }) => {
     if (commitment.length > 0) {
       const commitmentValue = commitment[0].toLowerCase().replace('-', '-');
       formData.append('commitment_type', commitmentValue);
+    }
+    if (stayType.length > 0) {
+      formData.append('stay_type', stayType[0]);
     }
     const preferredHours = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     formData.append('preferred_hours', preferredHours);
@@ -1111,6 +1118,34 @@ const PostNewJob = ({ navigation, route }) => {
               {errors.selectedDays}
             </Typography>
           )}
+
+          <Typography
+            type={Font?.Poppins_Bold}
+            size={14}
+            style={{ marginTop: 15 }}
+          >
+            Stay Type
+          </Typography>
+          {[
+            'Inhouse (Live-in)',
+            'Come and Go (Outhouse)'
+          ].map((option, index) => {
+            const val = index === 0 ? 'inhouse' : 'come_and_go';
+            const isSelected = stayType.includes(val);
+
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.checkboxRow}
+                onPress={() => setStayType([val])}
+              >
+                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                  {isSelected && <View style={styles.checkboxInner} />}
+                </View>
+                <Typography size={14}>{option}</Typography>
+              </TouchableOpacity>
+            );
+          })}
 
           <Typography
             type={Font?.Poppins_Bold}

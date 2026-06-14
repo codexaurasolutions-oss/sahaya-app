@@ -95,6 +95,7 @@ const FindStaff = ({ navigation, route }) => {
   const [filterGender, setFilterGender] = useState(null);
   const [filterAge, setFilterAge] = useState(null);
   const [filterSalary, setFilterSalary] = useState(null);
+  const [filterStayType, setFilterStayType] = useState(null);
 
   useEffect(() => {
     fetchCandidates();
@@ -414,6 +415,10 @@ const FindStaff = ({ navigation, route }) => {
       filtered = filtered.filter(c => c.gender && c.gender.toLowerCase() === filterGender.toLowerCase());
     }
 
+    if (filterStayType) {
+      filtered = filtered.filter(c => c.raw?.stay_type === filterStayType || c.raw?.user_work_info?.stay_type === filterStayType);
+    }
+
     if (filterAge) {
       filtered = filtered.filter(c => {
         if (!c.age) return false;
@@ -450,6 +455,7 @@ const FindStaff = ({ navigation, route }) => {
     setFilterGender(null);
     setFilterAge(null);
     setFilterSalary(null);
+    setFilterStayType(null);
     setCandidates(allCandidates);
   };
 
@@ -480,7 +486,7 @@ const FindStaff = ({ navigation, route }) => {
         <Typography color={showFilters ? '#fff' : '#D98579'} type={Font?.Poppins_Medium}>
           {showFilters ? 'Hide Filters' : 'Show Filters'}
         </Typography>
-        {(filterRole || filterExperience || filterRegion || filterArea || filterVerification || filterGender || filterAge || filterSalary) && (
+        {(filterRole || filterExperience || filterRegion || filterArea || filterVerification || filterGender || filterAge || filterSalary || filterStayType) && (
           <View style={styles.filterActiveDot} />
         )}
       </TouchableOpacity>
@@ -594,6 +600,24 @@ const FindStaff = ({ navigation, route }) => {
             {...dropdownProps}
             MainBoxStyle={{ flex: 1, marginLeft: 6 }}
           />
+        </View>
+
+        <View style={styles.filterRow}>
+          <DropdownComponent
+            leftIcons={ImageConstant?.Briefcase}
+            leftIconsShow
+            size={30}
+            placeholder="Stay Type"
+            data={[
+              { label: 'Inhouse', value: 'inhouse' },
+              { label: 'Come and Go', value: 'come_and_go' },
+            ]}
+            value={filterStayType}
+            onChange={(item) => setFilterStayType(item.value)}
+            {...dropdownProps}
+            MainBoxStyle={{ flex: 1, marginRight: 6 }}
+          />
+          <View style={{ flex: 1, marginLeft: 6 }} />
         </View>
 
         <View style={styles.btnRow}>

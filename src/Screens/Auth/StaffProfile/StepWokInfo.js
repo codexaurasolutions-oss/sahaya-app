@@ -40,6 +40,7 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
   const [additionalInfo, setAdditionalInfo] = useState(''); // Additional info
   const [voiceNote, setVoiceNote] = useState(null); // Voice note (optional)
   const [workingDays, setWorkingDays] = useState([]); // Selected working days
+  const [stayType, setStayType] = useState([]); // Stay type
   const [errors, setErrors] = useState({}); // Validation errors
   const [loader, setLoader] = useState(false); // Loading state
   const [emergencyContactName, setEmergencyContactName] = useState(''); // Emergency Contact Name
@@ -170,6 +171,9 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
       }
       if (workInfo.emergency_contact_number) {
         setEmergencyContactNumber(workInfo.emergency_contact_number);
+      }
+      if (workInfo?.stay_type) {
+        setStayType([workInfo.stay_type]);
       }
       if (workInfo.upi_id || userDetail?.upi_id) {
         setUpiId(workInfo.upi_id || userDetail?.upi_id);
@@ -497,6 +501,10 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
       workingDays.forEach((day, index) => {
         formData.append(`working_days[${index}]`, day);
       });
+    }
+    
+    if (stayType.length > 0) {
+      formData.append('stay_type', stayType[0]);
     }
 
     // Voice Note (optional) - if provided
@@ -850,6 +858,31 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
             );
           })}
         </View>
+        
+        {/* Stay Type Checkboxes */}
+        <Typography type={Font?.Poppins_Bold} size={14} style={{ marginTop: 15 }}>
+          Stay Type
+        </Typography>
+        {[
+          'Inhouse (Live-in)',
+          'Come and Go (Outhouse)'
+        ].map((option, index) => {
+          const val = index === 0 ? 'inhouse' : 'come_and_go';
+          const isSelected = stayType.includes(val);
+
+          return (
+            <TouchableOpacity
+              key={index}
+              style={styles.checkboxRow}
+              onPress={() => setStayType([val])}
+            >
+              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                {isSelected && <View style={styles.checkboxInner} />}
+              </View>
+              <Typography size={14}>{option}</Typography>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <Input

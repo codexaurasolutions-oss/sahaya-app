@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Image,
@@ -9,7 +9,13 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Animated,
+  PanResponder,
+  PermissionsAndroid,
+  Platform,
+  Dimensions,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 import CommanView from '../../../Component/CommanView';
 import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
@@ -87,6 +93,89 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [noticePeriodDays, setNoticePeriodDays] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
+  const [isSavingImage, setIsSavingImage] = useState(false);
+
+  // Zoom / pan state for image preview
+  const scale = useRef(new Animated.Value(1)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const lastScale = useRef(1);
+  const lastX = useRef(0);
+  const lastY = useRef(0);
+
+  const resetZoom = () => {
+    scale.setValue(1);
+    translateX.setValue(0);
+    translateY.setValue(0);
+    lastScale.current = 1;
+    lastX.current = 0;
+    lastY.current = 0;
+  };
+
+  const imagePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {},
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2) {
+          // Pinch to zoom
+          const dx = touches[0].pageX - touches[1].pageX;
+          const dy = touches[0].pageY - touches[1].pageY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (!imagePanResponder._startDistance) {
+            imagePanResponder._startDistance = distance;
+            imagePanResponder._startScale = lastScale.current;
+          }
+          const newScale = Math.max(
+            0.5,
+            Math.min(5, (imagePanResponder._startScale * distance) / imagePanResponder._startDistance),
+          );
+          scale.setValue(newScale);
+        } else if (touches.length === 1 && lastScale.current > 1) {
+          // Pan when zoomed in
+          translateX.setValue(lastX.current + gestureState.dx);
+          translateY.setValue(lastY.current + gestureState.dy);
+        }
+      },
+      onPanResponderRelease: () => {
+        lastScale.current = scale._value;
+        lastX.current = translateX._value;
+        lastY.current = translateY._value;
+        imagePanResponder._startDistance = null;
+        imagePanResponder._startScale = null;
+      },
+    }),
+  ).current;
+
+  const handleSaveImage = async () => {
+    if (!previewImage || typeof previewImage !== 'string') return;
+    setIsSavingImage(true);
+    try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          { title: 'Storage Permission', message: 'Allow Sahayya to save images to your gallery?' },
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          SimpleToast.show('Storage permission denied', SimpleToast.SHORT);
+          setIsSavingImage(false);
+          return;
+        }
+      }
+      const fileName = `sahayya_doc_${Date.now()}.jpg`;
+      const destPath = `${RNFS.PicturesDirectoryPath}/${fileName}`;
+      await RNFS.downloadFile({ fromUrl: previewImage, toFile: destPath }).promise;
+      // Scan file so it appears in gallery
+      await RNFS.scanFile(destPath).catch(() => {});
+      SimpleToast.show('Image saved to Gallery!', SimpleToast.SHORT);
+    } catch (e) {
+      console.log('Save image error:', e);
+      SimpleToast.show('Failed to save image', SimpleToast.SHORT);
+    }
+    setIsSavingImage(false);
+  };
   const [isEditingSalary, setIsEditingSalary] = useState(false);
   const [newSalary, setNewSalary] = useState('');
   const [profileImageToUpload, setProfileImageToUpload] = useState(null);
@@ -1404,25 +1493,61 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Full-screen Image Preview Modal */}
+      {/* Full-screen Image Preview Modal - with zoom & save */}
       <Modal
         visible={!!previewImage}
         animationType="fade"
         transparent={true}
-        onRequestClose={() => setPreviewImage(null)}
+        onRequestClose={() => { setPreviewImage(null); resetZoom(); }}
       >
         <View style={styles.imagePreviewOverlay}>
+          {/* Close button */}
           <TouchableOpacity
             style={styles.imagePreviewClose}
-            onPress={() => setPreviewImage(null)}
+            onPress={() => { setPreviewImage(null); resetZoom(); }}
           >
-            <Typography size={22} color="#fff">{'\u2715'}</Typography>
+            <Typography size={22} color="#fff">{'✕'}</Typography>
           </TouchableOpacity>
+
+          {/* Save button */}
+          <TouchableOpacity
+            style={styles.imagePreviewSave}
+            onPress={handleSaveImage}
+            disabled={isSavingImage}
+          >
+            {isSavingImage ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Typography size={13} color="#fff" type={Font.Poppins_Medium}>
+                💾  Save
+              </Typography>
+            )}
+          </TouchableOpacity>
+
+          {/* Reset zoom hint */}
+          <TouchableOpacity
+            style={styles.imagePreviewReset}
+            onPress={resetZoom}
+          >
+            <Typography size={12} color="#ccc">↺ Reset</Typography>
+          </TouchableOpacity>
+
+          {/* Pinch-zoomable image */}
           {previewImage && typeof previewImage === 'string' && (
-            <Image
+            <Animated.Image
               source={{ uri: previewImage }}
-              style={styles.imagePreviewFull}
+              style={[
+                styles.imagePreviewFull,
+                {
+                  transform: [
+                    { scale: scale },
+                    { translateX: translateX },
+                    { translateY: translateY },
+                  ],
+                },
+              ]}
               resizeMode="contain"
+              {...imagePanResponder.panHandlers}
             />
           )}
         </View>
@@ -1715,7 +1840,7 @@ const styles = StyleSheet.create({
   },
   imagePreviewOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: 'rgba(0,0,0,0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1725,9 +1850,32 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 10,
     padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+  },
+  imagePreviewSave: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#D98579',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  imagePreviewReset: {
+    position: 'absolute',
+    bottom: 50,
+    alignSelf: 'center',
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
   },
   imagePreviewFull: {
-    width: '90%',
-    height: '70%',
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.8,
   },
 });

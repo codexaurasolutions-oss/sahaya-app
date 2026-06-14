@@ -7,7 +7,7 @@ import { store } from '../Redux/store';
 export const toastRef = createRef();
 const errorHandling = {
   validateStatus: function (status) {
-    return status >= 200 && status < 501; // default
+    return status >= 200 && status <= 503; // accept all including 5xx so they reach .then()
   },
 };
 
@@ -61,8 +61,8 @@ export const POST_FORM_DATA = async (
           if (res?.status == 400 || res?.status == 422) {
             onError(res?.data || res);
           } else if (res?.status >= 500) {
-            // Server errors - should go to catch, but if validateStatus allows it, handle here
-            onError(res);
+            // Server errors — pass message to onError so screens show actual reason
+            onError(res?.data || { error: 'Server error. Please try again.' });
           } else {
             // Other errors (401, 403, 404, etc.)
             onError(res?.data || res);
@@ -115,7 +115,7 @@ export const POST = async (
         Accept: 'application/json',
       },
       validateStatus: function (status) {
-        return status >= 200 && status < 501; // default
+        return status >= 200 && status <= 503; // accept all so they reach .then()
       },
     })
       .then(res => {
@@ -127,13 +127,14 @@ export const POST = async (
             onError(res?.data);
           }
         } else {
-          console.log('POST Error - status not 200/201:', res?.status);
-          onError(res);
+          // Pass res.data (the actual JSON body) so callers can extract the error message
+          console.log('POST Error - status:', res?.status, res?.data);
+          onError(res?.data || { error: 'Server error. Please try again.' });
         }
       })
       .catch(err => {
         console.error(err);
-        onError(err);
+        onFail(err);
       });
   } catch (error) {
     onFail({ data: null, msg: 'Network Error', status: 'error' });
