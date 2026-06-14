@@ -362,6 +362,29 @@ const JobDetails = ({ navigation, route }) => {
             </View>
           </View>
 
+          {jobData?.stay_type && (
+            <View style={[styles.infoRow, { marginTop: 0 }]}>
+              <View style={[styles.infoBox, { width: '100%', marginBottom: 15 }]}>
+                <View style={styles.iconCircle}>
+                  <Image
+                    source={ImageConstant.Briefcase}
+                    style={{ height: 24, width: 24, tintColor: '#D98579' }}
+                  />
+                </View>
+                <Typography
+                  type={Font.Poppins_SemiBold}
+                  style={[styles.infoValue, { textTransform: 'capitalize' }]}
+                  numberOfLines={2}
+                >
+                  {jobData.stay_type === 'come_and_go' ? 'Come and Go' : 'Inhouse'}
+                </Typography>
+                <Typography type={Font.Poppins_Regular} style={styles.infoLabel}>
+                  Stay Type
+                </Typography>
+              </View>
+            </View>
+          )}
+
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Image

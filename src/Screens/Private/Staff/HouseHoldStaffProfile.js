@@ -960,6 +960,17 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 </View>
               </View>
             )}
+            {data?.user_work_info?.stay_type && (
+              <View style={styles.row}>
+                <Image source={ImageConstant.Briefcase} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Stay Type</Typography>
+                  <Typography style={[styles.value, { textTransform: 'capitalize' }]}>
+                    {data.user_work_info.stay_type === 'come_and_go' ? 'Come and Go' : 'Inhouse'}
+                  </Typography>
+                </View>
+              </View>
+            )}
             {data?.user_work_info?.working_days && (
               <View style={styles.rowNoBorder}>
                 <Image source={ImageConstant.Calendar} style={styles.icon} />
