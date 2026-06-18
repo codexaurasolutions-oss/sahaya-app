@@ -55,6 +55,7 @@ const Dashboard = ({ navigation }) => {
     LocalizedStrings.MyStaff?.Active || 'Active',
     LocalizedStrings.MyStaff?.On_Leave || 'On Leave',
     LocalizedStrings.MyStaff?.Inactive || 'Inactive',
+    'Terminated',
   ];
 
   useEffect(() => {
@@ -110,10 +111,11 @@ const Dashboard = ({ navigation }) => {
     let list = allStaffList;
     if (activeTab !== (LocalizedStrings.MyStaff?.All || 'All')) {
       list = list.filter(item => {
-        const st = item.status?.toLowerCase();
-        if (activeTab === (LocalizedStrings.MyStaff?.Active || 'Active')) return st === 'active' || st === 'present';
+        const st = item.status?.toLowerCase() || item.application_status?.toLowerCase();
+        if (activeTab === (LocalizedStrings.MyStaff?.Active || 'Active')) return st === 'active' || st === 'present' || st === 'hired' || st === 'accepted' || st === 'approved';
         if (activeTab === (LocalizedStrings.MyStaff?.On_Leave || 'On Leave')) return st === 'on_leave' || st === 'on leave' || st === 'leave';
         if (activeTab === (LocalizedStrings.MyStaff?.Inactive || 'Inactive')) return st === 'inactive' || st === 'absent';
+        if (activeTab === 'Terminated') return st === 'terminated';
         return true;
       });
     }
@@ -131,18 +133,20 @@ const Dashboard = ({ navigation }) => {
 
   const getStatusColor = s => {
     switch (s?.toLowerCase()) {
-      case 'active': case 'present': return '#4CAF50';
+      case 'active': case 'present': case 'hired': case 'accepted': case 'approved': return '#4CAF50';
       case 'on_leave': case 'on leave': case 'leave': return '#FFC107';
       case 'inactive': case 'absent': return '#F44336';
+      case 'terminated': return '#7B2D2D';
       default: return '#999';
     }
   };
 
   const getStatusLabel = s => {
     switch (s?.toLowerCase()) {
-      case 'active': case 'present': return LocalizedStrings.MyStaff?.Active || 'Active';
+      case 'active': case 'present': case 'hired': case 'accepted': case 'approved': return LocalizedStrings.MyStaff?.Active || 'Active';
       case 'on_leave': case 'on leave': case 'leave': return LocalizedStrings.MyStaff?.On_Leave || 'On Leave';
       case 'inactive': case 'absent': return LocalizedStrings.MyStaff?.Inactive || 'Inactive';
+      case 'terminated': return 'Terminated';
       default: return s || '';
     }
   };
