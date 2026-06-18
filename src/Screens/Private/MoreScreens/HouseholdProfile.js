@@ -81,8 +81,10 @@ const HouseholdProfile = ({ navigation, route }) => {
   const [profileImage, setProfileImage] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
 
-  // Auto Present state
-  const [autoPresent, setAutoPresent] = useState(false);
+  // Auto Present state — initialize from Redux so it matches ProfileManagement page
+  const [autoPresent, setAutoPresent] = useState(
+    userDetail?.auto_attendence === 1 || userDetail?.auto_attendence === '1' || userDetail?.auto_attendence === true
+  );
   const [autoPresentLoading, setAutoPresentLoading] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
 
@@ -293,6 +295,14 @@ const HouseholdProfile = ({ navigation, route }) => {
       if (household?.number_of_rooms) {
         setNumberOfRooms(String(household.number_of_rooms));
       }
+      setRooms(profileData?.household_information?.number_of_rooms || '');
+      setBathrooms(profileData?.household_information?.number_of_bathrooms || '');
+      setSpecialRequirements(
+        profileData?.household_information?.special_requirements || '',
+      );
+      const autoPresentValue = profileData?.auto_attendence;
+      setAutoPresent(autoPresentValue === 1 || autoPresentValue === '1' || autoPresentValue === true);
+
       console.log('profileData.household_information.languages_spoken====', profileData.household_information.languages_spoken);
 
       setLanguagesSpoken(profileData.household_information.languages_spoken || []);
@@ -348,6 +358,37 @@ const HouseholdProfile = ({ navigation, route }) => {
     const autoPresentValue = profileData?.auto_attendence;
     console.log('[AutoPresent] Loaded from profile:', autoPresentValue);
     setAutoPresent(autoPresentValue === 1 || autoPresentValue === '1' || autoPresentValue === true);
+  };
+
+  // Real-time toggle: immediately save to backend and Redux (same as ProfileManagement.js)
+  const handleAutoPresentToggle = value => {
+    setAutoPresent(value);
+    setAutoPresentLoading(true);
+    const formData = new FormData();
+    formData.append('auto_attendence', value ? 1 : 0);
+    formData.append('is_edit', '1');
+    POST_FORM_DATA(
+      PROFILE_UPDATE,
+      formData,
+      success => {
+        setAutoPresentLoading(false);
+        dispatch(userDetails(success?.data));
+        SimpleToast.show(
+          value ? 'Auto Present enabled' : 'Auto Present disabled',
+          SimpleToast.SHORT,
+        );
+      },
+      error => {
+        setAutoPresentLoading(false);
+        setAutoPresent(!value); // revert on error
+        SimpleToast.show('Failed to update setting', SimpleToast.SHORT);
+      },
+      fail => {
+        setAutoPresentLoading(false);
+        setAutoPresent(!value); // revert on network fail
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
   };
 
   const handleImageSelect = (assets, source) => {
@@ -419,41 +460,6 @@ const HouseholdProfile = ({ navigation, route }) => {
     }
   };
 
-  const handleAutoPresentToggle = value => {
-    console.log('[AutoPresent] Toggle triggered, value:', value, '=> sending:', value ? 1 : 0);
-    setAutoPresent(value);
-    setAutoPresentLoading(true);
-    const formData = new FormData();
-    formData.append('auto_attendence', value ? 1 : 0);
-    formData.append('is_edit', '1');
-    console.log('[AutoPresent] Calling PROFILE_UPDATE with auto_present:', value ? 1 : 0);
-    POST_FORM_DATA(
-      PROFILE_UPDATE,
-      formData,
-      success => {
-        console.log('[AutoPresent] SUCCESS:', JSON.stringify(success));
-        setAutoPresentLoading(false);
-        dispatch(userDetails(success?.data));
-        SimpleToast.show(
-          value ? 'Auto Present enabled' : 'Auto Present disabled',
-          SimpleToast.SHORT,
-        );
-      },
-      error => {
-        console.log('[AutoPresent] ERROR:', JSON.stringify(error));
-        setAutoPresentLoading(false);
-        setAutoPresent(!value);
-        SimpleToast.show('Failed to update setting', SimpleToast.SHORT);
-      },
-      fail => {
-        console.log('[AutoPresent] NETWORK FAIL:', JSON.stringify(fail));
-        setAutoPresentLoading(false);
-        setAutoPresent(!value);
-        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
-      },
-    );
-  };
-
   const handleUpdateProfile = () => {
     if (loading) return;
     setLoading(true);
@@ -463,6 +469,7 @@ const HouseholdProfile = ({ navigation, route }) => {
     // formData.append('user_role_id', 3);
     if (lastName) formData.append('last_name', lastName);
     if (gender?.value) formData.append('gender', gender.value);
+    formData.append('auto_attendence', autoPresent ? 1 : 0);
     if (dob) {
       // Format date properly for API
       const formattedDob = formatDateWithDashes(dob);
@@ -1026,14 +1033,7 @@ const HouseholdProfile = ({ navigation, route }) => {
           />
         </View>
 
-
-      <View
-        style={styles.section}
-        onLayout={(event) => {
-          const layout = event.nativeEvent.layout;
-          setAutoAttendanceY(layout.y);
-        }}
-      >
+      <View style={styles.section}>
         <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
           Auto Attendance
         </Typography>
