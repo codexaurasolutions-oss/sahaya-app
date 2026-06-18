@@ -144,16 +144,31 @@ const NewStaffForm = ({ navigation, route }) => {
     { label: 'Sun', value: 'Sunday' },
   ];
 
-  // Relation Options
+  // Relation Options — project-appropriate for Indian household staff emergency contacts
   const relationOptions = [
-    { label: 'Brother', value: 'brother' },
-    { label: 'Sister', value: 'sister' },
     { label: 'Father', value: 'father' },
     { label: 'Mother', value: 'mother' },
+    { label: 'Husband', value: 'husband' },
+    { label: 'Wife', value: 'wife' },
+    { label: 'Brother', value: 'brother' },
+    { label: 'Sister', value: 'sister' },
     { label: 'Son', value: 'son' },
     { label: 'Daughter', value: 'daughter' },
-    { label: 'Spouse', value: 'spouse' },
+    { label: 'Grandfather', value: 'grandfather' },
+    { label: 'Grandmother', value: 'grandmother' },
+    { label: 'Uncle', value: 'uncle' },
+    { label: 'Aunt', value: 'aunt' },
+    { label: 'Cousin', value: 'cousin' },
+    { label: 'Nephew', value: 'nephew' },
+    { label: 'Niece', value: 'niece' },
+    { label: 'Father-in-law', value: 'father_in_law' },
+    { label: 'Mother-in-law', value: 'mother_in_law' },
+    { label: 'Brother-in-law', value: 'brother_in_law' },
+    { label: 'Sister-in-law', value: 'sister_in_law' },
     { label: 'Friend', value: 'friend' },
+    { label: 'Neighbour', value: 'neighbour' },
+    { label: 'Colleague', value: 'colleague' },
+    { label: 'Guardian', value: 'guardian' },
     { label: 'Other', value: 'other' },
   ];
 
