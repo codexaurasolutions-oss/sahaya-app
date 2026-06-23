@@ -165,14 +165,6 @@ const More = ({ navigation }) => {
           }}
         />
         <Option
-          Images={ImageConstant?.Briefcase}
-          onPress={() => {
-            navigation.navigate('MyJobPosting');
-          }}
-          title={LocalizedStrings.MoreOptions.job_listings}
-          subtitle={LocalizedStrings.MoreOptions.discover_tasks}
-        />
-        <Option
           Images={ImageConstant?.ic_bellring}
           title={LocalizedStrings.MoreOptions.alerts_notifications}
           subtitle={LocalizedStrings.MoreOptions.view_manage_alerts}
@@ -181,7 +173,7 @@ const More = ({ navigation }) => {
         <Option
           Images={ImageConstant?.staff}
           isBorder={true}
-          title={LocalizedStrings.MoreOptions.account_access}
+          title={LocalizedStrings.FamilyMembers.title || 'Family Members'}
           subtitle={LocalizedStrings.MoreOptions.add_manage_family}
           onPress={() =>
             navigation.navigate('FamilyMembers', { backScreen: 'More' })
@@ -195,24 +187,6 @@ const More = ({ navigation }) => {
           onPress={() => navigation.navigate('Leave')}
         />
 
-        <Option
-          Images={ImageConstant?.Calendar}
-          isBorder={true}
-          title={LocalizedStrings.MoreOptions.attendance_statistics || 'Attendance Statistics'}
-          subtitle={LocalizedStrings.MoreOptions.attendance_statistics_subtitle || 'Staff Attendance'}
-          onPress={() => navigation.navigate('AttendanceScreen')}
-        />
-        <Option
-          Images={ImageConstant?.Calendar}
-          isBorder={true}
-          title={'Auto Attendance'}
-          subtitle={'Manage auto present setting'}
-          onPress={() =>
-            navigation.navigate('HouseholdProfile', {
-              focusSection: 'autoAttendance',
-            })
-          }
-        />
         <Option
           Images={ImageConstant?.Dollar}
           title={LocalizedStrings.MoreOptions.membership || 'Membership'}
