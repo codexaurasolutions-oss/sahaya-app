@@ -98,12 +98,60 @@ const Dashboard = ({ navigation }) => {
     }, () => {}, () => {});
   };
 
-  // Active staff filter (for attendance section)
+  // Active staff filter (combines allStaffList with attendance info from activeStaff)
   const getFilteredActive = () => {
-    if (!selectedStaff || selectedStaff.value === null) return activeStaff?.active_staff || [];
-    return (activeStaff?.active_staff || []).filter(
-      i => i?.staff?.id == selectedStaff.value || i?.id == selectedStaff.value
-    );
+    // Merge attendance info into allStaffList
+    let mergedList = allStaffList.map(staff => {
+      const activeMatch = (activeStaff?.active_staff || []).find(
+        a => a.id === staff.id || a.staff?.id === staff.id
+      );
+      if (activeMatch) {
+        return { ...staff, attendance_details: activeMatch.attendance_details };
+      }
+      return staff;
+    });
+
+    let list = mergedList;
+    
+    if (activeTab === (LocalizedStrings.MyStaff?.All || 'All')) {
+      // For 'All', exclude inactive and terminated staff
+      list = list.filter(item => {
+        const itemStatus = item.status?.toLowerCase() || item.application_status?.toLowerCase();
+        return itemStatus !== 'inactive' && itemStatus !== 'terminated';
+      });
+    } else {
+      list = list.filter(item => {
+        const itemStatus = item.status?.toLowerCase() || item.application_status?.toLowerCase();
+        const attendanceStatus = item.attendance_details?.status?.toLowerCase();
+        
+        if (activeTab === (LocalizedStrings.MyStaff?.Active || 'Active')) {
+          if (itemStatus === 'inactive' || itemStatus === 'terminated') return false;
+          return (itemStatus === 'active' || itemStatus === 'hired' || itemStatus === 'present' || attendanceStatus === 'present') && attendanceStatus !== 'absent' && attendanceStatus !== 'late';
+        }
+        if (activeTab === 'Late') {
+          if (itemStatus === 'inactive' || itemStatus === 'terminated') return false;
+          return attendanceStatus === 'late';
+        }
+        if (activeTab === (LocalizedStrings.MyStaff?.Inactive || 'Inactive')) {
+          if (itemStatus === 'terminated') return false;
+          return itemStatus === 'inactive' || attendanceStatus === 'absent';
+        }
+        if (activeTab === 'Terminated') {
+          return itemStatus === 'terminated';
+        }
+        return true;
+      });
+    }
+
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      list = list.filter(item => {
+        const name = (item.name || `${item.first_name || ''} ${item.last_name || ''}`).toLowerCase();
+        return name.includes(q);
+      });
+    }
+    
+    return list;
   };
 
   // All staff filter (for manage section)
@@ -155,7 +203,7 @@ const Dashboard = ({ navigation }) => {
     const date = new Date().toISOString().split('T')[0];
     const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
     const formdata = new FormData();
-    formdata.append('staff_id', data?.staff?.id);
+    formdata.append('staff_id', data?.id || data?.staff?.id);
     formdata.append('date', date);
     formdata.append('status', newStatus);
     formdata.append('check_in_time', time);
@@ -168,51 +216,67 @@ const Dashboard = ({ navigation }) => {
     }, e => console.log('error', e), () => {});
   };
 
-  const renderActiveStaffCard = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.profileRow}>
-        <Image source={{ uri: item.image }} style={styles.avatar} />
-        <View>
-          <Typography type={Font?.Poppins_SemiBold} size={16}>
-            {`${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item.name}
-          </Typography>
-          <Typography type={Font?.Poppins_Regular} size={14}>
-            {item?.staff?.user_work_info?.primary_role}
-          </Typography>
-        </View>
-      </View>
-      <View style={[styles.dot, { backgroundColor: '#16A34A' }]} />
-      <View style={styles.statusRow}>
-        {['present', 'absent', 'late'].map(s => (
-          <TouchableOpacity
-            key={s}
-            style={[styles.statusBtn,
-              (status[item.id] === s || item?.attendance_details?.status === s) && styles[`${s}Btn`]]}
-            onPress={() => {
-              if (s === 'absent' || s === 'late') {
-                setLeaveModal({ visible: true, type: s, staff: item, remarks: '', leaveType: null, lateDuration: null });
-                setModalErrors({});
-              } else {
-                handleStatusChange(item, s);
-              }
-            }}
-          >
-            <Image
-              source={s === 'present' ? ImageConstant?.present : s === 'absent' ? ImageConstant?.absent : ImageConstant?.late}
-              tintColor={(status[item.id] === s || item?.attendance_details?.status === s) ? '#fff' : '#000'}
-              style={{ width: 16, height: 16, marginRight: 6 }}
-            />
-            <Typography
-              type={Font?.Poppins_Medium}
-              color={(status[item.id] === s || item?.attendance_details?.status === s) ? '#fff' : '#000'}
-            >
-              {s === 'present' ? LocalizedStrings.Dashboard?.Present : s === 'absent' ? LocalizedStrings.Dashboard?.Absent : LocalizedStrings.Dashboard?.Late}
+  const renderActiveStaffCard = ({ item }) => {
+    const itemStatus = (item.status || item.application_status || '').toLowerCase();
+    const isActive = itemStatus === 'active' || itemStatus === 'hired' || itemStatus === 'present';
+
+    return (
+      <View style={styles.card}>
+        <TouchableOpacity 
+          style={styles.profileRow}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('StaffActionScreen', { staff: item })}
+        >
+          <Image source={{ uri: item.image }} style={styles.avatar} />
+          <View>
+            <Typography type={Font?.Poppins_SemiBold} size={16}>
+              {`${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item.name}
             </Typography>
-          </TouchableOpacity>
-        ))}
+            <Typography type={Font?.Poppins_Regular} size={14}>
+              {item?.user_work_info?.primary_role || item?.staff?.user_work_info?.primary_role}
+            </Typography>
+            {!isActive && (
+              <Typography type={Font?.Poppins_Medium} size={12} color={getStatusColor(itemStatus)} style={{ marginTop: 2 }}>
+                {getStatusLabel(itemStatus)}
+              </Typography>
+            )}
+          </View>
+        </TouchableOpacity>
+        <View style={[styles.dot, { backgroundColor: getStatusColor(itemStatus) }]} />
+        {isActive && (
+          <View style={styles.statusRow}>
+            {['present', 'absent', 'late'].map(s => (
+              <TouchableOpacity
+                key={s}
+                style={[styles.statusBtn,
+                  (status[item.id] === s || item?.attendance_details?.status === s) && styles[`${s}Btn`]]}
+                onPress={() => {
+                  if (s === 'absent' || s === 'late') {
+                    setLeaveModal({ visible: true, type: s, staff: item, remarks: '', leaveType: null, lateDuration: null });
+                    setModalErrors({});
+                  } else {
+                    handleStatusChange(item, s);
+                  }
+                }}
+              >
+                <Image
+                  source={s === 'present' ? ImageConstant?.present : s === 'absent' ? ImageConstant?.absent : ImageConstant?.late}
+                  tintColor={(status[item.id] === s || item?.attendance_details?.status === s) ? '#fff' : '#000'}
+                  style={{ width: 16, height: 16, marginRight: 6 }}
+                />
+                <Typography
+                  type={Font?.Poppins_Medium}
+                  color={(status[item.id] === s || item?.attendance_details?.status === s) ? '#fff' : '#000'}
+                >
+                  {s === 'present' ? LocalizedStrings.Dashboard?.Present : s === 'absent' ? LocalizedStrings.Dashboard?.Absent : LocalizedStrings.Dashboard?.Late}
+                </Typography>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderManageStaffCard = ({ item }) => {
     const rawRole = item.user_work_info?.primary_role || item.role;
@@ -303,60 +367,6 @@ const Dashboard = ({ navigation }) => {
             </Typography>
           </View>
 
-          <DropdownComponent
-            title={LocalizedStrings.Dashboard?.Select_Staff || 'Select Staff'}
-            placeholder={LocalizedStrings.Dashboard?.All_Staff || 'All Staff'}
-            width={'100%'}
-            style_dropdown={{ marginHorizontal: 0 }}
-            selectedTextStyleNew={{ marginLeft: 10, fontFamily: Font.Poppins_Regular }}
-            marginHorizontal={0}
-            style_title={{ textAlign: 'left', fontFamily: Font.Poppins_Regular }}
-            data={staffDropdownList}
-            value={selectedStaff}
-            onChange={item => setSelectedStaff(item)}
-          />
-
-          <FlatList
-            data={getFilteredActive()}
-            keyExtractor={item => String(item.id)}
-            renderItem={renderActiveStaffCard}
-            scrollEnabled={false}
-            ListEmptyComponent={() => (
-              <EmptyView title={'No active staff today'} description={'No staff are marked active today.'} icon={ImageConstant?.Users} iconColor="#D98579" />
-            )}
-          />
-
-          {/* ── Divider ── */}
-          <View style={styles.divider} />
-
-          {/* ── My Staff (Manage) ── */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <Typography type={Font?.Poppins_Medium} color="#171A1F" size={20}>
-              {LocalizedStrings.MyStaff?.title || 'My Staff'}
-            </Typography>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AllStaff')}
-              style={{ backgroundColor: '#D98579', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 }}
-            >
-              <Typography type={Font?.Poppins_Medium} size={13} color="#fff">
-                {LocalizedStrings.Dashboard?.find_staf || 'Find Staff'}
-              </Typography>
-            </TouchableOpacity>
-          </View>
-
-          {/* Search */}
-          <View style={styles.searchContainer}>
-            <Image source={ImageConstant?.search} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={LocalizedStrings.MyStaff?.Search_Placeholder || 'Search staff...'}
-              placeholderTextColor="#999"
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-          </View>
-
-          {/* Tabs */}
           <View style={styles.tabRow}>
             {tabs.map(tab => (
               <TouchableOpacity
@@ -372,23 +382,16 @@ const Dashboard = ({ navigation }) => {
           </View>
 
           <FlatList
-            data={getFilteredManageStaff()}
+            data={getFilteredActive()}
             keyExtractor={item => String(item.id)}
-            renderItem={renderManageStaffCard}
+            renderItem={renderActiveStaffCard}
             scrollEnabled={false}
             ListEmptyComponent={() => (
-              <EmptyView title={'No staff found'} description={'No staff match your filter.'} icon={ImageConstant?.Users} iconColor="#D98579" />
+              <EmptyView title={'No active staff today'} description={'No staff are marked active today.'} icon={ImageConstant?.Users} iconColor="#D98579" />
             )}
           />
 
-          {/* Add New Staff */}
-          <Button
-            onPress={() => navigation.navigate('Aadhar')}
-            title={'+ ' + (LocalizedStrings.MyStaff?.Add_New_Staff || 'Add New Staff')}
-            main_style={{ width: '100%', marginTop: 16 }}
-          />
         </ScrollView>
-
         {/* Modals */}
         <SimpleModal
           visible={leaveModal.visible}
@@ -479,6 +482,20 @@ const Dashboard = ({ navigation }) => {
           </View>
         </SimpleModal>
       </CommanView>
+
+      {/* Add New Staff & Find Staff (Sticky Bottom) */}
+      <View style={{ paddingTop: 15, paddingBottom: 80, paddingHorizontal: 10, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderColor: '#eee' }}>
+        <Button
+          onPress={() => navigation.navigate('AllStaff')}
+          title={LocalizedStrings.Dashboard?.find_staf || 'Find Staff'}
+          main_style={{ width: '100%', marginBottom: 12 }}
+        />
+        <Button
+          onPress={() => navigation.navigate('Aadhar')}
+          title={'+ ' + (LocalizedStrings.MyStaff?.Add_New_Staff || 'Add New Staff')}
+          main_style={{ width: '100%' }}
+        />
+      </View>
     </View>
   );
 };

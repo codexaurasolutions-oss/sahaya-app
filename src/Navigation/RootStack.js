@@ -22,6 +22,7 @@ import ProfileManagement from '../Screens/Auth/ProfileSteps/ProfileManagement';
 import AttendanceScreen from '../Screens/Calender/AttendanceScreen';
 import HouseholdManager from '../Screens/Membership/HouseholdManager';
 import HouseHoldStaffProfile from './../Screens/Private/Staff/HouseHoldStaffProfile';
+import StaffActionScreen from './../Screens/Private/Staff/StaffActionScreen';
 import Step1 from '../Screens/Auth/ProfileSteps/Step1';
 import PolicyScreen from '../Component/PolicyScreen';
 import AppUpdate from '../Screens/Private/MoreScreens/AppUpdate';
@@ -142,6 +143,11 @@ const RootStack = () => {
       <Stack.Screen
         name="HouseHoldStaffProfile"
         component={HouseHoldStaffProfile}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="StaffActionScreen"
+        component={StaffActionScreen}
         options={{ ...commonOptions }}
       />
       <Stack.Screen

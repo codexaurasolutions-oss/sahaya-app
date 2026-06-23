@@ -264,6 +264,11 @@ const JobsList = ({ navigation }) => {
           {formatLocation(job)}
         </Typography>
       </View>
+      {job.stay_type && (
+        <Typography type={Font.Poppins_Medium} style={{fontSize: 12, color: '#D98579', marginBottom: 5, textAlign: 'center'}}>
+          {job.stay_type === 'come_and_go' ? 'Come and Go' : 'Inhouse'}
+        </Typography>
+      )}
       <Typography type={Font.Poppins_Bold} style={styles.jobPay}>
         {formatCompensation(job)}
       </Typography>

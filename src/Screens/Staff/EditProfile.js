@@ -17,6 +17,7 @@ import { ImageConstant } from '../../Constants/ImageConstant';
 import { Font } from '../../Constants/Font';
 import DropdownComponent from '../../Component/DropdownComponent';
 import Input from '../../Component/Input';
+import GooglePlacesInput from '../../Component/GooglePlacesInput';
 import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
 import UploadBox from '../../Component/UploadBox';
@@ -95,6 +96,7 @@ const EditProfile = ({ navigation, route }) => {
   const [upiId, setUpiId] = useState('');
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [emergencyRelation, setEmergencyRelation] = useState('');
   const [preferredWorkCity, setPreferredWorkCity] = useState('');
   const [stayType, setStayType] = useState([]);
 
@@ -389,6 +391,7 @@ const EditProfile = ({ navigation, route }) => {
       });
     if (workInfo?.emergency_contact_name) setEmergencyName(workInfo.emergency_contact_name);
     if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
+    if (userDetail?.relation) setEmergencyRelation(userDetail.relation);
     if (workInfo?.stay_type) setStayType([workInfo.stay_type]);
     if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
     if (userDetail?.upi_id) setUpiId(userDetail.upi_id);
@@ -463,6 +466,7 @@ const EditProfile = ({ navigation, route }) => {
 
     if (workInfo?.emergency_contact_name) setEmergencyName(workInfo.emergency_contact_name);
     if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
+    if (userDetail?.relation) setEmergencyRelation(userDetail.relation);
     if (workInfo?.stay_type) setStayType([workInfo.stay_type]);
     if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
     else if (userDetail?.preferred_work_location) setPreferredWorkCity(userDetail.preferred_work_location);
@@ -857,6 +861,7 @@ const EditProfile = ({ navigation, route }) => {
     if (upiId) formData.append('upi_id', upiId);
     if (emergencyName) formData.append('emergency_contact_name', emergencyName);
     if (emergencyPhone) formData.append('emergency_contact_number', emergencyPhone);
+    if (emergencyRelation) formData.append('relation', emergencyRelation);
     if (stayType.length > 0) formData.append('stay_type', stayType[0]);
     if (preferredWorkCity) formData.append('preferred_work_location', preferredWorkCity);
 
@@ -1151,6 +1156,12 @@ const EditProfile = ({ navigation, route }) => {
             onChange={text => setEmergencyPhone(text)}
             maxLength={10}
           />
+          <Input
+            placeholder="E.g. Brother, Friend, etc."
+            title="Relationship"
+            value={emergencyRelation}
+            onChange={text => setEmergencyRelation(text)}
+          />
         </View>
 
         <View style={styles.section}>
@@ -1182,24 +1193,29 @@ const EditProfile = ({ navigation, route }) => {
               );
             })}
           </View>
-          <DropdownComponent
-            title="Preferred Work Cities"
-            placeholder="Select preferred work area"
-            width={'100%'}
-            style_dropdown={{ marginHorizontal: 0 }}
-            selectedTextStyleNew={{ marginLeft: 10 }}
-            marginHorizontal={0}
-            style_title={{ textAlign: 'left' }}
-            value={selectedPreferredWorkLocation}
-            onChange={item => setPreferredWorkCity(item?.value || '')}
-            data={preferredWorkLocationOptions}
-          />
+          <Typography type={Font?.Poppins_SemiBold} size={14} style={{ marginBottom: 10, marginTop: 5 }}>
+            Preferred Work Cities
+          </Typography>
           <Input
-            title="Or Enter City Name"
-            placeholder="Enter preferred city name"
-            value={isPresetPreferredWorkLocation ? '' : preferredWorkCity}
+            title="Selected City or Preference"
+            placeholder="Type city name or select below"
+            value={preferredWorkCity}
             onChange={text => setPreferredWorkCity(text)}
+            editable={true}
           />
+          <View style={{ zIndex: 50, position: 'relative' }}>
+            <GooglePlacesInput
+              title="Or Search City Name"
+              placeholder="Search for a city..."
+              onPlaceSelected={location => {
+                if (location?.city) {
+                  setPreferredWorkCity(location.city);
+                } else if (location?.data?.description) {
+                  setPreferredWorkCity(location.data.description.split(',')[0]);
+                }
+              }}
+            />
+          </View>
           <Typography size={11} color="#888" style={{ marginTop: -10, marginBottom: 10 }}>
             Choose a preset option, or enter the exact city name manually.
           </Typography>
@@ -1492,11 +1508,11 @@ const EditProfile = ({ navigation, route }) => {
             placeholder="Enter years"
             value={totalExperience ? String(totalExperience?.value || totalExperience) : ''}
             onChange={text => {
-              const num = text.replace(/[^0-9]/g, '');
+              const num = text.replace(/[^0-9.]/g, '');
               setTotalExperience(num ? { label: `${num} Years`, value: num } : null);
             }}
             keyboardType="numeric"
-            maxLength={2}
+            maxLength={4}
             showTitle={true}
           />
         </View>

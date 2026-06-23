@@ -921,11 +921,11 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
         placeholder={'Enter years'}
         value={totalExperience ? String(totalExperience) : ''}
         onChange={text => {
-          const num = text.replace(/[^0-9]/g, '');
+          const num = text.replace(/[^0-9.]/g, '');
           setTotalExperience(num);
         }}
         keyboardType="numeric"
-        maxLength={2}
+        maxLength={4}
         error={errors.totalExperience}
         showTitle={true}
       />

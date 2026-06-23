@@ -320,6 +320,15 @@ const StaffProfileMain = ({ navigation }) => {
                             </Typography>
                         </View>
                     </View>
+                    <View style={styles.row}>
+                        <Image source={ImageConstant.person} style={styles.icon} />
+                        <View style={styles.textBox}>
+                            <Typography style={styles.label}>Emergency Contact Relation</Typography>
+                            <Typography style={styles.value}>
+                                {userDetail?.user_work_info?.relation || userDetail?.work_info?.relation || userDetail?.relation || 'Not Found'}
+                            </Typography>
+                        </View>
+                    </View>
                     <View style={styles.rowNoBorder}>
                         <Image source={ImageConstant.phone} style={styles.icon} />
                         <View style={styles.textBox}>
@@ -382,6 +391,15 @@ const StaffProfileMain = ({ navigation }) => {
                         <View style={styles.textBox}>
                             <Typography style={styles.label}>Role</Typography>
                             <Typography style={styles.value}>{userRole}</Typography>
+                        </View>
+                    </View>
+                    <View style={styles.row}>
+                        <Image source={ImageConstant.Location} style={styles.icon} />
+                        <View style={styles.textBox}>
+                            <Typography style={styles.label}>Stay Type</Typography>
+                            <Typography style={styles.value}>
+                                {userDetail?.user_work_info?.stay_type === 'come_and_go' ? 'Come and Go' : userDetail?.user_work_info?.stay_type === 'inhouse' ? 'Inhouse' : 'Not Found'}
+                            </Typography>
                         </View>
                     </View>
                     <View style={styles.rowNoBorder}>

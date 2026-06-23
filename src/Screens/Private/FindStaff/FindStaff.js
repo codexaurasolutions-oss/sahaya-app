@@ -238,6 +238,7 @@ const FindStaff = ({ navigation, route }) => {
             salaryNum: Number(workInfo?.salary) || 0,
             salary: formatSalary(workInfo?.salary),
             image: getCandidateImage(item),
+            stayType: workInfo?.stay_type || item?.stay_type || '',
             isJobSeeking: (item?.is_job_seeking === true || item?.is_job_seeking === 1 || item?.is_available === true || item?.is_available === 1),
             raw: item,
           };
@@ -720,6 +721,15 @@ const FindStaff = ({ navigation, route }) => {
                       {c.experience || 'Not Available'}
                     </Typography>
                   </View>
+
+                  {c.stayType ? (
+                    <View style={styles.infoRow}>
+                      <Image source={ImageConstant.Location} style={styles.icon} />
+                      <Typography margin={3} size={14} color="#D98579" type={Font.Poppins_Medium}>
+                        Stay Type: {c.stayType === 'come_and_go' ? 'Come and Go' : 'Inhouse'}
+                      </Typography>
+                    </View>
+                  ) : null}
 
                   <View style={styles.infoRow}>
                     <Image source={ImageConstant.Verify} style={styles.icon} />

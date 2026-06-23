@@ -38,8 +38,10 @@ import PaymentReceipt from '../../../Component/PaymentReceipt';
 import { setAsyncStorage, getAsyncStorage } from '../../../Utils/AsyncStorage';
 // import { processSalaryPayment } from '../../../Services/RazorpayService';
 
-const StaffManagement = ({ navigation }) => {
+const StaffManagement = ({ navigation, route }) => {
   const isFocused = useIsFocused();
+  const preSelectedStaffId = route?.params?.staffId;
+  const preSelectedStaffName = route?.params?.staffName;
   const [baseSalary, setBaseSalary] = useState('');
   const [profileMonthlySalary, setProfileMonthlySalary] = useState(0);
   const [bonus, setBonus] = useState('');
@@ -50,7 +52,9 @@ const StaffManagement = ({ navigation }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const userDetails = useSelector(state => state?.userDetails);
   const [leaveList, setLeaveList] = useState([]);
-  const [leaveType, setLeaveType] = useState(null);
+  const [leaveType, setLeaveType] = useState(
+    preSelectedStaffId ? { value: preSelectedStaffId, label: preSelectedStaffName || 'Staff' } : null
+  );
   const [listPastPayments, setListPastPayments] = useState([]);
   const [showUpiModal, setShowUpiModal] = useState(false);
   const [upiInput, setUpiInput] = useState('');
@@ -1377,7 +1381,7 @@ const StaffManagement = ({ navigation }) => {
               <View style={styles.salaryRow}>
                 <View style={styles.amountLabelWrap}>
                   <Typography type={Font.Poppins_Regular} style={styles.label}>
-                    Advance Katauti
+                    Advance Deduction
                   </Typography>
                   <Typography type={Font.Poppins_Regular} style={styles.amountHelpText}>
                     Deduct taken advance

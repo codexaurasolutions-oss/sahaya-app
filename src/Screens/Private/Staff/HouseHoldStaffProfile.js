@@ -153,7 +153,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
     if (!previewImage || typeof previewImage !== 'string') return;
     setIsSavingImage(true);
     try {
-      if (Platform.OS === 'android') {
+      if (Platform.OS === 'android' && Platform.Version < 33) {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
           { title: 'Storage Permission', message: 'Allow Sahayya to save images to your gallery?' },
@@ -223,6 +223,10 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         () => {},
         () => {},
       );
+    }
+    
+    if (route?.params?.autoOpenTerminate) {
+      setTimeout(() => setModalMode('terminate'), 500);
     }
   }, [paramData?.id]);
 
@@ -846,6 +850,19 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
               <Typography style={styles.value}>
                 {(data?.user_work_info?.emergency_contact_name || data?.emergency_contact_name)
                   ? (!contactViewLocked ? (data?.user_work_info?.emergency_contact_name || data?.emergency_contact_name) : '**********')
+                  : 'Not Available'}
+              </Typography>
+            </View>
+          </View>
+          <View style={styles.row}>
+            <Image source={ImageConstant.person} style={styles.icon} />
+            <View style={styles.textBox}>
+              <Typography style={styles.label}>
+                Emergency Contact Relation
+              </Typography>
+              <Typography style={styles.value}>
+                {(data?.relation)
+                  ? (!contactViewLocked ? data?.relation : '**********')
                   : 'Not Available'}
               </Typography>
             </View>

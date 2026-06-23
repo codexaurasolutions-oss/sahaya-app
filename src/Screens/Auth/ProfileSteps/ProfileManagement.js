@@ -12,13 +12,16 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import Typography from '../../../Component/UI/Typography';
 import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 import { Font } from '../../../Constants/Font';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { userDetails } from '../../../Redux/action';
 import LocalizedStrings from '../../../Constants/localization';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../../Backend/Backend';
 import {
   GET_NOTIFICATION_SETTINGS,
   SAVE_NOTIFICATION_SETTINGS,
+  PROFILE_UPDATE,
 } from '../../../Backend/api_routes';
+import { Switch } from 'react-native';
 import SimpleToast from 'react-native-simple-toast';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -27,7 +30,14 @@ const ProfileManagement = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const data = useSelector(state => state?.userDetails);
+  const dispatch = useDispatch();
   const isFocused = useIsFocused();
+
+  // Auto Present state
+  const [autoPresent, setAutoPresent] = useState(
+    data?.auto_attendence === 1 || data?.auto_attendence === '1' || data?.auto_attendence === true
+  );
+  const [autoPresentLoading, setAutoPresentLoading] = useState(false);
 
   // Fetch notification settings on component mount
   useEffect(() => {
@@ -93,6 +103,36 @@ const ProfileManagement = ({ navigation }) => {
     );
   };
 
+
+  const handleAutoPresentToggle = value => {
+    setAutoPresent(value);
+    setAutoPresentLoading(true);
+    const formData = new FormData();
+    formData.append('auto_attendence', value ? 1 : 0);
+    formData.append('is_edit', '1');
+    POST_FORM_DATA(
+      PROFILE_UPDATE,
+      formData,
+      success => {
+        setAutoPresentLoading(false);
+        dispatch(userDetails(success?.data));
+        SimpleToast.show(
+          value ? 'Auto Present enabled' : 'Auto Present disabled',
+          SimpleToast.SHORT,
+        );
+      },
+      error => {
+        setAutoPresentLoading(false);
+        setAutoPresent(!value);
+        SimpleToast.show('Failed to update setting', SimpleToast.SHORT);
+      },
+      fail => {
+        setAutoPresentLoading(false);
+        setAutoPresent(!value);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
 
   return (
     <CommanView>
@@ -191,6 +231,34 @@ const ProfileManagement = ({ navigation }) => {
             <Typography style={styles.fieldValue}>
               {data?.phone_number}
             </Typography>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Typography
+              type={Font.Poppins_SemiBold}
+              style={styles.sectionTitle}
+            >
+              Auto Attendance
+            </Typography>
+          </View>
+          <View style={styles.toggleRow}>
+            <View style={{ flex: 1 }}>
+              <Typography type={Font.Poppins_Medium} size={14}>
+                Auto Present
+              </Typography>
+              <Typography type={Font.Poppins_Regular} style={styles.subText}>
+                Automatically mark staff as present daily.
+              </Typography>
+            </View>
+            <Switch
+              value={autoPresent}
+              onValueChange={handleAutoPresentToggle}
+              trackColor={{ false: '#EBEBEA', true: '#D98579' }}
+              thumbColor={autoPresent ? '#fff' : '#fff'}
+              disabled={autoPresentLoading}
+            />
           </View>
         </View>
 
@@ -349,6 +417,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mail: {
+    fontSize: 12,
+    color: '#666',
+    width: '80%',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  subText: {
     fontSize: 12,
     color: '#666',
     width: '80%',

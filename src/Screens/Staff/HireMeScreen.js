@@ -12,6 +12,7 @@ import HeaderForUser from '../../Component/HeaderForUser';
 import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
 import Input from '../../Component/Input';
+import GooglePlacesInput from '../../Component/GooglePlacesInput';
 import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import { GET_WITH_TOKEN, POST_FORM_DATA, POST_WITH_TOKEN } from '../../Backend/Backend';
@@ -249,24 +250,50 @@ const HireMeScreen = ({ navigation }) => {
             In which city are you looking for work?
           </Typography>
           
-          <DropdownComponent
-            title="Preferred Work Area"
-            placeholder="Select preferred work area"
-            width={'100%'}
-            style_dropdown={{ marginHorizontal: 0 }}
-            selectedTextStyleNew={{ marginLeft: 10 }}
-            marginHorizontal={0}
-            style_title={{ textAlign: 'left' }}
-            value={selectedPreferredWorkLocation}
-            onChange={item => setWorkCity(item?.value || '')}
-            data={preferredWorkLocationOptions}
-          />
           <Input
-            title="Or Enter City Name"
-            placeholder="Enter preferred city name"
-            value={isPresetPreferredWorkLocation ? '' : workCity}
+            title="Selected City or Preference"
+            placeholder="Type city name or select below"
+            value={workCity}
             onChange={text => setWorkCity(text)}
+            editable={true}
           />
+          <View style={{ zIndex: 50, position: 'relative' }}>
+            <GooglePlacesInput
+              title="Or Search City Name"
+              placeholder="Search for a city..."
+              onPlaceSelected={location => {
+                if (location?.city) {
+                  setWorkCity(location.city);
+                } else if (location?.data?.description) {
+                  setWorkCity(location.data.description.split(',')[0]);
+                }
+              }}
+            />
+          </View>
+          <Typography size={11} color="#888" style={{ marginTop: 10, marginBottom: 10 }}>
+            Or choose a quick preset option below:
+          </Typography>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 5 }}>
+            {preferredWorkLocationOptions.map((option, index) => {
+              const isSelected = workCity === option.value;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => setWorkCity(option.value)}
+                  style={{
+                    backgroundColor: isSelected ? '#D98579' : '#f0f0f0',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                  }}
+                >
+                  <Typography size={13} color={isSelected ? '#fff' : '#333'} type={Font?.Poppins_Medium}>
+                    {option.label}
+                  </Typography>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* Profile Preview */}
