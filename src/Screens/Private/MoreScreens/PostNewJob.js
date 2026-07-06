@@ -122,15 +122,19 @@ const PostNewJob = ({ navigation, route }) => {
     GET_WITH_TOKEN(
       CATEGORY,
       success => {
-        const data = success?.data || (Array.isArray(success) ? success : []);
+        const data = success?.data || success?.roles || (Array.isArray(success) ? success : []);
         const opts = data.map(r => ({
-          label: r?.name || r?.category_name || String(r),
-          value: r?.name || r?.category_name || String(r),
-        })).filter(o => o.label);
+          label: r?.name || r?.title || r?.category_name || String(r),
+          value: r?.name || r?.title || r?.category_name || String(r),
+        })).filter(o => o.label && o.value);
         setRoleOptions(opts);
       },
-      () => {},
-      () => {},
+      error => {
+        SimpleToast.show('Failed to load job roles', SimpleToast.SHORT);
+      },
+      fail => {
+        SimpleToast.show('Network error loading job roles', SimpleToast.SHORT);
+      },
     );
   }, []);
 
@@ -515,6 +519,10 @@ const PostNewJob = ({ navigation, route }) => {
       formData.append('city', selectedAddress.city || '');
       formData.append('state', typeof selectedAddress.state === 'string' ? selectedAddress.state : selectedAddress.state?.label || '');
       formData.append('zip_code', selectedAddress.pincode || selectedAddress.zip_code || '');
+      formData.append('area_locality', selectedAddress.area_locality || '');
+      formData.append('google_location', selectedAddress.google_location || '');
+      formData.append('lat', selectedAddress.latitude || selectedAddress.lat || '');
+      formData.append('long', selectedAddress.longitude || selectedAddress.long || '');
     }
 
     // Working Schedule
@@ -836,6 +844,10 @@ const PostNewJob = ({ navigation, route }) => {
       formData.append('city', selectedAddress.city || '');
       formData.append('state', typeof selectedAddress.state === 'string' ? selectedAddress.state : selectedAddress.state?.label || '');
       formData.append('zip_code', selectedAddress.pincode || selectedAddress.zip_code || '');
+      formData.append('area_locality', selectedAddress.area_locality || '');
+      formData.append('google_location', selectedAddress.google_location || '');
+      formData.append('lat', selectedAddress.latitude || selectedAddress.lat || '');
+      formData.append('long', selectedAddress.longitude || selectedAddress.long || '');
     }
 
     // Working Schedule

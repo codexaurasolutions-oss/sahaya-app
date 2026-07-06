@@ -8,10 +8,12 @@ import { Font } from '../../../Constants/Font';
 import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
+import ChatBot from '../../../Component/ChatBot';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
-  
+  const [chatVisible, setChatVisible] = useState(false);
+
   const suggestions = [
     "Professional Housekeeper exp.",
     "Experienced Male Driver",
@@ -19,6 +21,18 @@ const AllStaff = ({navigation}) => {
     "Dog walker near me",
     "Chef with North Indian & South Indian Cuisine",
   ];
+
+  // When chatbot returns search results, navigate to FindStaff with results
+  const handleChatResults = (results, filters) => {
+    setChatVisible(false);
+    // Build a description from filters for FindStaff
+    const parts = [];
+    if (filters?.role) parts.push(filters.role);
+    if (filters?.location) parts.push('in ' + filters.location);
+    if (filters?.skills) parts.push(filters.skills.join(', '));
+    const description = parts.join(' ') || Describe || '';
+    navigation.navigate("FindStaff", { description, preloadedResults: results });
+  };
 
   return (
     <CommanView>
@@ -76,6 +90,23 @@ const AllStaff = ({navigation}) => {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* AI Chat Button */}
+          <TouchableOpacity
+            style={styles.chatButton}
+            onPress={() => setChatVisible(true)}
+          >
+            <View style={styles.chatButtonInner}>
+              <View style={styles.chatAvatar}>
+                <Text style={styles.chatAvatarText}>AI</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.chatBtnTitle}>Chat with Sahayya AI</Text>
+                <Text style={styles.chatBtnSubtitle}>Tell me what you need — I'll find the best staff for you</Text>
+              </View>
+              <Text style={styles.chatBtnArrow}>›</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.buttonContainer}>
@@ -95,6 +126,13 @@ const AllStaff = ({navigation}) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Chatbot Overlay */}
+      <ChatBot
+        visible={chatVisible}
+        onClose={() => setChatVisible(false)}
+        onSearchResults={handleChatResults}
+      />
     </CommanView>
   );
 };
@@ -147,6 +185,50 @@ const styles = StyleSheet.create({
   },
   suggestionTextActive: {
     color: '#D98579',
+  },
+  chatButton: {
+    marginTop: 20,
+    marginHorizontal: 4,
+    backgroundColor: '#F0FAF9',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#B8E6E0',
+    overflow: 'hidden',
+  },
+  chatButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  chatAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#029991',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  chatAvatarText: {
+    color: '#FFF',
+    fontFamily: Font.Poppins_Bold,
+    fontSize: 14,
+  },
+  chatBtnTitle: {
+    fontFamily: Font.Poppins_SemiBold,
+    fontSize: 14,
+    color: '#1a1a1a',
+  },
+  chatBtnSubtitle: {
+    fontFamily: Font.Poppins_Regular,
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  chatBtnArrow: {
+    fontSize: 24,
+    color: '#029991',
+    fontFamily: Font.Poppins_Bold,
   },
   buttonContainer: {
     paddingBottom: 15,

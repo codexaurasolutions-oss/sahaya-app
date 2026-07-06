@@ -73,7 +73,7 @@ const CommanView = ({ children }) => {
           scrollEventThrottle={16}
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: kbHeight > 0 ? kbHeight + 60 : 20 },
+            { paddingBottom: kbHeight > 0 ? kbHeight + 60 : 100 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

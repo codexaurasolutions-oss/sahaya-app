@@ -22,6 +22,7 @@ import Button from '../../../Component/Button';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import Date_Picker from '../../../Component/Date_Picker';
 import { ImageConstant } from '../../../Constants/ImageConstant';
+import GooglePlacesInput from '../../../Component/GooglePlacesInput';
 import moment from 'moment';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../../Backend/Backend';
 import { PROFILE, PROFILE_UPDATE } from '../../../Backend/api_routes';
@@ -31,6 +32,28 @@ import ImageModal from '../../../Modals/ImageModal';
 import LocalizedStrings from '../../../Constants/localization';
 import { fetchPincodeDetails, formatDateWithDashes } from '../../../Backend/Utility';
 import { setLanguage } from '../../../Constants/AsyncStorage';
+
+const createEmptyAddress = () => ({
+  name: '',
+  street: '',
+  city: '',
+  state: '',
+  pincode: '',
+  area_locality: '',
+  google_location: '',
+  lat: '',
+  long: '',
+  household: {
+    residence_type: null,
+    number_of_rooms: '',
+    languages_spoken: [],
+    adults_count: '',
+    children_count: '',
+    elderly_count: '',
+    special_requirements: '',
+  },
+  pets: [{ pet_type: '', pet_count: '' }],
+});
 
 const HouseholdProfile = ({ navigation, route }) => {
   const dispatch = useDispatch();
@@ -43,12 +66,11 @@ const HouseholdProfile = ({ navigation, route }) => {
   const [gender, setGender] = useState(null);
   const [dob, setDob] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const userDetail = useSelector(state => state?.userDetails);
 
-  // Address State
-  const [addresses, setAddresses] = useState([
-    { name: '', street: '', city: '', state: '', pincode: '' },
-  ]);
+  // Address State (each address carries its own household + pets)
+  const [addresses, setAddresses] = useState([createEmptyAddress()]);
 
   // Household Information State
   const [residenceType, setResidenceType] = useState(null);
@@ -58,24 +80,8 @@ const HouseholdProfile = ({ navigation, route }) => {
   const [children, setChildren] = useState('');
   const [elderly, setElderly] = useState('');
   const [pets, setPets] = useState([{ type: '', count: '' }]);
+
   const [specialRequirements, setSpecialRequirements] = useState('');
-  const addPet = () => {
-    setPets(prev => [...prev, { type: '', count: '' }]);
-  };
-
-  const removePet = index => {
-    setPets(prev =>
-      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
-    );
-  };
-
-  const updatePet = (index, field, value) => {
-    setPets(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
-  };
 
   const [loading, setLoading] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
@@ -105,7 +111,17 @@ const HouseholdProfile = ({ navigation, route }) => {
         const stateName = address.state || '';
         const pincode = address.postcode || '';
         
-        return { city: cityName, state: stateName, pincode: pincode };
+        return {
+          city: cityName,
+          state: stateName,
+          pincode: pincode,
+          areaLocality:
+            address.suburb ||
+            address.neighbourhood ||
+            address.city_district ||
+            address.county ||
+            '',
+        };
       }
       return null;
     } catch (error) {
@@ -126,6 +142,12 @@ const HouseholdProfile = ({ navigation, route }) => {
           if (locationDetails.city) newAddresses[index].city = locationDetails.city;
           if (locationDetails.state) newAddresses[index].state = locationDetails.state;
           if (locationDetails.pincode) newAddresses[index].pincode = locationDetails.pincode;
+          if (locationDetails.areaLocality) {
+            newAddresses[index].area_locality = locationDetails.areaLocality;
+          }
+          newAddresses[index].lat = String(latitude);
+          newAddresses[index].long = String(longitude);
+          newAddresses[index].google_location = `https://maps.google.com/?q=${latitude},${longitude}`;
           setAddresses(newAddresses);
           Alert.alert('Success', 'Location captured successfully!');
         } else {
@@ -210,7 +232,7 @@ const HouseholdProfile = ({ navigation, route }) => {
   const addAddress = () => {
     setAddresses(prev => [
       ...prev,
-      { name: '', street: '', city: '', state: '', pincode: '' },
+      createEmptyAddress(),
     ]);
   };
 
@@ -225,6 +247,64 @@ const HouseholdProfile = ({ navigation, route }) => {
     setAddresses(prev =>
       prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
     );
+  };
+
+  const updateAddressHousehold = (index, field, value) => {
+    setAddresses(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        household: { ...updated[index].household, [field]: value },
+      };
+      return updated;
+    });
+  };
+
+  const toggleAddressLanguage = (addrIndex, language) => {
+    setAddresses(prev => {
+      const updated = [...prev];
+      const current = updated[addrIndex].household.languages_spoken || [];
+      const next = current.includes(language)
+        ? current.filter(l => l !== language)
+        : [...current, language];
+      updated[addrIndex] = {
+        ...updated[addrIndex],
+        household: { ...updated[addrIndex].household, languages_spoken: next },
+      };
+      return updated;
+    });
+  };
+
+  const addAddressPet = addrIndex => {
+    setAddresses(prev => {
+      const updated = [...prev];
+      updated[addrIndex] = {
+        ...updated[addrIndex],
+        pets: [...updated[addrIndex].pets, { pet_type: '', count: '' }],
+      };
+      return updated;
+    });
+  };
+
+  const removeAddressPet = (addrIndex, petIndex) => {
+    setAddresses(prev => {
+      const updated = [...prev];
+      updated[addrIndex] = {
+        ...updated[addrIndex],
+        pets: updated[addrIndex].pets.filter((_, i) => i !== petIndex),
+      };
+      return updated;
+    });
+  };
+
+  const updateAddressPet = (addrIndex, petIndex, field, value) => {
+    setAddresses(prev => {
+      const updated = [...prev];
+      const pets = [...updated[addrIndex].pets];
+      pets[petIndex] = { ...pets[petIndex], [field]: value };
+      updated[addrIndex] = { ...updated[addrIndex], pets };
+      return updated;
+    });
   };
 
   const loadProfileData = profileData => {
@@ -249,6 +329,7 @@ const HouseholdProfile = ({ navigation, route }) => {
       setDob('');
     }
     setPhoneNumber(profileData?.phone_number || '');
+    setEmail(profileData?.email || '');
 
     // Gender
     const genderValue = profileData?.gender;
@@ -266,76 +347,55 @@ const HouseholdProfile = ({ navigation, route }) => {
       }
     }
 
-    // Address from first address
+    // Address from profile — each address now has household_information + pet_details
     if (profileData?.addresses && profileData.addresses.length > 0) {
-      const formattedAddresses = profileData.addresses.map(addr => ({
-        name: addr?.name || '',
-        street: addr?.street || '',
-        city: addr?.city || '',
-        state: addr?.state || '',
-        pincode: addr?.pincode || '',
-      }));
+      const formattedAddresses = profileData.addresses.map(addr => {
+        const hh = addr?.household_information || {};
+        const rawPets = addr?.pet_details || [];
+        const pets = rawPets.length > 0
+          ? rawPets.map(p => ({ pet_type: p?.pet_type || '', count: p?.pet_count ? String(p.pet_count) : '' }))
+          : [{ pet_type: '', count: '' }];
+        return {
+          name: addr?.name || '',
+          street: addr?.street || '',
+          city: addr?.city || '',
+          state: addr?.state || '',
+          pincode: addr?.pincode || '',
+          area_locality: addr?.area_locality || '',
+          google_location: addr?.google_location || '',
+          lat: addr?.lat || addr?.latitude || '',
+          long: addr?.long || addr?.longitude || '',
+          household: {
+            residence_type: hh.residence_type
+              ? { label: hh.residence_type.charAt(0).toUpperCase() + hh.residence_type.slice(1), value: hh.residence_type }
+              : null,
+            number_of_rooms: hh.number_of_rooms ? String(hh.number_of_rooms) : '',
+            languages_spoken: hh.languages_spoken || [],
+            adults_count: hh.adults_count != null ? String(hh.adults_count) : '',
+            children_count: hh.children_count != null ? String(hh.children_count) : '',
+            elderly_count: hh.elderly_count != null ? String(hh.elderly_count) : '',
+            special_requirements: hh.special_requirements || '',
+          },
+          pets,
+        };
+      });
       setAddresses(formattedAddresses);
+
+      // Also set the standalone state for backward compat (first address)
+      const firstHH = formattedAddresses[0]?.household;
+      if (firstHH) {
+        setResidenceType(firstHH.residence_type);
+        setNumberOfRooms(firstHH.number_of_rooms);
+        setLanguagesSpoken(firstHH.languages_spoken);
+        setAdults(firstHH.adults_count);
+        setChildren(firstHH.children_count);
+        setElderly(firstHH.elderly_count);
+        setSpecialRequirements(firstHH.special_requirements);
+      }
+      const firstPets = formattedAddresses[0]?.pets;
+      if (firstPets) setPets(firstPets);
     } else {
-      setAddresses([{ name: '', street: '', city: '', state: '', pincode: '' }]);
-    }
-
-    // Household Information
-    if (profileData?.household_information) {
-      const household = profileData.household_information;
-
-      if (household?.residence_type) {
-        setResidenceType({
-          label:
-            household.residence_type.charAt(0).toUpperCase() +
-            household.residence_type.slice(1),
-          value: household.residence_type?.toLowerCase() || 'apartment',
-        });
-      }
-      if (household?.number_of_rooms) {
-        setNumberOfRooms(String(household.number_of_rooms));
-      }
-      setRooms(profileData?.household_information?.number_of_rooms || '');
-      setBathrooms(profileData?.household_information?.number_of_bathrooms || '');
-      setSpecialRequirements(
-        profileData?.household_information?.special_requirements || '',
-      );
-      const autoPresentValue = profileData?.auto_attendence;
-      setAutoPresent(autoPresentValue === 1 || autoPresentValue === '1' || autoPresentValue === true);
-
-      console.log('profileData.household_information.languages_spoken====', profileData.household_information.languages_spoken);
-
-      setLanguagesSpoken(profileData.household_information.languages_spoken || []);
-      // if (household?.languages_spoken) {
-      //   setLanguagesSpoken(normalizeLanguages(household.languages_spoken));
-      // }
-      // Use != null checks so 0 is preserved (not treated as empty)
-      if (household?.adults_count != null) {
-        setAdults(String(household.adults_count));
-      }
-      if (household?.children_count != null) {
-        setChildren(String(household.children_count));
-      }
-      if (household?.elderly_count != null) {
-        setElderly(String(household.elderly_count));
-      }
-      if (household?.special_requirements) {
-        setSpecialRequirements(household.special_requirements);
-      }
-    }
-
-    // Pet Details from pet_details array
-    if (profileData?.pet_details) {
-      const petArray = profileData.pet_details
-        .map(pet => ({
-          type: pet?.pet_type || '',
-          count: pet?.pet_count ? String(pet.pet_count) : '',
-        }))
-        .filter(pet => pet.type || pet.count);
-
-      setPets(petArray.length ? petArray : [{ type: '', count: '' }]);
-    } else {
-      setPets([{ type: '', count: '' }]);
+      setAddresses([createEmptyAddress()]);
     }
 
     // Profile Image - only keep for DISPLAY, never re-upload.
@@ -462,6 +522,22 @@ const HouseholdProfile = ({ navigation, route }) => {
 
   const handleUpdateProfile = () => {
     if (loading) return;
+
+    for (const address of addresses) {
+      if (!address.street || !address.city || !address.pincode) {
+        SimpleToast.show('Please fill all required address fields', SimpleToast.SHORT);
+        return;
+      }
+      if (!address.area_locality?.trim()) {
+        SimpleToast.show('Area / Locality is required for every address', SimpleToast.SHORT);
+        return;
+      }
+      if (!address.google_location?.trim() || !address.lat || !address.long) {
+        SimpleToast.show('Please select Google location for every address', SimpleToast.SHORT);
+        return;
+      }
+    }
+
     setLoading(true);
     const formData = new FormData();
     // Basic Information
@@ -469,6 +545,7 @@ const HouseholdProfile = ({ navigation, route }) => {
     // formData.append('user_role_id', 3);
     if (lastName) formData.append('last_name', lastName);
     if (gender?.value) formData.append('gender', gender.value);
+    if (email) formData.append('email', email);
     formData.append('auto_attendence', autoPresent ? 1 : 0);
     if (dob) {
       // Format date properly for API
@@ -500,7 +577,7 @@ const HouseholdProfile = ({ navigation, route }) => {
       });
     }
 
-    // Address
+    // Address + per-address household + pets
     addresses.forEach((address, index) => {
       if (address.title || address.name) {
         formData.append(`addresses[${index}][title]`, address.title || address.name);
@@ -509,41 +586,32 @@ const HouseholdProfile = ({ navigation, route }) => {
       formData.append(`addresses[${index}][city]`, address.city || '');
       formData.append(`addresses[${index}][state]`, address.state || '');
       formData.append(`addresses[${index}][pincode]`, address.pincode || '');
+      formData.append(`addresses[${index}][area_locality]`, address.area_locality || '');
+      formData.append(`addresses[${index}][google_location]`, address.google_location || '');
+      formData.append(`addresses[${index}][lat]`, address.lat || '');
+      formData.append(`addresses[${index}][long]`, address.long || '');
+
+      // Household info — send as JSON string so Laravel can json_decode it reliably
+      const hh = address.household || {};
+      const householdPayload = {
+        residence_type: hh.residence_type?.value || null,
+        number_of_rooms: hh.number_of_rooms || null,
+        languages_spoken: hh.languages_spoken || [],
+        adults_count: hh.adults_count || null,
+        children_count: hh.children_count || null,
+        elderly_count: hh.elderly_count || null,
+        special_requirements: hh.special_requirements || null,
+      };
+      formData.append(`addresses[${index}][household]`, JSON.stringify(householdPayload));
+
+      // Pets — send as JSON string so Laravel can json_decode it reliably
+      const validPets = (address.pets || []).filter(p => p.pet_type?.trim() !== '' && (p.count?.trim() !== '' || p.pet_count?.trim() !== ''));
+      const petsPayload = validPets.map(pet => ({
+        pet_type: pet.pet_type,
+        pet_count: pet.count || pet.pet_count,
+      }));
+      formData.append(`addresses[${index}][pets]`, JSON.stringify(petsPayload));
     });
-
-    // Household Information
-    if (residenceType?.value)
-      formData.append('residence_type', residenceType.value);
-    if (numberOfRooms) formData.append('number_of_rooms', numberOfRooms);
-
-    // if (languagesSpoken?.length) {
-    languagesSpoken.map((language, index) => {
-      formData.append(`languages_spoken[${index}]`, language);
-    });
-    // }
-
-    if (adults) formData.append('adults_count', adults);
-    if (children) formData.append('children_count', children);
-    if (elderly && elderly.trim() !== '') {
-      formData.append(
-        'elderly_count',
-        elderly && elderly.trim() !== '' ? elderly : 0,
-      );
-    }
-
-    // Pet Details
-    // Only include pets with both type and count filled
-    const validPets = pets.filter(
-      pet => pet.type?.trim() !== '' && pet.count?.trim() !== '',
-    );
-    validPets.forEach((pet, index) => {
-      formData.append(`pet_details[${index}][pet_type]`, pet.type);
-      formData.append(`pet_details[${index}][pet_count]`, pet.count);
-    });
-
-    if (specialRequirements && specialRequirements.trim() !== '') {
-      formData.append('special_requirements', specialRequirements);
-    }
 
     formData.append('is_edit', '1');
 
@@ -733,6 +801,13 @@ const HouseholdProfile = ({ navigation, route }) => {
             onChange={setPhoneNumber}
             editable={false}
           />
+          <Input
+            title="Email"
+            keyboardType="email-address"
+            value={email}
+            onChange={setEmail}
+            placeholder="Enter your email"
+          />
         </View>
 
         {/* <View style={styles.section}>
@@ -766,7 +841,8 @@ const HouseholdProfile = ({ navigation, route }) => {
             {LocalizedStrings.EditProfile.Home_Address || 'Home Address'}
           </Typography>
 
-          {addresses.map((address, index) => (            <View key={index} style={[styles.addressBox, { marginBottom: 10 }]}>
+          {addresses.map((address, index) => (
+            <View key={index} style={[styles.addressBox, { marginBottom: 10 }]}>
               <View style={styles.headerWithLocation}>
                 <Typography
                   type={Font?.Poppins_SemiBold}
@@ -798,12 +874,40 @@ const HouseholdProfile = ({ navigation, route }) => {
                 value={address.street}
                 onChange={value => updateAddress(index, 'street', value)}
               />
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                }}
-              >
+
+              <Input
+                title="Area / Locality"
+                placeholder="e.g. Phase 1, Model Town"
+                value={address.area_locality || ''}
+                onChange={value => updateAddress(index, 'area_locality', value)}
+              />
+
+              <View style={{ zIndex: 100 - index }}>
+                <GooglePlacesInput
+                  title="Search Google Location (Mandatory)"
+                  placeholder="Search for your location on Google Maps..."
+                  onPlaceSelected={(location) => {
+                    updateAddress(index, 'google_location', location?.google_location || '');
+                    updateAddress(index, 'lat', location?.lat || '');
+                    updateAddress(index, 'long', location?.long || '');
+
+                    if (location?.hasExtractedData) {
+                      if (!address.street && location.street) updateAddress(index, 'street', location.street);
+                      if (!address.city && location.city) updateAddress(index, 'city', location.city);
+                      if (!address.state && location.state) updateAddress(index, 'state', location.state);
+                      if (!address.pincode && location.pincode) updateAddress(index, 'pincode', location.pincode);
+                    }
+                  }}
+                />
+              </View>
+
+              {address.google_location ? (
+                <View style={{ marginBottom: 15 }}>
+                  <Typography size={12} color="green">Location Selected</Typography>
+                  <Typography size={11} color="gray">{address.google_location}</Typography>
+                </View>
+              ) : null}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Input
                     title={LocalizedStrings.EditProfile.City || 'City'}
@@ -844,217 +948,157 @@ const HouseholdProfile = ({ navigation, route }) => {
                   </Typography>
                 </TouchableOpacity>
               )}
+
+              <View style={styles.divider} />
+              <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
+                Household Information
+              </Typography>
+
+              <DropdownComponent
+                title={LocalizedStrings.EditProfile.Residence_Type || 'Residence Type'}
+                width={'100%'}
+                style_dropdown={{ marginHorizontal: 0 }}
+                selectedTextStyleNew={{ marginLeft: 10 }}
+                marginHorizontal={0}
+                style_title={{ textAlign: 'left' }}
+                value={address.household?.residence_type}
+                onChange={val => updateAddressHousehold(index, 'residence_type', val)}
+                data={[
+                  { label: 'Apartment', value: 'apartment' },
+                  { label: 'House', value: 'house' },
+                  { label: 'Villa', value: 'villa' },
+                  { label: 'Other', value: 'other' },
+                ]}
+              />
+              <Input
+                title={LocalizedStrings.EditProfile.Number_of_Rooms || 'Number of Rooms'}
+                keyboardType="numeric"
+                value={address.household?.number_of_rooms || ''}
+                onChange={val => updateAddressHousehold(index, 'number_of_rooms', val)}
+              />
+
+              <Typography
+                style={[styles.smallTitle, { marginTop: 12 }]}
+                type={Font?.Poppins_Medium}
+              >
+                {LocalizedStrings.EditProfile.Languages_Spoken || 'Languages Spoken'}
+              </Typography>
+              <View style={styles.languagesWrapper}>
+                {languagesList.map((languageObj, li) => {
+                  const language = languageObj.label;
+                  const isSelected = (address.household?.languages_spoken || []).includes(language);
+                  return (
+                    <TouchableOpacity
+                      key={`${languageObj.value}_${li}`}
+                      onPress={() => toggleAddressLanguage(index, language)}
+                      style={[
+                        styles.languageChip,
+                        { backgroundColor: isSelected ? '#D98579' : '#F3F4F6' },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 14, color: isSelected ? '#FFFFFF' : '#333' }}>
+                        {language}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Typography style={styles.smallTitle} type={Font?.Poppins_Medium}>
+                {LocalizedStrings.EditProfile.Number_of_Occupants || 'Number of Occupants'}
+              </Typography>
+              <View style={styles.row}>
+                <View style={styles.flexInput}>
+                  <Input
+                    title={LocalizedStrings.EditProfile.Adults || 'Adults'}
+                    keyboardType="numeric"
+                    value={address.household?.adults_count || ''}
+                    onChange={val => updateAddressHousehold(index, 'adults_count', val)}
+                  />
+                </View>
+                <View style={styles.flexInput}>
+                  <Input
+                    title={LocalizedStrings.EditProfile.Children || 'Children'}
+                    keyboardType="numeric"
+                    value={address.household?.children_count || ''}
+                    onChange={val => updateAddressHousehold(index, 'children_count', val)}
+                  />
+                </View>
+                <View style={styles.flexInput}>
+                  <Input
+                    title={LocalizedStrings.EditProfile.Elderly || 'Elderly'}
+                    keyboardType="numeric"
+                    value={address.household?.elderly_count || ''}
+                    onChange={val => updateAddressHousehold(index, 'elderly_count', val)}
+                  />
+                </View>
+              </View>
+
+              <Typography
+                type={Font?.Poppins_Medium}
+                style={[styles.smallTitle, { marginTop: 10 }]}
+              >
+                {LocalizedStrings.EditProfile.Pet_Details || 'Pet Details'}
+              </Typography>
+              {(address.pets || []).map((pet, pi) => (
+                <View
+                  key={`${index}_${pi}`}
+                  style={[styles.row, styles.petRow]}
+                >
+                  <View style={styles.petField}>
+                    <Input
+                      title={LocalizedStrings.EditProfile.Pet_Type || 'Type'}
+                      value={pet.pet_type || pet.type || ''}
+                      onChange={value => updateAddressPet(index, pi, 'pet_type', value)}
+                    />
+                  </View>
+                  <View style={styles.petCountField}>
+                    <Input
+                      title={LocalizedStrings.EditProfile.Count || 'Count'}
+                      keyboardType="numeric"
+                      value={pet.count || pet.pet_count || ''}
+                      onChange={value => updateAddressPet(index, pi, 'count', value)}
+                    />
+                  </View>
+                  {(address.pets.length > 1 || pet.pet_type || pet.type || pet.count) && (
+                    <TouchableOpacity
+                      style={styles.removePetButton}
+                      onPress={() => removeAddressPet(index, pi)}
+                    >
+                      <Typography size={12} color="red">
+                        {LocalizedStrings.EditProfile.Remove || 'Remove'}
+                      </Typography>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+              <TouchableOpacity onPress={() => addAddressPet(index)}>
+                <Typography
+                  style={styles.addPet}
+                  textAlign={'center'}
+                  type={Font?.Poppins_Medium}
+                >
+                  + {LocalizedStrings.EditProfile.Add_Another_Pet || 'Add Another Pet'}
+                </Typography>
+              </TouchableOpacity>
+
+              <Input
+                style_inputContainer={{ height: 80 }}
+                style_input={{ height: 80 }}
+                title={'Special Requirements / Additional Info'}
+                multiline
+                value={address.household?.special_requirements || ''}
+                onChange={val => updateAddressHousehold(index, 'special_requirements', val)}
+              />
             </View>
           ))}
 
-          <TouchableOpacity onPress={addAddress}>
-            <Typography
-              style={styles.addAddressBtn}
-              type={Font?.Poppins_Medium}
-            >
+          <TouchableOpacity onPress={addAddress} style={styles.addButton}>
+            <Typography color="#D98579" type={Font?.Poppins_Medium} size={14}>
               + Add Another Address
             </Typography>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
-              {LocalizedStrings.EditProfile.Household_Information ||
-                'Household Information'}
-            </Typography>
-            <TouchableOpacity onPress={addAddressFromHouseholdSection}>
-              <Typography
-                style={styles.inlineAddAddressBtn}
-                type={Font?.Poppins_Medium}
-              >
-                + Add New Address
-              </Typography>
-            </TouchableOpacity>
-          </View>
-          <DropdownComponent
-            title={
-              LocalizedStrings.EditProfile.Residence_Type || 'Residence Type'
-            }
-            width={'100%'}
-            style_dropdown={{ marginHorizontal: 0 }}
-            selectedTextStyleNew={{ marginLeft: 10 }}
-            marginHorizontal={0}
-            style_title={{ textAlign: 'left' }}
-            value={residenceType}
-            onChange={setResidenceType}
-            data={[
-              { label: 'Apartment', value: 'apartment' },
-              { label: 'House', value: 'house' },
-              { label: 'Villa', value: 'villa' },
-              { label: 'Other', value: 'other' },
-            ]}
-          />
-          <Input
-            title={
-              LocalizedStrings.EditProfile.Number_of_Rooms || 'Number of Rooms'
-            }
-            keyboardType="numeric"
-            value={numberOfRooms}
-            onChange={setNumberOfRooms}
-          />
-          <Typography
-            style={[styles.smallTitle, { marginTop: 12 }]}
-            type={Font?.Poppins_Medium}
-          >
-            {LocalizedStrings.EditProfile.Languages_Spoken ||
-              'Languages Spoken'}
-          </Typography>
-          <View style={styles.languagesWrapper}>
-            {languagesList.map((languageObj, index) => {
-              const language = languageObj.label;
-              const isSelected = languagesSpoken.includes(language);
-
-              return (
-                <TouchableOpacity
-                  key={`${languageObj.value}_${index}`}
-                  onPress={() => {
-                    if (isSelected) {
-                      setLanguagesSpoken(prev =>
-                        prev.filter(item => item !== language),
-                      );
-                    } else {
-                      setLanguagesSpoken(prev => [...prev, language]);
-                    }
-                  }}
-                  style={[
-                    styles.languageChip,
-                    { backgroundColor: isSelected ? '#D98579' : '#F3F4F6' },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: isSelected ? '#FFFFFF' : '#333',
-                    }}
-                  >
-                    {language}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Typography style={styles.smallTitle} type={Font?.Poppins_Medium}>
-            {LocalizedStrings.EditProfile.Number_of_Occupants ||
-              'Number of Occupants'}
-          </Typography>
-          <View style={styles.row}>
-            <View style={styles.flexInput}>
-              <Input
-                title={LocalizedStrings.EditProfile.Adults || 'Adults'}
-                keyboardType="numeric"
-                value={adults}
-                onChange={setAdults}
-              />
-            </View>
-            <View style={styles.flexInput}>
-              <Input
-                title={LocalizedStrings.EditProfile.Children || 'Children'}
-                keyboardType="numeric"
-                value={children}
-                onChange={setChildren}
-              />
-            </View>
-            <View style={styles.flexInput}>
-              <Input
-                title={LocalizedStrings.EditProfile.Elderly || 'Elderly'}
-                keyboardType="numeric"
-                value={elderly}
-                onChange={setElderly}
-              />
-            </View>
-          </View>
-          <Typography
-            type={Font?.Poppins_Medium}
-            style={[styles.smallTitle, { marginTop: 10 }]}
-          >
-            {LocalizedStrings.EditProfile.Pet_Details || 'Pet Details'}
-          </Typography>
-          {pets.map((pet, index) => (
-            <View
-              key={`${index}_${pet.type}`}
-              style={[styles.row, styles.petRow]}
-            >
-              <View style={styles.petField}>
-                <Input
-                  title={LocalizedStrings.EditProfile.Pet_Type || 'Type'}
-                  value={pet.type}
-                  onChange={value => updatePet(index, 'type', value)}
-                />
-              </View>
-              <View style={styles.petCountField}>
-                <Input
-                  title={LocalizedStrings.EditProfile.Count || 'Count'}
-                  keyboardType="numeric"
-                  value={pet.count}
-                  onChange={value => updatePet(index, 'count', value)}
-                />
-              </View>
-              {pets.length > 1 && (
-                <TouchableOpacity
-                  style={styles.removePetButton}
-                  onPress={() => removePet(index)}
-                >
-                  <Typography size={12} color="red">
-                    {LocalizedStrings.EditProfile.Remove || 'Remove'}
-                  </Typography>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-          <TouchableOpacity onPress={addPet}>
-            <Typography
-              style={styles.addPet}
-              textAlign={'center'}
-              type={Font?.Poppins_Medium}
-            >
-              +{' '}
-              {LocalizedStrings.EditProfile.Add_Another_Pet ||
-                'Add Another Pet'}
-            </Typography>
-          </TouchableOpacity>
-          <Input
-            style_inputContainer={{ height: 100 }}
-            style_input={{
-              height: 100,
-            }}
-            title={
-              'Additional Information'
-            }
-            multiline
-            value={specialRequirements}
-            onChange={setSpecialRequirements}
-          />
-        </View>
-
-      <View style={styles.section}>
-        <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
-          Auto Attendance
-        </Typography>
-        <View style={styles.toggleRow}>
-          <View style={{ flex: 1 }}>
-            <Typography type={Font?.Poppins_Medium} size={14}>
-              Auto Present
-            </Typography>
-            <Typography type={Font?.Poppins_Regular} style={styles.subText}>
-              Automatically mark staff as present daily.
-            </Typography>
-          </View>
-          <Switch
-            value={autoPresent}
-            onValueChange={handleAutoPresentToggle}
-            trackColor={{ false: '#EBEBEA', true: '#D98579' }}
-            thumbColor={autoPresent ? '#fff' : '#fff'}
-            disabled={autoPresentLoading}
-          />
-        </View>
-      </View>
 
       <View style={styles.bottomButton}>
         <Button
@@ -1082,6 +1126,33 @@ const HouseholdProfile = ({ navigation, route }) => {
 export default HouseholdProfile;
 
 const styles = StyleSheet.create({
+  addressBox: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E1E1E1',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 12,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#D98579',
+    borderRadius: 8,
+    borderStyle: 'dashed',
+    marginTop: 10,
+  },
+  removeAddressBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+  },
   headerContainer: {
     marginBottom: 10,
   },

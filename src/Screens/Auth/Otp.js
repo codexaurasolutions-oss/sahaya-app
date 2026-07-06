@@ -14,6 +14,7 @@ import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './..
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getFcmToken } from '../../Constants/AsyncStorage';
 
 const Otp = ({ navigation, route }) => {
   const { type, aadhaar, mobile, countryCode, user_id } = route?.params;
@@ -207,7 +208,7 @@ const Otp = ({ navigation, route }) => {
   };
 
   const handleVerify = async () => {
-    const FcmToken = await AsyncStorage.getItem('fcm_token');
+    const FcmToken = await getFcmToken();
     const currentOtp = String(otpRef.current || otp || '').trim();
 
     if (currentOtp.length !== 6) {

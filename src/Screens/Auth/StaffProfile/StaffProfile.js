@@ -53,7 +53,7 @@ const StaffProfile = ({ navigation }) => {
                         </TouchableOpacity>
                     </View>
                     <Button
-                        onPress={() => navigation.navigate()}
+                        onPress={() => navigation.navigate('AIJobSearch')}
                         style={styles.findStaffBtn}
                         title={LocalizedStrings.Dashboard?.find_staf || 'Find Staff with AI'}
                         main_style={styles.findStaffMain}

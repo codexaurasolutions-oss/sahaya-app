@@ -47,7 +47,7 @@ const StaffManagement = ({ navigation, route }) => {
   const [bonus, setBonus] = useState('');
   const [overtime, setOvertime] = useState('');
   const [advance, setAdvance] = useState('');
-  const [deduction, setDeduction] = useState(200);
+  const [deduction, setDeduction] = useState('');
   const [selectedMethod, setSelectedMethod] = useState('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const userDetails = useSelector(state => state?.userDetails);
@@ -75,6 +75,7 @@ const StaffManagement = ({ navigation, route }) => {
   const [paymentType, setPaymentType] = useState(null);
   const [shouldDeductAdvance, setShouldDeductAdvance] = useState(true);
   const [deductionMethod, setDeductionMethod] = useState(null);
+  const [numInstallments, setNumInstallments] = useState('');
   const [advancePaymentMethod, setAdvancePaymentMethod] = useState('Cash');
   const [workedDays, setWorkedDays] = useState(0);
   const [totalDaysInMonth, setTotalDaysInMonth] = useState(30);
@@ -83,9 +84,8 @@ const StaffManagement = ({ navigation, route }) => {
     { value: 'advance', label: 'Advance Payment' },
   ];
   const deductionMethodData = [
-    { value: 'monthly', label: 'Monthly Deduction' },
     { value: 'one_time', label: 'One-Time Deduction (Next Salary)' },
-    { value: 'installments', label: 'Installments (Multiple Months)' },
+    { value: 'installments', label: 'Monthly Installments' },
   ];
   const getSanitizedValue = value =>
     Number.isNaN(value) || value === null ? '' : String(value);
@@ -141,6 +141,14 @@ const StaffManagement = ({ navigation, route }) => {
   }, [isFocused]);
 
   useEffect(() => {
+    if (preSelectedStaffId) {
+      fetchSalaryDetails(preSelectedStaffId);
+      fetchAttendance(preSelectedStaffId);
+      loadAdvanceHistory(preSelectedStaffId);
+    }
+  }, [preSelectedStaffId]);
+
+  useEffect(() => {
     if (profileMonthlySalary > 0 && totalDaysInMonth > 0) {
       const calculatedBase = ((profileMonthlySalary / totalDaysInMonth) * workedDays).toFixed(2);
       setBaseSalary(calculatedBase);
@@ -154,8 +162,7 @@ const StaffManagement = ({ navigation, route }) => {
     const bonusAmount = Number(bonus) || 0;
     const overtimeAmount = Number(overtime) || 0;
     const advanceVal = Number(advance) || 0;
-    const taxAmount = Number(deduction) || 0;
-    const netSalary = Math.max(0, base + bonusAmount + overtimeAmount - taxAmount - advanceVal);
+    const netSalary = Math.max(0, base + bonusAmount + overtimeAmount - advanceVal);
     setTotalNet(netSalary);
     
     // Auto-calculate custom amount whenever net salary components change
@@ -355,7 +362,7 @@ const StaffManagement = ({ navigation, route }) => {
       basic_salary: Number(baseSalary) || 0,
       performative_allowance: Number(bonus) || 0,
       over_time_allowance: Number(overtime) || 0,
-      tax: Number(deduction) || 0,
+      tax: 0,
       advance_payment: Number(advance) || 0,
       payment_mode: selectedMethod?.toLowerCase() || 'cash',
       status: 'paid',
@@ -490,6 +497,12 @@ const StaffManagement = ({ navigation, route }) => {
       amount: Number(advanceAmount),
       should_deduct: shouldDeductAdvance,
       deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
+      num_installments: (shouldDeductAdvance && deductionMethod?.value === 'installments' && numInstallments)
+        ? parseInt(numInstallments, 10)
+        : null,
+      monthly_deduction: (shouldDeductAdvance && deductionMethod?.value === 'installments' && numInstallments && advanceAmount)
+        ? Math.ceil(Number(advanceAmount) / parseInt(numInstallments, 10))
+        : null,
       payment_mode: (advancePaymentMethod || 'cash').toLowerCase(),
       status: forcedStatus,
     };
@@ -503,6 +516,7 @@ const StaffManagement = ({ navigation, route }) => {
         setAdvanceAmount('');
         setShouldDeductAdvance(true);
         setDeductionMethod(null);
+        setNumInstallments('');
         setAdvancePaymentMethod('Cash');
         // Update advance locally so net salary recalculates immediately (only if deducting)
         if (shouldDeductAdvance) {
@@ -519,6 +533,12 @@ const StaffManagement = ({ navigation, route }) => {
           date: new Date().toISOString(),
           should_deduct: shouldDeductAdvance,
           deduction_method: shouldDeductAdvance ? deductionMethod?.value : null,
+          num_installments: (shouldDeductAdvance && deductionMethod?.value === 'installments' && numInstallments)
+            ? parseInt(numInstallments, 10)
+            : null,
+          installment_amount: (shouldDeductAdvance && deductionMethod?.value === 'installments' && numInstallments && advanceAmount)
+            ? Math.ceil(Number(advanceAmount) / parseInt(numInstallments, 10))
+            : null,
           payment_mode: advancePaymentMethod,
         };
         
@@ -562,11 +582,11 @@ const StaffManagement = ({ navigation, route }) => {
       label: LocalizedStrings.SalaryManagement.upi,
       icon: ImageConstant.upi,
     },
-    // {
-    //   value: 'Bank Transfer',
-    //   label: LocalizedStrings.SalaryManagement.bank_transfer,
-    //   icon: ImageConstant.bankTransfer,
-    // },
+    {
+      value: 'Bank Transfer',
+      label: LocalizedStrings.SalaryManagement.bank_transfer,
+      icon: ImageConstant.bankTransfer,
+    },
   ];
 
   const validateSalaryForm = () => {
@@ -818,14 +838,14 @@ const StaffManagement = ({ navigation, route }) => {
 
   const submitSalaryPayment = (paymentResult) => {
     const paymentMode = selectedMethod?.toLowerCase() || 'cash';
-    const isPaid = paymentResult || paymentMode === 'cash';
+    const isPaid = paymentResult || paymentMode === 'cash' || paymentMode === 'bank transfer';
     const body = {
       staff_id: leaveType?.value,
       houseowner_id: userDetails?.id,
       basic_salary: Number(baseSalary) || 0,
       performative_allowance: Number(bonus) || 0,
       over_time_allowance: Number(overtime) || 0,
-      tax: Number(deduction) || 0,
+      tax: 0,
       advance_payment: Number(advance) || 0,
       payment_mode: paymentMode,
       amount: getPayableAmount(),
@@ -853,7 +873,7 @@ const StaffManagement = ({ navigation, route }) => {
               base_salary: Number(baseSalary) || 0,
               performance_bonus: Number(bonus) || 0,
               overtime_pay: Number(overtime) || 0,
-              tax_deduction: Number(deduction) || 0,
+              tax_deduction: 0,
               advance_payment: Number(advance) || 0,
             },
           };
@@ -1074,8 +1094,49 @@ const StaffManagement = ({ navigation, route }) => {
                     }}
                     data={deductionMethodData}
                     value={deductionMethod}
-                    onChange={item => setDeductionMethod(item)}
+                    onChange={item => {
+                      setDeductionMethod(item);
+                      if (item?.value !== 'installments') {
+                        setNumInstallments('');
+                      }
+                    }}
                   />
+                  {deductionMethod?.value === 'installments' && (
+                    <View style={{ marginTop: 10 }}>
+                      <Typography type={Font.Poppins_Medium} size={13} style={{ marginBottom: 5 }}>
+                        Deduct in how many months?
+                      </Typography>
+                      <TextInput
+                        style={styles.upiInput}
+                        placeholder="e.g. 3"
+                        placeholderTextColor="#999"
+                        keyboardType="numeric"
+                        maxLength={2}
+                        value={numInstallments}
+                        onChangeText={text => {
+                          const cleaned = text.replace(/[^0-9]/g, '');
+                          const num = parseInt(cleaned, 10);
+                          if (cleaned === '' || (num >= 1 && num <= 24)) {
+                            setNumInstallments(cleaned);
+                          }
+                        }}
+                      />
+                      {numInstallments && parseInt(numInstallments, 10) > 0 && advanceAmount ? (
+                        <View style={{
+                          marginTop: 8,
+                          padding: 10,
+                          backgroundColor: '#FFF7ED',
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: '#FED7AA',
+                        }}>
+                          <Typography type={Font.Poppins_Medium} size={13} color="#9A3412">
+                            Monthly deduction: {'\u20B9'}{Math.ceil(Number(advanceAmount) / parseInt(numInstallments, 10))} x {numInstallments} months
+                          </Typography>
+                        </View>
+                      ) : null}
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -1162,7 +1223,7 @@ const StaffManagement = ({ navigation, route }) => {
                         <Typography type={Font.Poppins_Regular} size={10} color="#666">
                           {item.deduction_method === 'monthly' ? 'Monthly Deduction' : 
                            item.deduction_method === 'one_time' ? 'One-Time Deduction' : 
-                           item.deduction_method === 'installments' ? 'Installments' : 
+                           item.deduction_method === 'installments' ? `Installments${item.num_installments ? ` (${item.num_installments} months)` : ''}${item.installment_amount ? ` \u20B9${item.installment_amount}/mo` : ''}` : 
                            item.should_deduct ? 'Will be deducted' : 'No deduction'}
                         </Typography>
                       )}
@@ -1224,6 +1285,16 @@ const StaffManagement = ({ navigation, route }) => {
                  {profileMonthlySalary > 0 && (
                    <Typography type={Font.Poppins_Regular} size={11} color="#15803d" style={{ marginTop: 4 }}>
                      Monthly base salary (from profile): ₹{profileMonthlySalary.toFixed(2)}
+                   </Typography>
+                 )}
+                 {profileMonthlySalary === 0 && (
+                   <Typography type={Font.Poppins_Regular} size={11} color="#b45309" style={{ marginTop: 4 }}>
+                     Salary not configured. Set salary in staff profile to enable payment.
+                   </Typography>
+                 )}
+                 {workedDays === 0 && (
+                   <Typography type={Font.Poppins_Regular} size={11} color="#b45309" style={{ marginTop: 2 }}>
+                     No attendance records found for this month.
                    </Typography>
                  )}
               </View>
@@ -1406,33 +1477,6 @@ const StaffManagement = ({ navigation, route }) => {
                 )}
               </View>
 
-              <View style={styles.salaryRow}>
-                <View style={styles.amountLabelWrap}>
-                  <Typography type={Font.Poppins_Regular} style={styles.label}>
-                    Other Deduction
-                  </Typography>
-                  <Typography type={Font.Poppins_Regular} style={styles.amountHelpText}>
-                    Tax or manual deduction
-                  </Typography>
-                </View>
-                {isEditingDeductions ? (
-                  <TextInput
-                    style={[styles.amountInput, styles.deductionInput]}
-                    keyboardType="numeric"
-                    value={getSanitizedValue(deduction)}
-                    onChangeText={handleAmountChange(setDeduction)}
-                    placeholder="0"
-                    placeholderTextColor="#D98579"
-                  />
-                ) : (
-                  <Typography
-                    type={Font.Poppins_SemiBold}
-                    style={{ color: '#D98579' }}
-                  >
-                    {Number(deduction) > 0 ? `-${getSanitizedValue(deduction)}` : '0'}
-                  </Typography>
-                )}
-              </View>
 
               {isEditingDeductions && (
                 <TouchableOpacity
@@ -1560,15 +1604,6 @@ const StaffManagement = ({ navigation, route }) => {
             </View>
 
             {/* Advance Management quick-link */}
-            <TouchableOpacity
-              style={styles.advanceLinkCard}
-              onPress={() => navigation.navigate('AdvanceManagement')}
-              activeOpacity={0.8}
-            >
-              <Typography type={Font.Poppins_SemiBold} size={14}>💰 Manage Staff Advances</Typography>
-              <Typography type={Font.Poppins_Regular} size={12} color="#D98579">View & track → </Typography>
-            </TouchableOpacity>
-
             <View style={{ marginTop: 20 }}>
                 <View style={styles.rowBetween}>
                   <Typography

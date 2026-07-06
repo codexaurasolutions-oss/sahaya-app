@@ -699,56 +699,67 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
           </Typography>
         )}
 
-        <View style={styles.skillContainer}>
-          {loading ? (
-            <Typography style={styles.loadingText} type={Font?.Poppins_Regular}>
-              {LocalizedStrings.Auth?.loading || 'Loading skills...'}
-            </Typography>
-          ) : availableSkills.length > 0 ? (
-            availableSkills.map((item, index) => {
-              const isSelected = selectedSkills.includes(item);
-              return (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => toggleSkill(item)}
-                  style={[
-                    styles.skillChip,
-                    isSelected && styles.skillChipSelected,
-                  ]}
+        {loading ? (
+          <Typography style={styles.loadingText} type={Font?.Poppins_Regular}>
+            {LocalizedStrings.Auth?.loading || 'Loading skills...'}
+          </Typography>
+        ) : availableSkills.length > 0 ? (
+          <DropdownComponent
+            placeholder={LocalizedStrings.Auth?.select_skills || 'Select Skills'}
+            width={'100%'}
+            style_dropdown={{ marginHorizontal: 0, marginBottom: 10 }}
+            selectedTextStyleNew={{ marginLeft: 10 }}
+            marginHorizontal={0}
+            value={null}
+            onChange={(item) => {
+              if (item && item.value && !selectedSkills.includes(item.value)) {
+                toggleSkill(item.value);
+              }
+            }}
+            data={availableSkills.map((skill, index) => ({
+              label: skill,
+              value: skill,
+              id: index,
+            }))}
+            disable={false}
+          />
+        ) : selectedRole ? (
+          <Typography
+            style={styles.noSkillsText}
+            type={Font?.Poppins_Regular}
+          >
+            {LocalizedStrings.Auth?.no_skills_available ||
+              'No skills available for this role'}
+          </Typography>
+        ) : (
+          <Typography
+            style={styles.noSkillsText}
+            type={Font?.Poppins_Regular}
+          >
+            {LocalizedStrings.Auth?.select_role_to_view_skills ||
+              'Please select a role to view skills'}
+          </Typography>
+        )}
+
+        {selectedSkills.length > 0 && (
+          <View style={styles.skillContainer}>
+            {selectedSkills.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => toggleSkill(item)}
+                style={[styles.skillChip, styles.skillChipSelected]}
+              >
+                <Typography
+                  style={[styles.skillText, styles.skillTextSelected]}
+                  type={Font?.Manrope_SemiBold}
                 >
-                  <Typography
-                    style={[
-                      styles.skillText,
-                      isSelected && styles.skillTextSelected,
-                    ]}
-                    type={Font?.Manrope_SemiBold}
-                  >
-                    {item}
-                  </Typography>
-                  {isSelected && (
-                    <Image source={ImageConstant?.X} style={styles.closeIcon} />
-                  )}
-                </TouchableOpacity>
-              );
-            })
-          ) : selectedRole ? (
-            <Typography
-              style={styles.noSkillsText}
-              type={Font?.Poppins_Regular}
-            >
-              {LocalizedStrings.Auth?.no_skills_available ||
-                'No skills available for this role'}
-            </Typography>
-          ) : (
-            <Typography
-              style={styles.noSkillsText}
-              type={Font?.Poppins_Regular}
-            >
-              {LocalizedStrings.Auth?.select_role_to_view_skills ||
-                'Please select a role to view skills'}
-            </Typography>
-          )}
-        </View>
+                  {item}
+                </Typography>
+                <Image source={ImageConstant?.X} style={styles.closeIcon} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       <View

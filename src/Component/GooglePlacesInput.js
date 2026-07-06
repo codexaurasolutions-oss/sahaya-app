@@ -77,12 +77,19 @@ const GooglePlacesInput = ({
         street = details.formatted_address?.split(',')[0] || data?.description || '';
       }
       
+      const lat = details.geometry?.location?.lat || '';
+      const lng = details.geometry?.location?.lng || '';
+      const google_location = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : '';
+
       extractedData = {
         ...extractedData,
         street: street.trim(),
         city,
         state,
         pincode,
+        lat: String(lat),
+        long: String(lng),
+        google_location,
         hasExtractedData: true, // Flag to indicate we have extracted data
       };
     } else {
@@ -91,6 +98,9 @@ const GooglePlacesInput = ({
       extractedData = {
         ...extractedData,
         street: fallbackStreet,
+        lat: '',
+        long: '',
+        google_location: '',
         hasExtractedData: false, // Flag to indicate we don't have full extracted data
       };
     }

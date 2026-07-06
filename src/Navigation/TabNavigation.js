@@ -1,14 +1,13 @@
-import React from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import { useSelector } from 'react-redux';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   Image,
-
   StyleSheet,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { isIos } from '../Backend/Utility';
 import { Colors } from '../Constants/Colors';
 import { ImageConstant } from '../Constants/ImageConstant';
@@ -17,6 +16,7 @@ import {
 } from 'react-native-responsive-screen';
 import Typography from '../Component/UI/Typography';
 import { Font } from '../Constants/Font';
+import { GET_WITH_TOKEN } from '../Backend/Backend';
 
 import { createStackNavigator } from '@react-navigation/stack';
 import Dashboard from '../Screens/Private/Dashboard/Dashboard';
@@ -26,6 +26,7 @@ import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
 import MyJobPosting from '../Screens/Private/MoreScreens/MyJobPosting';
 import PostNewJob from '../Screens/Private/MoreScreens/PostNewJob';
 import ListingJob from '../Screens/Private/MoreScreens/ListingJob';
+import {subscribeToNotificationChanges} from '../pushNotifacation/notificationEvents';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,7 +43,6 @@ const DashboardStack = () => {
   );
 };
 
-
 const MoreStack = () => {
   return (
     <Stack.Navigator
@@ -54,10 +54,9 @@ const MoreStack = () => {
   );
 };
 
-
-const JobPostingStack = ()=>{
-  return(
-      <Stack.Navigator
+const JobPostingStack = () => {
+  return (
+    <Stack.Navigator
       screenOptions={{ headerShown: false }}
       initialRouteName="MyJobPosting"
     >
@@ -69,19 +68,82 @@ const JobPostingStack = ()=>{
       <Stack.Screen name="PostNewJob" component={PostNewJob} />
       <Stack.Screen name="ListingJob" component={ListingJob} />
     </Stack.Navigator>
-  )
-} 
-
+  );
+};
 
 export const bottomTabHeight = isIos ? 90 : 70;
 
+const TabBadge = ({count}) => {
+  if (!count || count <= 0) return null;
+  return (
+    <View style={tabBadgeStyles.badge}>
+      <View style={tabBadgeStyles.inner}>
+        <Typography style={tabBadgeStyles.text}>
+          {count > 99 ? '99+' : count}
+        </Typography>
+      </View>
+    </View>
+  );
+};
+
+const tabBadgeStyles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -12,
+    backgroundColor: '#DC2626',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  inner: {
+    paddingHorizontal: 4,
+  },
+  text: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+    lineHeight: 14,
+    textAlign: 'center',
+  },
+});
 
 export const TabNavigation = () => {
-  const commonOptions = {
-    headerShown: false,
-  };
+  const [jobBadgeCount, setJobBadgeCount] = useState(0);
+  const isFocused = useIsFocused();
   const navigation = useNavigation();
-  const lang_code = useSelector(store => store.langCode);
+
+  const fetchJobBadgeCount = useCallback(() => {
+    GET_WITH_TOKEN(
+      'notifications/unread-count',
+      success => {
+        setJobBadgeCount(success?.unread_count || 0);
+      },
+      () => {},
+      () => {},
+    );
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchJobBadgeCount();
+    }
+  }, [isFocused, fetchJobBadgeCount]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const interval = setInterval(fetchJobBadgeCount, 30000);
+    return () => clearInterval(interval);
+  }, [isFocused, fetchJobBadgeCount]);
+
+  useEffect(() => {
+    return subscribeToNotificationChanges(() => {
+      fetchJobBadgeCount();
+    });
+  }, [fetchJobBadgeCount]);
 
   const LinearImage = ({ image = ImageConstant?.home, isFocused = false }) => {
     return (
@@ -93,6 +155,7 @@ export const TabNavigation = () => {
       />
     );
   };
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -107,8 +170,6 @@ export const TabNavigation = () => {
           justifyContent: 'center',
           alignItems: 'center',
           position: 'absolute',
-          // borderTopRightRadius: 20,
-          // borderTopLeftRadius: 20,
           bottom: 0,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 5 },
@@ -153,7 +214,10 @@ export const TabNavigation = () => {
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
             <View style={styles.tab}>
-              <LinearImage isFocused={focused} image={ImageConstant?.joblisting} />
+              <View>
+                <LinearImage isFocused={focused} image={ImageConstant?.joblisting} />
+                <TabBadge count={jobBadgeCount} />
+              </View>
               <Typography
                 size={focused ? 11 : 10}
                 color={focused ? '#D98579' : Colors?.black}
@@ -212,7 +276,6 @@ export const TabNavigation = () => {
           ),
         }}
       />
-      
     </Tab.Navigator>
   );
 };

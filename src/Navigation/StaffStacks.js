@@ -25,6 +25,8 @@ import StepFirst from '../Screens/Auth/StaffProfile/StepFirst';
 import PolicyScreen from '../Component/PolicyScreen';
 import AppUpdate from '../Screens/Private/MoreScreens/AppUpdate';
 import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
+import StaffWallet from '../Screens/Staff/StaffWallet';
+import BankAccounts from '../Screens/Staff/BankAccounts';
 import { useDispatch, useSelector } from 'react-redux';
 import Aadhaar from '../Screens/Auth/Aadhaar';
 import AadharOtp from '../Screens/Private/Staff/AadharOtp';
@@ -193,6 +195,16 @@ const RootStack = () => {
       <Stack.Screen
         name="ReferAndEarn"
         component={ReferAndEarn}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="StaffWallet"
+        component={StaffWallet}
+        options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="BankAccounts"
+        component={BankAccounts}
         options={{ ...commonOptions }}
       />
     </Stack.Navigator>

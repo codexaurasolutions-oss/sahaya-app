@@ -79,7 +79,7 @@ export const leaveRequests = [
 export default function ListingJob({ navigation, route }) {
   const [listAppJob, setListAppList] = useState([]);
   const [detailItem, setDetailItem] = useState(null);
-  const id = route.params.id;
+  const id = route?.params?.id;
   const isFocused = useIsFocused();
 
   const reviews = detailItem?.user?.reviews_received || detailItem?.user?.reviewsReceived || [];
@@ -161,15 +161,11 @@ export default function ListingJob({ navigation, route }) {
       success => {
         SimpleToast.show(success?.message || 'Success', SimpleToast.SHORT);
         if (status === 'accepted' && item?.user) {
-          // Approved — navigate to add staff, then refresh list on return
-          if (item?.user?.aadhar__verify == 1) {
-            navigation.navigate('NewStaffFrom', {
-              adharNumber: item?.user?.aadhar_number,
-              userData: item?.user,
-            });
-          } else {
-            navigation.navigate('Aadhar');
-          }
+          // Always require Aadhaar OTP verification before adding staff
+          navigation.navigate('StaffVerifection', {
+            adharNumber: item?.user?.aadhar_number || item?.user?.aadhaar_number,
+            userData: item?.user,
+          });
         }
         // Always refresh the list after any action
         JobList();
@@ -265,9 +261,9 @@ export default function ListingJob({ navigation, route }) {
                     styles.statusTag,
                     {
                       backgroundColor:
-                        item.status == 'accepted'
+                        item?.application_status == 'accepted'
                           ? '#A7F3D0'
-                          : item.status == 'pending'
+                          : item?.application_status == 'pending'
                           ? '#FEF3C7'
                           : '#FECACA',
                     },

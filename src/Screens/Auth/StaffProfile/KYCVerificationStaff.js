@@ -34,7 +34,7 @@ const KYCVerificationStaff = forwardRef(({ userDetail, prefillFromProfile = true
       return;
     }
 
-    const kycInfo = userDetail?.kyc_information || {};
+    const kycInfo = userDetail?.kycInformation || userDetail?.kyc_information || {};
 
     // Helper function to check if path is valid
     const isValidPath = path => {

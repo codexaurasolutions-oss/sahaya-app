@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Alert } from 'react-native';
 import React, { useState, useRef } from 'react';
 import CommanView from '../../../Component/CommanView';
 import Header from '../../../Component/Header';
@@ -102,7 +102,21 @@ const StepFirst = () => {
         source_arrow={ImageConstant?.BackArrow}
         onBackPressFun={() => {
           if (activeTab === 1) {
-            confirmLogout();
+            Alert.alert(
+              'Exit Profile Setup',
+              'Are you sure you want to go back? Your progress will not be saved.',
+              [
+                { text: 'Stay', style: 'cancel' },
+                {
+                  text: 'Go Back',
+                  style: 'destructive',
+                  onPress: () => {
+                    Dispatch(isAuth(false));
+                    Dispatch(userDetails({}));
+                  },
+                },
+              ],
+            );
           } else {
             setActiveTab(activeTab - 1);
           }

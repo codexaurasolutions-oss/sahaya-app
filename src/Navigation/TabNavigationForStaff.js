@@ -1,8 +1,7 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
+import React, {useState, useEffect, useCallback} from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import { isIos } from '../Backend/Utility';
 import { Colors } from '../Constants/Colors';
 import { ImageConstant } from '../Constants/ImageConstant';
@@ -10,21 +9,88 @@ import { widthPercentageToDP } from 'react-native-responsive-screen';
 import Typography from '../Component/UI/Typography';
 import { Font } from '../Constants/Font';
 import StaffDashboard from '../Screens/Staff/StaffDashboard';
-import StaffAttendance from './../Screens/Staff/StaffAttendance';
 import StaffMore from '../Screens/Staff/StaffMore';
 import MyWork from './../Screens/Staff/MyWork';
 import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
+import JobListing from './../Screens/Staff/JobListing';
+import { GET_WITH_TOKEN } from '../Backend/Backend';
+import {subscribeToNotificationChanges} from '../pushNotifacation/notificationEvents';
 
 const Tab = createBottomTabNavigator();
 
 export const bottomTabHeight = isIos ? 90 : 70;
 
+const TabBadge = ({count}) => {
+  if (!count || count <= 0) return null;
+  return (
+    <View style={tabBadgeStyles.badge}>
+      <View style={tabBadgeStyles.inner}>
+        <Typography style={tabBadgeStyles.text}>
+          {count > 99 ? '99+' : count}
+        </Typography>
+      </View>
+    </View>
+  );
+};
+
+const tabBadgeStyles = StyleSheet.create({
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -12,
+    backgroundColor: '#DC2626',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  inner: {
+    paddingHorizontal: 4,
+  },
+  text: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+    lineHeight: 14,
+    textAlign: 'center',
+  },
+});
+
 export const TabNavigationForStaff = () => {
-  const commonOptions = {
-    headerShown: false,
-  };
-  const navigation = useNavigation();
-  const lang_code = useSelector(store => store.langCode);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [myWorkBadgeCount] = useState(0);
+  const isFocused = useIsFocused();
+
+  const fetchUnreadCount = useCallback(() => {
+    GET_WITH_TOKEN(
+      'notifications/unread-count',
+      success => {
+        setUnreadCount(success?.unread_count || 0);
+      },
+      () => {},
+      () => {},
+    );
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchUnreadCount();
+    }
+  }, [isFocused, fetchUnreadCount]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [isFocused, fetchUnreadCount]);
+
+  useEffect(() => {
+    return subscribeToNotificationChanges(() => {
+      fetchUnreadCount();
+    });
+  }, [fetchUnreadCount]);
 
   const LinearImage = ({ image = ImageConstant?.home, isFocused = false }) => {
     return (
@@ -36,6 +102,7 @@ export const TabNavigationForStaff = () => {
       />
     );
   };
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -74,10 +141,13 @@ export const TabNavigationForStaff = () => {
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
             <View style={[styles.tab, {}]}>
-              <LinearImage
-                isFocused={focused}
-                image={ImageConstant?.Dashboard}
-              />
+              <View>
+                <LinearImage
+                  isFocused={focused}
+                  image={ImageConstant?.Dashboard}
+                />
+                <TabBadge count={unreadCount} />
+              </View>
               <Typography
                 lineHeight={16.5}
                 size={11}
@@ -100,10 +170,13 @@ export const TabNavigationForStaff = () => {
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
             <View style={[styles.tab, {}]}>
-              <LinearImage
-                isFocused={focused}
-                image={ImageConstant?.Briefcase}
-              />
+              <View>
+                <LinearImage
+                  isFocused={focused}
+                  image={ImageConstant?.Briefcase}
+                />
+                <TabBadge count={myWorkBadgeCount} />
+              </View>
               <Typography
                 size={focused ? 12 : 10}
                 color={focused ? '#D98579' : Colors?.black}
@@ -119,15 +192,15 @@ export const TabNavigationForStaff = () => {
         }}
       />
       <Tab.Screen
-        name="Leaves"
-        component={StaffAttendance}
+        name="PlaceJobListings"
+        component={JobListing}
         options={{
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => (
             <View style={[styles.tab]}>
               <LinearImage
                 isFocused={focused}
-                image={ImageConstant?.Calendar}
+                image={ImageConstant?.Briefcase}
               />
               <Typography
                 size={focused ? 12 : 10}
@@ -137,7 +210,7 @@ export const TabNavigationForStaff = () => {
                 numberOfLines={1}
                 textAlign={'center'}
               >
-                Leaves
+                Jobs
               </Typography>
             </View>
           ),
@@ -198,7 +271,6 @@ const styles = StyleSheet.create({
     borderColor: Colors?.blue_icon,
     borderTopColor: Colors.primary_blue,
     alignItems: 'center',
-    justifyContent: 'center',
     width: widthPercentageToDP(18),
     height: 55,
     justifyContent: 'flex-end',

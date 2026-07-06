@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSelector } from 'react-redux';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import Typography from '../../../Component/UI/Typography';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import { Font } from '../../../Constants/Font';
@@ -69,11 +70,30 @@ const normalizeStaffSearchQuery = (query = '') =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const parseCoordinateValue = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 const FindStaff = ({ navigation, route }) => {
+  const isFocused = useIsFocused();
   const description = route?.params?.description || '';
   const userDetails = useSelector(state => state?.userDetails);
   const userCity = userDetails?.addresses?.[0]?.city || userDetails?.city || '';
   const userState = userDetails?.addresses?.[0]?.state || userDetails?.state || '';
+  const searchCoordinates = React.useMemo(() => {
+    const primaryAddress = userDetails?.addresses?.[0] || {};
+    const lat = primaryAddress?.lat ?? primaryAddress?.latitude ?? userDetails?.lat ?? userDetails?.latitude;
+    const long = primaryAddress?.long ?? primaryAddress?.longitude ?? userDetails?.long ?? userDetails?.longitude;
+    const parsedLat = parseCoordinateValue(lat);
+    const parsedLong = parseCoordinateValue(long);
+
+    if (parsedLat === null || parsedLong === null) {
+      return null;
+    }
+
+    return { lat: parsedLat, long: parsedLong };
+  }, [userDetails]);
   const [allCandidates, setAllCandidates] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,10 +118,51 @@ const FindStaff = ({ navigation, route }) => {
   const [filterStayType, setFilterStayType] = useState(null);
 
   useEffect(() => {
+    // If chatbot provided preloaded results, use them directly
+    const preloadedResults = route?.params?.preloadedResults;
+    if (preloadedResults && Array.isArray(preloadedResults) && preloadedResults.length > 0) {
+      const mapped = preloadedResults.map((item) => {
+        const workInfo = item?.user_work_info || {};
+        return {
+          id: item?.id,
+          name: `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item?.name || 'Unknown',
+          role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : (workInfo?.primary_role || ''),
+          tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
+          location: item?.addresses?.[0]?.city || item?.location || item?.city || item?.address?.city || item?.current_address?.city || item?.region || '',
+          preferredLocation: item?.preferred_work_location || item?.user_work_info?.preferred_work_location || item?.work_info?.preferred_work_location || '',
+          pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || '',
+          experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
+          verified: item?.is_verified || false,
+          policeVerified: !!(item?.kycInformation?.police_verification_path || item?.kyc_information?.police_verification_path || item?.kycInformation?.police_clearance_certificate_path || item?.kyc_information?.police_clearance_certificate_path || item?.kycInformation?.verification_certificate || item?.kyc_information?.verification_certificate || item?.verification_certificate || item?.police_verified === true),
+          gender: item?.gender || '',
+          age: getAge(item?.dob),
+          salaryNum: Number(workInfo?.salary) || 0,
+          salary: formatSalary(workInfo?.salary),
+          image: getCandidateImage(item),
+          stayType: workInfo?.stay_type || item?.stay_type || '',
+          isJobSeeking: (item?.is_job_seeking === true || item?.is_job_seeking === 1 || item?.is_available === true || item?.is_available === 1),
+          distanceKm: parseCoordinateValue(item?._distance_km ?? item?.distance_km ?? item?.distanceKm),
+          _similarity: item?._similarity || 0,
+          raw: item,
+        };
+      }).filter(c => c.isJobSeeking);
+      setAllCandidates(mapped);
+      setCandidates(mapped);
+      setIsLoading(false);
+      fetchRoleOptions();
+      checkSubscription();
+      return;
+    }
     fetchCandidates();
     fetchRoleOptions();
     checkSubscription();
   }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      checkSubscription();
+    }
+  }, [isFocused]);
 
   const checkSubscription = () => {
     GET_WITH_TOKEN(
@@ -109,8 +170,19 @@ const FindStaff = ({ navigation, route }) => {
       res => {
         const sub = res?.subscription;
         const active = res?.is_active;
-        const price = sub?.subscription?.price ? parseFloat(sub.subscription.price) : 0;
-        if (active && sub && price > 0) {
+
+        const nestedPlan = sub?.subscription;
+        const planPrice = nestedPlan?.price ? parseFloat(nestedPlan.price) : 0;
+        const paidAmount = sub?.amount ? parseFloat(sub.amount) : 0;
+        const paymentStatus = String(sub?.payment_status || '').toLowerCase();
+        const subStatus = String(sub?.status || '').toLowerCase();
+
+        const hasActiveRecord = sub && (subStatus === 'active');
+        const hasPaidPrice = planPrice > 0;
+        const hasPaidAmount = paidAmount > 0;
+        const hasPaidPayment = paymentStatus === 'paid' || paymentStatus === 'completed';
+
+        if (active && hasActiveRecord && (hasPaidPrice || hasPaidAmount || hasPaidPayment)) {
           setIsPremium(true);
         } else {
           setIsPremium(false);
@@ -200,9 +272,22 @@ const FindStaff = ({ navigation, route }) => {
     setIsLoading(true);
     setErrorMessage('');
 
+    const normalizedQuery = normalizeStaffSearchQuery(description);
+    const isNearbyQuery = normalizedQuery.includes('near me') || normalizedQuery.includes('nearby');
+    const requestPayload = { query: description, query_text: description };
+
+    if (searchCoordinates) {
+      requestPayload.lat = searchCoordinates.lat;
+      requestPayload.long = searchCoordinates.long;
+    }
+
+    if (isNearbyQuery) {
+      requestPayload.radius_km = 50;
+    }
+
     POST_WITH_TOKEN(
       StaffGetAIData,
-      { query: description, query_text: description },
+      requestPayload,
       (response) => {
 
         if (response?.success === false) {
@@ -227,8 +312,11 @@ const FindStaff = ({ navigation, route }) => {
             experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
             verified: item?.is_verified || false,
             policeVerified: !!(
+              item?.kycInformation?.police_verification_path ||
               item?.kyc_information?.police_verification_path ||
+              item?.kycInformation?.police_clearance_certificate_path ||
               item?.kyc_information?.police_clearance_certificate_path ||
+              item?.kycInformation?.verification_certificate ||
               item?.kyc_information?.verification_certificate ||
               item?.verification_certificate ||
               item?.police_verified === true
@@ -240,6 +328,8 @@ const FindStaff = ({ navigation, route }) => {
             image: getCandidateImage(item),
             stayType: workInfo?.stay_type || item?.stay_type || '',
             isJobSeeking: (item?.is_job_seeking === true || item?.is_job_seeking === 1 || item?.is_available === true || item?.is_available === 1),
+            distanceKm: parseCoordinateValue(item?._distance_km ?? item?.distance_km ?? item?.distanceKm),
+            _similarity: item?._similarity || 0,
             raw: item,
           };
         }).filter(c => c.isJobSeeking);
@@ -270,24 +360,42 @@ const FindStaff = ({ navigation, route }) => {
         finalList = finalList.filter(c => c.role || c.location);
 
         // Location filter on top of role filter
-        if (locationKeywords.length > 0 || descLower.includes('near me') || descLower.includes('nearby') || description === '') {
+        // Only apply location filter when user explicitly said "near me" or gave a real city name
+        if (descLower.includes('near me') || descLower.includes('nearby')) {
+          // Explicit "near me" → filter by user's current city/state
+          if (searchCoordinates) {
+            const distanceFiltered = finalList.filter(c => c.distanceKm !== null && c.distanceKm !== undefined);
+            if (distanceFiltered.length > 0) {
+              finalList = distanceFiltered;
+            }
+          } else {
+            // Explicit "near me" fallback to user's current city/state
+            const locFiltered = finalList.filter(c => {
+              const loc = (c.location || '').toLowerCase();
+              const prefLoc = (c.preferredLocation || '').toLowerCase();
+              const staffState = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
+              const cityMatch = userCity && (loc.includes(userCity.toLowerCase()) || prefLoc.includes(userCity.toLowerCase()));
+              const stateMatch = userState && (staffState.includes(userState.toLowerCase()) || loc.includes(userState.toLowerCase()));
+              return cityMatch || stateMatch;
+            });
+            finalList = locFiltered;
+          }
+        } else if (locationKeywords.length > 0) {
+          // Only filter if remaining keywords look like real city names (not skill/cuisine words)
+          // Check if any keyword actually matches a staff location — if none do, skip filter
           const locFiltered = finalList.filter(c => {
             const loc = (c.location || '').toLowerCase();
             const prefLoc = (c.preferredLocation || '').toLowerCase();
             const staffState = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
-            
-            // If explicit keywords found, match them
-            if (locationKeywords.length > 0) {
-              return locationKeywords.some(kw => loc.includes(kw) || prefLoc.includes(kw) || staffState.includes(kw));
-            }
-            
-            // Otherwise if "near me" was used or empty search, match user's city/state
-            const cityMatch = userCity && (loc.includes(userCity.toLowerCase()) || prefLoc.includes(userCity.toLowerCase()));
-            const stateMatch = userState && (staffState.includes(userState.toLowerCase()) || loc.includes(userState.toLowerCase()));
-            return cityMatch || stateMatch;
+            return locationKeywords.some(kw => loc.includes(kw) || prefLoc.includes(kw) || staffState.includes(kw));
           });
-          finalList = locFiltered;
+          // If location filter killed ALL results, show role-matched results without location filter
+          // This handles cases where keywords were not real cities
+          if (locFiltered.length > 0) {
+            finalList = locFiltered;
+          }
         }
+        // If no location keywords and no "near me" → skip location filter, show all role-matched results
 
         setAllCandidates(finalList);
         setCandidates(finalList);
@@ -320,7 +428,43 @@ const FindStaff = ({ navigation, route }) => {
     query = normalizeStaffSearchQuery(query);
     const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female', 'show', 'dikhao', 'chahiye', 'near me', 'nearby'];
     const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'housekeeping', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher', 'driving', 'plumber', 'electrician', 'carpenter', 'painter', 'sweeper', 'laundry', 'walker', 'attendant', 'dog', 'pet'];
-    const words = query.replace('near me', '').replace('nearby', '').split(/\s+/).filter(w => w.length > 2 && !stopWords.includes(w) && !roleWords.includes(w));
+    const skillWords = [
+      'central',
+      'indian', 'chinese', 'continental', 'mughlai', 'bengali', 'punjabi', 'gujarati', 'rajasthani', 'kerala', 'tamil', 'telugu', 'kannada', 'malayalam', 'marathi', 'goan', 'hyderabadi', 'awadhi', 'kashmiri', 'odia', 'assamese', 'sindhi',
+      'veg', 'non-veg', 'vegetarian', 'non-vegetarian', 'vegan',
+      'thai', 'italian', 'mexican', 'japanese', 'korean', 'french', 'american', 'mediterranean',
+      'cuisine', 'food', 'biryani', 'tandoori', 'curry', 'dal', 'roti',
+      'senior', 'junior', 'professional', 'certified', 'experienced',
+      'cleaning', 'deep', 'washing', 'ironing', 'pressing',
+      'newborn', 'infant', 'toddler', 'pet',
+      'license', 'licensed', 'first', 'aid', 'cpr',
+      'hindi', 'english', 'telugu', 'tamil', 'kannada', 'malayalam', 'marathi', 'bengali', 'gujarati', 'urdu', 'spanish',
+      'polite', 'reliable', 'trusted', 'verified', 'urgent',
+    ];
+    // Common Indian multi-word city names — preserve as single tokens
+    const multiWordCities = [
+      'new delhi', 'old delhi', 'south delhi', 'north delhi', 'east delhi', 'west delhi',
+      'south mumbai', 'north mumbai', 'east mumbai', 'west mumbai',
+      'mount abu', 'raipur city', 'new rajendra nagar',
+      'greater noida', 'central delhi', 'south west delhi', 'north east delhi',
+      'hong kong', 'new york',
+    ];
+    // Replace multi-word cities with single token before splitting
+    let processedQuery = query;
+    const cityPlaceholders = {};
+    multiWordCities.forEach((city, i) => {
+      if (processedQuery.includes(city)) {
+        const placeholder = `__CITY_${i}__`;
+        cityPlaceholders[placeholder] = city;
+        processedQuery = processedQuery.replace(city, placeholder);
+      }
+    });
+    const words = processedQuery.replace('near me', '').replace('nearby', '').split(/\s+/).filter(w => {
+      if (w.length <= 2) return false;
+      // Restore multi-word city tokens
+      if (cityPlaceholders[w]) return true;
+      return !stopWords.includes(w) && !roleWords.includes(w) && !skillWords.includes(w);
+    }).map(w => cityPlaceholders[w] || w);
     return words;
   };
 

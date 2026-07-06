@@ -15,8 +15,9 @@ import { Font } from '../../Constants/Font';
 import Button from '../../Component/Button';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import LocalizedStrings from '../../Constants/localization';
-import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../Backend/Backend';
-import { ListJob, Apply_Job, SUBSCRIPTION_USER_CURRENT } from '../../Backend/api_routes';
+import { GET_WITH_TOKEN, POST_FORM_DATA, POST_WITH_TOKEN } from '../../Backend/Backend';
+import { ListJob, Apply_Job, SUBSCRIPTION_USER_CURRENT, JOB_LIMIT_STATUS, JOB_LIMIT_CREATE_ORDER, JOB_LIMIT_VERIFY_PAYMENT } from '../../Backend/api_routes';
+import { initiatePayment } from '../../Services/RazorpayService';
 import { useIsFocused } from '@react-navigation/native';
 import Input from '../../Component/Input';
 import Date_Picker from '../../Component/Date_Picker';
@@ -40,6 +41,13 @@ const JobDetails = ({ navigation, route }) => {
     expectedSalary: '',
     availableFrom: '',
   });
+
+  // Credit System States
+  const [limitExceededModalVisible, setLimitExceededModalVisible] = useState(false);
+  const [limitInfo, setLimitInfo] = useState(null);
+  const [payingLimit, setPayingLimit] = useState(false);
+  const [checkingLimit, setCheckingLimit] = useState(false);
+  const [creditsToBuy, setCreditsToBuy] = useState(10);
 
   const fetchJobDetails = useCallback(() => {
     setLoading(true);
@@ -132,8 +140,7 @@ const JobDetails = ({ navigation, route }) => {
     ];
   };
 
-  // Handle Apply Job — requires an active membership. If free plan is exhausted
-  // (no active subscription), route staff to the membership plan screen.
+  // Handle Apply Job with credit balance check
   const handleApplyJob = () => {
     if (Number(jobStatus) === 1) {
       SimpleToast.show('You have already applied for this job.',
@@ -141,33 +148,106 @@ const JobDetails = ({ navigation, route }) => {
       );
       return;
     }
+
+    setCheckingLimit(true);
     GET_WITH_TOKEN(
-      SUBSCRIPTION_USER_CURRENT,
+      JOB_LIMIT_STATUS,
       success => {
-        const subscription = success?.data || success?.subscription;
-        const hasActiveSubscription = success?.is_active &&
-          subscription &&
-          (Array.isArray(subscription) ? subscription.length > 0 : true);
-        if (hasActiveSubscription) {
-          setShowApplyModal(true);
+        setCheckingLimit(false);
+        if (success?.status === 'success') {
+          const limitData = success?.data;
+          setLimitInfo(limitData);
+          if (!limitData?.can_apply) {
+            setLimitExceededModalVisible(true);
+          } else {
+            setShowApplyModal(true);
+          }
         } else {
-          SimpleToast.show(
-            'Your free plan is over. Please purchase a membership to apply for jobs.',
-            SimpleToast.LONG,
-          );
-          navigation.navigate('ChoosePlan', { userType: 2 });
+          SimpleToast.show(success?.message || 'Failed to check credit balance.', SimpleToast.SHORT);
         }
       },
-      () => {
-        SimpleToast.show(
-          'Please purchase a membership to apply for jobs.',
-          SimpleToast.LONG,
-        );
-        navigation.navigate('ChoosePlan', { userType: 2 });
+      error => {
+        setCheckingLimit(false);
+        SimpleToast.show('Error checking credit balance. Please try again.', SimpleToast.SHORT);
       },
-      () => {
-        navigation.navigate('ChoosePlan', { userType: 2 });
+      fail => {
+        setCheckingLimit(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      }
+    );
+  };
+
+  const handlePurchaseLimit = () => {
+    if (payingLimit) return;
+    if (!creditsToBuy || parseInt(creditsToBuy, 10) < 1) {
+      SimpleToast.show('Please enter valid credits to purchase', SimpleToast.SHORT);
+      return;
+    }
+    setPayingLimit(true);
+
+    POST_WITH_TOKEN(
+      JOB_LIMIT_CREATE_ORDER,
+      { credits_to_purchase: parseInt(creditsToBuy, 10) },
+      async success => {
+        if (success?.status === 'success') {
+          const order = success?.data;
+          const options = {
+            amount: order.amount,
+            currency: order.currency,
+            name: 'Sahayya',
+            description: order.description || `${creditsToBuy} Job Application Credits`,
+            orderId: order.order_id,
+            prefill: {
+              name: order.prefill_name || '',
+              email: order.prefill_email || '',
+              contact: order.prefill_contact || '',
+            },
+            theme: { color: '#0d6efd' }
+          };
+
+          try {
+            const paymentResult = await initiatePayment(options);
+            if (paymentResult.success) {
+              POST_WITH_TOKEN(
+                JOB_LIMIT_VERIFY_PAYMENT,
+                {
+                  razorpay_order_id: paymentResult.orderId,
+                  razorpay_payment_id: paymentResult.paymentId,
+                  razorpay_signature: paymentResult.signature,
+                  credits_to_purchase: parseInt(creditsToBuy, 10),
+                },
+                verifySuccess => {
+                  setPayingLimit(false);
+                  if (verifySuccess?.status === 'success') {
+                    SimpleToast.show(`${creditsToBuy} credits purchased successfully!`, SimpleToast.LONG);
+                    setLimitExceededModalVisible(false);
+                    setShowApplyModal(true);
+                  } else {
+                    SimpleToast.show(verifySuccess?.message || 'Payment verification failed.', SimpleToast.LONG);
+                  }
+                },
+                verifyError => {
+                  setPayingLimit(false);
+                  SimpleToast.show('Verification failed. Please contact support.', SimpleToast.LONG);
+                }
+              );
+            } else {
+              setPayingLimit(false);
+              SimpleToast.show(paymentResult.description || 'Payment cancelled.', SimpleToast.SHORT);
+            }
+          } catch (paymentErr) {
+            setPayingLimit(false);
+            SimpleToast.show('Payment execution error.', SimpleToast.SHORT);
+          }
+        } else {
+          setPayingLimit(false);
+          SimpleToast.show(success?.message || 'Failed to initialize payment.', SimpleToast.SHORT);
+        }
       },
+      error => {
+        setPayingLimit(false);
+        SimpleToast.show('Failed to create order on server.', SimpleToast.SHORT);
+      }
     );
   };
 
@@ -243,6 +323,13 @@ const JobDetails = ({ navigation, route }) => {
       },
       error => {
         console.log('Apply job error:', JSON.stringify(error));
+        // Handle insufficient credits — show purchase modal
+        if (error?.status === 'insufficient_credits' || error?.message?.includes('insufficient')) {
+          setLimitInfo(error?.data || error);
+          setLimitExceededModalVisible(true);
+          setApplyLoading(false);
+          return;
+        }
         // Show specific validation errors
         const validationErrors = error?.errors || error?.data?.errors;
         if (validationErrors && typeof validationErrors === 'object') {
@@ -474,11 +561,13 @@ const JobDetails = ({ navigation, route }) => {
 
           <Button
             title={
-              LocalizedStrings.staffSection?.JobDetails?.apply_now ||
-              'Apply Now'
+              checkingLimit
+                ? 'Checking...'
+                : (LocalizedStrings.staffSection?.JobDetails?.apply_now || 'Apply Now')
             }
             style={styles.applyBtn}
             textStyle={styles.applyText}
+            disabled={checkingLimit}
             onPress={handleApplyJob}
           />
         </ScrollView>
@@ -554,6 +643,75 @@ const JobDetails = ({ navigation, route }) => {
                 disabled={applyLoading}
               />
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Insufficient Credits Modal */}
+      <Modal
+        transparent={true}
+        visible={limitExceededModalVisible}
+        animationType="fade"
+        onRequestClose={() => setLimitExceededModalVisible(false)}
+      >
+        <View style={styles.limitModalOverlay}>
+          <View style={styles.limitModalContent}>
+            <View style={styles.limitModalHeader}>
+              <Typography type={Font.Poppins_Bold} style={styles.limitTitle}>
+                Insufficient Credits
+              </Typography>
+            </View>
+
+            <View style={styles.limitModalBody}>
+              <Typography type={Font.Poppins_Regular} style={styles.limitDescription}>
+                You need {limitInfo?.credits_per_job_application || 5} credits to apply for a job.
+              </Typography>
+              <Typography type={Font.Poppins_Medium} style={styles.limitSubText}>
+                Your balance: {limitInfo?.wallet_balance || 0} credits
+              </Typography>
+
+              <View style={styles.creditInputRow}>
+                <Typography type={Font.Poppins_Regular} style={styles.creditLabel}>
+                  Credits to purchase:
+                </Typography>
+                <Input
+                  value={String(creditsToBuy)}
+                  onChange={setCreditsToBuy}
+                  keyboardType="numeric"
+                  style={styles.creditInput}
+                />
+              </View>
+
+              <Typography type={Font.Poppins_Regular} style={styles.creditTotal}>
+                Total: ₹{parseInt(creditsToBuy, 10) * (limitInfo?.credit_purchase_price || 10)}
+              </Typography>
+            </View>
+
+            <View style={styles.limitBtnContainer}>
+              <TouchableOpacity
+                style={[styles.limitPayBtn, payingLimit && styles.disabledBtn]}
+                disabled={payingLimit}
+                onPress={handlePurchaseLimit}
+              >
+                {payingLimit ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Typography type={Font.Poppins_SemiBold} style={styles.limitPayText}>
+                    Purchase {creditsToBuy} Credits
+                  </Typography>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.limitCancelBtn}
+                disabled={payingLimit}
+                onPress={() => setLimitExceededModalVisible(false)}
+              >
+                <Typography type={Font.Poppins_Regular} style={styles.limitCancelText}>
+                  Cancel
+                </Typography>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -766,6 +924,107 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontSize: 16,
     color: '#fff',
+    fontWeight: '600',
+  },
+  limitModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  limitModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    width: '100%',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  limitModalHeader: {
+    marginBottom: 16,
+  },
+  limitTitle: {
+    fontSize: 22,
+    color: '#D9534F',
+    textAlign: 'center',
+  },
+  limitModalBody: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  limitDescription: {
+    fontSize: 15,
+    color: '#333',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  limitSubText: {
+    fontSize: 15,
+    color: '#E87C6F',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  limitBtnContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  limitPayBtn: {
+    backgroundColor: '#E87C6F',
+    borderRadius: 12,
+    paddingVertical: 14,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  limitPayText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  limitCancelBtn: {
+    paddingVertical: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  limitCancelText: {
+    fontSize: 15,
+    color: '#888',
+  },
+  disabledBtn: {
+    opacity: 0.7,
+  },
+  creditInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 8,
+  },
+  creditLabel: {
+    fontSize: 14,
+    color: '#555',
+  },
+  creditInput: {
+    width: 60,
+    height: 36,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    textAlign: 'center',
+    fontSize: 15,
+    color: '#333',
+    paddingHorizontal: 4,
+  },
+  creditTotal: {
+    fontSize: 15,
+    color: '#333',
+    textAlign: 'center',
+    marginTop: 12,
     fontWeight: '600',
   },
 });

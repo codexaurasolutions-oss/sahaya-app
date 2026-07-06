@@ -11,6 +11,7 @@ import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
 import { DELETE_ACCOUNT, LOGOUT, StaffAvailabilityUpdate, StaffAvailabilityStatus } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
+import { clearFcmToken } from '../../Constants/AsyncStorage';
 
 const StaffMore = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -137,17 +138,20 @@ const StaffMore = ({ navigation }) => {
       success => {
         setLoading(false);
         SimpleToast.show(LocalizedStrings.Settings?.logoutSuccess || 'Logged out successfully', SimpleToast.SHORT);
+        clearFcmToken();
         dispatch(isAuth(false));
         dispatch(userDetails({}));
       },
       error => {
         setLoading(false);
+        clearFcmToken();
         dispatch(isAuth(false));
         dispatch(userDetails({}));
         SimpleToast.show(LocalizedStrings.Settings?.loggedOut || 'Logged out', SimpleToast.SHORT);
       },
       fail => {
         setLoading(false);
+        clearFcmToken();
         dispatch(isAuth(false));
         dispatch(userDetails({}));
         SimpleToast.show(LocalizedStrings.Settings?.loggedOut || 'Logged out', SimpleToast.SHORT);
@@ -237,13 +241,6 @@ const StaffMore = ({ navigation }) => {
 
         <Option
           Images={ImageConstant?.Salary}
-          title={LocalizedStrings.MoreOptions?.membership || "Membership"}
-          imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
-          subtitle={LocalizedStrings.MoreOptions?.membership_desc || "View and manage your membership plans"}
-          onPress={() => navigation.navigate('MemberShip')}
-        />
-        <Option
-          Images={ImageConstant?.Salary}
           title="My Advances"
           imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
           subtitle="View advances received and deduction history"
@@ -255,6 +252,28 @@ const StaffMore = ({ navigation }) => {
           imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
           subtitle="View all salary payments and dates"
           onPress={() => navigation.navigate('StaffPaymentHistory')}
+        />
+        <Option
+          Images={ImageConstant?.bankTransfer}
+          title="My Bank Accounts"
+          imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
+          subtitle="Add or manage your bank details for salary"
+          onPress={() => navigation.navigate('BankAccounts')}
+        />
+        <Option
+          Images={ImageConstant?.ic_help}
+          title="Refer & Earn"
+          imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
+          subtitle="Share your referral code and earn credits"
+          onPress={handleRefer}
+        />
+        <Option
+          Images={ImageConstant?.Dollar}
+          title="My Wallet"
+          isBorder={false}
+          imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
+          subtitle="View balance and purchase credits"
+          onPress={() => navigation.navigate('StaffWallet')}
         />
       </View>
 

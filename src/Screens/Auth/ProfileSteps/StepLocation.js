@@ -1,5 +1,7 @@
 import { Image, StyleSheet, TouchableOpacity, View, Alert, Platform, Linking } from 'react-native';
 import React, { useState, useCallback, useEffect } from 'react';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import GooglePlacesInput from '../../../Component/GooglePlacesInput';
 import Geolocation from '@react-native-community/geolocation';
 
 import { Font } from '../../../Constants/Font';
@@ -24,6 +26,10 @@ const StepLocation = React.forwardRef((props, ref) => {
   const [state, setState] = useState('');
   const [street, setStreet] = useState('');
   const [pinCode, setPinCode] = useState('');
+  const [areaLocality, setAreaLocality] = useState('');
+  const [googleLocation, setGoogleLocation] = useState('');
+  const [lat, setLat] = useState('');
+  const [long, setLong] = useState('');
   
   // Secondary address states
   const [name2, setName2] = useState('');
@@ -31,6 +37,10 @@ const StepLocation = React.forwardRef((props, ref) => {
   const [state2, setState2] = useState('');
   const [street2, setStreet2] = useState('');
   const [pinCode2, setPinCode2] = useState('');
+  const [areaLocality2, setAreaLocality2] = useState('');
+  const [googleLocation2, setGoogleLocation2] = useState('');
+  const [lat2, setLat2] = useState('');
+  const [long2, setLong2] = useState('');
 
   // Function to get location from coordinates using reverse geocoding
   const getLocationFromCoordinates = async (latitude, longitude) => {
@@ -195,9 +205,11 @@ const StepLocation = React.forwardRef((props, ref) => {
     let errors = {
       name: validators.checkRequire('Address Name', name),
       street: validators.checkRequire('Street', street),
+      areaLocality: validators.checkRequire('Area / Locality', areaLocality),
       city: validators.checkAlphabet('City', 2, 50, city),
       state: validators.checkAlphabet('State', 2, 50, state),
       pinCode: validators.checkPhoneNumberWithFixLength('Pincode', 6, pinCode),
+      googleLocation: validators.checkRequire('Google Location', googleLocation),
     };
 
     // If secondary address is shown, validate it too
@@ -206,9 +218,11 @@ const StepLocation = React.forwardRef((props, ref) => {
         ...errors,
         name2: validators.checkRequire('Address Name', name2),
         street2: validators.checkRequire('Street', street2),
+        areaLocality2: validators.checkRequire('Area / Locality', areaLocality2),
         city2: validators.checkAlphabet('City', 2, 50, city2),
         state2: validators.checkAlphabet('State', 2, 50, state2),
         pinCode2: validators.checkPhoneNumberWithFixLength('Pincode', 6, pinCode2),
+        googleLocation2: validators.checkRequire('Google Location', googleLocation2),
       };
     }
 
@@ -224,6 +238,10 @@ const StepLocation = React.forwardRef((props, ref) => {
       city,
       state,
       pinCode,
+      area_locality: areaLocality,
+      google_location: googleLocation,
+      lat,
+      long,
     }];
 
     // Add secondary address if exists
@@ -234,6 +252,10 @@ const StepLocation = React.forwardRef((props, ref) => {
         city: city2,
         state: state2,
         pinCode: pinCode2,
+        area_locality: areaLocality2,
+        google_location: googleLocation2,
+        lat: lat2,
+        long: long2,
       });
     }
 
@@ -280,6 +302,49 @@ const StepLocation = React.forwardRef((props, ref) => {
           }}
           error={error?.name}
         />
+
+        {/* Area / Locality */}
+        <Input
+          title="Area / Locality"
+          placeholder="e.g. Phase 1, Model Town, near Central Park"
+          value={areaLocality}
+          onChange={(text) => {
+            setAreaLocality(text);
+            if (error?.areaLocality) setError({...error, areaLocality: null});
+          }}
+          error={error?.areaLocality}
+        />
+
+        {/* Google Location */}
+        <View style={{ zIndex: 100 }}>
+          <GooglePlacesInput
+            title="Search Google Location (Mandatory)"
+            placeholder="Search for your location on Google Maps..."
+            onPlaceSelected={(location) => {
+              setGoogleLocation(location?.google_location || "");
+              setLat(location?.lat || "");
+              setLong(location?.long || "");
+              if (error?.googleLocation) setError({...error, googleLocation: null});
+              
+              // Optional: auto-fill other fields if they are empty
+              if (location?.hasExtractedData) {
+                if (!street && location.street) setStreet(location.street);
+                if (!city && location.city) setCity(location.city);
+                if (!state && location.state) setState(location.state);
+                if (!pinCode && location.pincode) setPinCode(location.pincode);
+              }
+            }}
+            error={error?.googleLocation}
+          />
+        </View>
+
+        {/* Read-only parsed Google Location URL display */}
+        {googleLocation ? (
+          <View style={{ marginBottom: 15 }}>
+            <Typography size={12} color="green">Location Selected âœ“</Typography>
+            <Typography size={11} color="gray">{googleLocation}</Typography>
+          </View>
+        ) : null}
 
         {/* Street - FIRST */}
         <Input
@@ -364,6 +429,48 @@ const StepLocation = React.forwardRef((props, ref) => {
             }}
             error={error?.name2}
           />
+
+          {/* Area / Locality */}
+          <Input
+            title="Area / Locality"
+          placeholder="e.g. Phase 1, Model Town, near Central Park"
+          value={areaLocality2}
+          onChange={(text) => {
+            setAreaLocality2(text);
+            if (error?.areaLocality2) setError({...error, areaLocality2: null});
+          }}
+          error={error?.areaLocality2}
+        />
+
+          {/* Google Location */}
+          <View style={{ zIndex: 90 }}>
+            <GooglePlacesInput
+              title="Search Google Location (Mandatory)"
+              placeholder="Search for your location on Google Maps..."
+              onPlaceSelected={(location) => {
+                setGoogleLocation2(location?.google_location || "");
+                setLat2(location?.lat || "");
+                setLong2(location?.long || "");
+                if (error?.googleLocation2) setError({...error, googleLocation2: null});
+                
+                if (location?.hasExtractedData) {
+                  if (!street2 && location.street) setStreet2(location.street);
+                  if (!city2 && location.city) setCity2(location.city);
+                  if (!state2 && location.state) setState2(location.state);
+                  if (!pinCode2 && location.pincode) setPinCode2(location.pincode);
+                }
+              }}
+              error={error?.googleLocation2}
+            />
+          </View>
+
+          {/* Read-only parsed Google Location URL display */}
+          {googleLocation2 ? (
+            <View style={{ marginBottom: 15 }}>
+              <Typography size={12} color="green">Location Selected âœ“</Typography>
+              <Typography size={11} color="gray">{googleLocation2}</Typography>
+            </View>
+          ) : null}
 
           {/* Street - FIRST */}
           <Input

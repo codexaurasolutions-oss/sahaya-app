@@ -71,7 +71,10 @@ const ReferAndEarn = ({ navigation }) => {
 
   const handleShare = async () => {
     const code = referralData?.referral_code || '';
-    const message = `Hey! I'm using Sahayya to manage household staff. It's super easy to find staff, manage payments, and more.\n\nDownload the Sahayya app and use my referral code: *${code}* to get started!`;
+    const isStaff = referralData?.is_staff;
+    const message = isStaff
+      ? `Hey! I'm using Sahayya to find household jobs. Use my referral code: *${code}* and earn credits for job applications!`
+      : `Hey! I'm using Sahayya to manage household staff. It's super easy to find staff, manage payments, and more.\n\nDownload the Sahayya app and use my referral code: *${code}* to get started!`;
     try {
       await Share.share({ message, title: 'Refer Sahayya' });
     } catch (error) {
@@ -178,10 +181,10 @@ const ReferAndEarn = ({ navigation }) => {
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Typography type={Font?.Poppins_SemiBold} size={20}>
-              {'\u20B9'}{referralData?.total_earnings || '0.00'}
+              {referralData?.is_staff ? '' : '\u20B9'}{referralData?.is_staff ? (referralData?.wallet_balance || 0) : (referralData?.total_earnings || '0.00')}
             </Typography>
             <Typography type={Font?.Poppins_Regular} size={12} color="#8C8D8B">
-              Earnings
+              {referralData?.is_staff ? 'Credits' : 'Earnings'}
             </Typography>
           </View>
         </View>
@@ -192,37 +195,49 @@ const ReferAndEarn = ({ navigation }) => {
         />
       </View>
 
-      {/* Earnings Card */}
+      {/* Earnings / Credit Card */}
       <View style={styles.earningsCard}>
         <Typography type={Font?.Poppins_Medium} size={16}>
-          Your Earnings
+          {referralData?.is_staff ? 'Your Credits' : 'Your Earnings'}
         </Typography>
         <View style={styles.earningsRow}>
           <View style={{ flex: 1 }}>
             <Typography type={Font?.Poppins_Regular} size={12} color="#8C8D8B">
-              Available Credit
+              {referralData?.is_staff ? 'Available Credits' : 'Available Credit'}
             </Typography>
             <Typography type={Font?.Poppins_SemiBold} size={24} color="#16A34A">
-              {'\u20B9'}{referralData?.total_earnings || '0.00'}
+              {referralData?.is_staff ? '' : '\u20B9'}{referralData?.is_staff ? (referralData?.wallet_balance || 0) : (referralData?.total_earnings || '0.00')}
             </Typography>
           </View>
-          <Button
-            title={creditLoading ? 'Applying...' : 'Redeem Credit'}
-            onPress={handleCreditApply}
-            linerColor={['#379AE6', '#3737E6']}
-            main_style={{ width: 150 }}
-            disabled={creditLoading || parseFloat(referralData?.total_earnings || '0') <= 0}
-            loader={creditLoading}
-          />
+          {!referralData?.is_staff && (
+            <Button
+              title={creditLoading ? 'Applying...' : 'Redeem Credit'}
+              onPress={handleCreditApply}
+              linerColor={['#379AE6', '#3737E6']}
+              main_style={{ width: 150 }}
+              disabled={creditLoading || parseFloat(referralData?.total_earnings || '0') <= 0}
+              loader={creditLoading}
+            />
+          )}
         </View>
-        {parseFloat(referralData?.total_earnings || '0') <= 0 && (
+        {referralData?.is_staff ? (
           <Typography
             type={Font?.Poppins_Regular}
             size={12}
             color="#8C8D8B"
             style={{ marginTop: 8 }}>
-            Refer friends to start earning credits!
+            Credits are used for job applications. Refer friends to earn more!
           </Typography>
+        ) : (
+          parseFloat(referralData?.total_earnings || '0') <= 0 && (
+            <Typography
+              type={Font?.Poppins_Regular}
+              size={12}
+              color="#8C8D8B"
+              style={{ marginTop: 8 }}>
+              Refer friends to start earning credits!
+            </Typography>
+          )
         )}
       </View>
 

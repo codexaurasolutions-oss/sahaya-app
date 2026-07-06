@@ -21,9 +21,10 @@ import { useIsFocused } from '@react-navigation/native';
 import { GET_WITH_TOKEN, POST_FORM_DATA, API } from '../../../Backend/Backend';
 import {
   ActiveTodayUser, HousersoldAttendance, LeaveList, ListStaff,
-  ReferralCode, NotificationUnreadCount,
+  ReferralCode,
 } from '../../../Backend/api_routes';
 import EmptyView from '../../../Component/UI/EmptyView';
+import NotificationBell from '../../../Component/NotificationBell';
 
 const getProfileImage = img => {
   if (!img || img.includes('noimage')) return null;
@@ -38,7 +39,6 @@ const Dashboard = ({ navigation }) => {
   const userDetails = useSelector(state => state?.userDetails);
   const [leaveList, setLeaveList] = useState([]);
   const [walletBalance, setWalletBalance] = useState('0.00');
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [leaveModal, setLeaveModal] = useState({ visible: false, type: null, staff: null, remarks: '', leaveType: null, lateDuration: null });
   const [modalErrors, setModalErrors] = useState({});
   const [activeStaff, setActiveStaff] = useState([]);
@@ -47,15 +47,12 @@ const Dashboard = ({ navigation }) => {
   // Manage Staff state
   const [allStaffList, setAllStaffList] = useState([]);
   const [staffDropdownList, setStaffDropdownList] = useState([]);
-  const [activeTab, setActiveTab] = useState(LocalizedStrings.MyStaff?.All || 'All');
+  const [activeTab, setActiveTab] = useState(LocalizedStrings.MyStaff?.Active || 'Active');
   const [searchText, setSearchText] = useState('');
 
   const tabs = [
-    LocalizedStrings.MyStaff?.All || 'All',
     LocalizedStrings.MyStaff?.Active || 'Active',
-    LocalizedStrings.MyStaff?.On_Leave || 'On Leave',
     LocalizedStrings.MyStaff?.Inactive || 'Inactive',
-    'Terminated',
   ];
 
   useEffect(() => {
@@ -63,12 +60,7 @@ const Dashboard = ({ navigation }) => {
     fetchLeaveTypes();
     fetchStaffList();
     fetchWalletBalance();
-    fetchUnreadNotificationCount();
   }, [isFocused]);
-
-  const fetchUnreadNotificationCount = () => {
-    GET_WITH_TOKEN(NotificationUnreadCount, s => setUnreadNotificationCount(s?.unread_count || 0), () => {}, () => {});
-  };
 
   const fetchWalletBalance = () => {
     GET_WITH_TOKEN(ReferralCode, s => setWalletBalance(s?.data?.total_earnings || '0.00'), () => {}, () => {});
@@ -98,7 +90,6 @@ const Dashboard = ({ navigation }) => {
     }, () => {}, () => {});
   };
 
-  // Active staff filter (combines allStaffList with attendance info from activeStaff)
   const getFilteredActive = () => {
     // Merge attendance info into allStaffList
     let mergedList = allStaffList.map(staff => {
@@ -111,37 +102,21 @@ const Dashboard = ({ navigation }) => {
       return staff;
     });
 
-    let list = mergedList;
-    
-    if (activeTab === (LocalizedStrings.MyStaff?.All || 'All')) {
-      // For 'All', exclude inactive and terminated staff
-      list = list.filter(item => {
-        const itemStatus = item.status?.toLowerCase() || item.application_status?.toLowerCase();
-        return itemStatus !== 'inactive' && itemStatus !== 'terminated';
-      });
-    } else {
-      list = list.filter(item => {
-        const itemStatus = item.status?.toLowerCase() || item.application_status?.toLowerCase();
-        const attendanceStatus = item.attendance_details?.status?.toLowerCase();
-        
-        if (activeTab === (LocalizedStrings.MyStaff?.Active || 'Active')) {
-          if (itemStatus === 'inactive' || itemStatus === 'terminated') return false;
-          return (itemStatus === 'active' || itemStatus === 'hired' || itemStatus === 'present' || attendanceStatus === 'present') && attendanceStatus !== 'absent' && attendanceStatus !== 'late';
-        }
-        if (activeTab === 'Late') {
-          if (itemStatus === 'inactive' || itemStatus === 'terminated') return false;
-          return attendanceStatus === 'late';
-        }
-        if (activeTab === (LocalizedStrings.MyStaff?.Inactive || 'Inactive')) {
-          if (itemStatus === 'terminated') return false;
-          return itemStatus === 'inactive' || attendanceStatus === 'absent';
-        }
-        if (activeTab === 'Terminated') {
-          return itemStatus === 'terminated';
-        }
-        return true;
-      });
-    }
+    const activeTabValue = LocalizedStrings.MyStaff?.Active || 'Active';
+    const inactiveTabValue = LocalizedStrings.MyStaff?.Inactive || 'Inactive';
+
+    let list = mergedList.filter(item => {
+      const itemStatus = (item.status || item.application_status || '').toLowerCase();
+      if (activeTab === activeTabValue) {
+        // Active tab: show only active/hired/present staff (NOT inactive or terminated)
+        return itemStatus === 'active' || itemStatus === 'hired' || itemStatus === 'present' || itemStatus === 'accepted' || itemStatus === 'approved';
+      }
+      if (activeTab === inactiveTabValue) {
+        // Inactive tab: show inactive AND terminated staff together
+        return itemStatus === 'inactive' || itemStatus === 'terminated' || itemStatus === 'absent';
+      }
+      return true;
+    });
 
     if (searchText.trim()) {
       const q = searchText.trim().toLowerCase();
@@ -150,7 +125,7 @@ const Dashboard = ({ navigation }) => {
         return name.includes(q);
       });
     }
-    
+
     return list;
   };
 
@@ -235,11 +210,6 @@ const Dashboard = ({ navigation }) => {
             <Typography type={Font?.Poppins_Regular} size={14}>
               {item?.user_work_info?.primary_role || item?.staff?.user_work_info?.primary_role}
             </Typography>
-            {!isActive && (
-              <Typography type={Font?.Poppins_Medium} size={12} color={getStatusColor(itemStatus)} style={{ marginTop: 2 }}>
-                {getStatusLabel(itemStatus)}
-              </Typography>
-            )}
           </View>
         </TouchableOpacity>
         <View style={[styles.dot, { backgroundColor: getStatusColor(itemStatus) }]} />
@@ -337,16 +307,7 @@ const Dashboard = ({ navigation }) => {
           <Typography type={Font?.Poppins_Medium} style={{ flex: 1, textAlign: 'center', fontSize: 18, color: '#000' }}>
             {LocalizedStrings.Dashboard?.title}
           </Typography>
-          <TouchableOpacity onPress={() => navigation.navigate('Notification')} style={{ marginRight: 10, position: 'relative' }}>
-            <Image source={ImageConstant?.notification} style={{ height: 30, width: 30, resizeMode: 'center' }} />
-            {unreadNotificationCount > 0 && (
-              <View style={{ position: 'absolute', top: -2, right: -2, backgroundColor: '#DC2626', borderRadius: 8, width: 16, height: 16, justifyContent: 'center', alignItems: 'center' }}>
-                <Typography style={{ color: 'white', fontSize: 10, fontFamily: Font.Poppins_Bold, lineHeight: 14 }}>
-                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                </Typography>
-              </View>
-            )}
-          </TouchableOpacity>
+          <NotificationBell navigateTo="Notification" style={{marginRight: 10}} />
           <TouchableOpacity onPress={() => navigation.navigate('ProfileManagement')}>
             <Image
               source={userDetails?.image && !isPlaceholderImage(userDetails?.image) ? { uri: userDetails?.image } : ImageConstant.user}

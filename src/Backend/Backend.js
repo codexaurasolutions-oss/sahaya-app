@@ -12,7 +12,7 @@ const errorHandling = {
 };
 
 export const API = BASE_URL;
-export const token = store.getState().Token;
+export const getToken = () => store.getState().Token;
 export const statusMessage = {
   400: 'Invalid request format.',
   401: 'Invalid API Key.',
@@ -209,7 +209,7 @@ export const POST_WITH_TOKEN = async (
           onSuccess(res?.data);
         } else {
           if (res?.status == 401) {
-            // updateUnAuthorizedError();
+            SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
           }
           onError(res);
         }
@@ -300,7 +300,7 @@ export const DELETE_WITH_TOKEN = async (
           onSuccess(res?.data);
         } else {
           if (res?.status == 401) {
-            // updateUnAuthorizedError();
+            SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
           }
           onError(res);
         }
@@ -340,7 +340,7 @@ export const PUT_FORM_DATA = async (
           onSuccess(res?.data);
         } else {
           if (res?.status == 401) {
-            // updateUnAuthorizedError();
+            SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
           }
           onError(res);
         }
@@ -381,7 +381,7 @@ export const PUT_WITH_TOKEN = async (
           onSuccess(res?.data);
         } else {
           if (res?.status == 401) {
-            // updateUnAuthorizedError();
+            SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
           }
           onError(res);
         }

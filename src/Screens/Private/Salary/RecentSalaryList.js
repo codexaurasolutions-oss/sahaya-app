@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import CommanView from '../../../Component/CommanView';
@@ -15,8 +16,8 @@ import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
-import { GET_WITH_TOKEN, PUT_WITH_TOKEN } from '../../../Backend/Backend';
-import { SalaryList, SalaryUpdateStatus } from '../../../Backend/api_routes';
+import { GET_WITH_TOKEN, PUT_WITH_TOKEN, POST_WITH_TOKEN } from '../../../Backend/Backend';
+import { SalaryList, SalaryUpdateStatus, SalarySendToBank, SalaryPayoutHistory } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
 import { useSelector } from 'react-redux';
@@ -37,6 +38,8 @@ const RecentSalaryList = ({ navigation }) => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
   const [receiptPayment, setReceiptPayment] = useState(null);
+  const [isSending, setIsSending] = useState(false);
+  const [payoutHistory, setPayoutHistory] = useState(null);
 
   const markAsPaid = useCallback((paymentId) => {
     setIsMarkingPaid(true);
@@ -67,6 +70,52 @@ const RecentSalaryList = ({ navigation }) => {
         setIsMarkingPaid(false);
         SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
+    );
+  }, [fetchSalaryList]);
+
+  const fetchPayoutHistory = useCallback((salaryId) => {
+    GET_WITH_TOKEN(
+      SalaryPayoutHistory(salaryId),
+      success => {
+        setPayoutHistory(success?.data?.payouts || []);
+      },
+      () => {},
+      () => {},
+    );
+  }, []);
+
+  const sendToBank = useCallback((salaryId) => {
+    Alert.alert(
+      'Send to Bank',
+      'This will transfer the salary to staff\'s bank account via RazorpayX. Proceed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: () => {
+            setIsSending(true);
+            POST_WITH_TOKEN(
+              SalarySendToBank(salaryId),
+              {},
+              success => {
+                setIsSending(false);
+                SimpleToast.show(success?.message || 'Payout initiated successfully', SimpleToast.SHORT);
+                setSelectedPayment(null);
+                setPayoutHistory(null);
+                fetchSalaryList();
+              },
+              error => {
+                setIsSending(false);
+                SimpleToast.show(error?.data?.message || 'Failed to initiate payout', SimpleToast.SHORT);
+              },
+              () => {
+                setIsSending(false);
+                SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+              },
+            );
+          },
+        },
+      ],
     );
   }, [fetchSalaryList]);
 
@@ -269,7 +318,14 @@ const RecentSalaryList = ({ navigation }) => {
     <TouchableOpacity
       style={styles.paymentRow}
       activeOpacity={0.7}
-      onPress={() => setSelectedPayment(item)}
+      onPress={() => {
+        setSelectedPayment(item);
+        const salaryId = item?.id || item?.salary_id;
+        const status = (item?.status || '').toLowerCase();
+        if (salaryId && status === 'paid') {
+          fetchPayoutHistory(salaryId);
+        }
+      }}
     >
       <View style={styles.paymentLeft}>
         <Image
@@ -357,7 +413,7 @@ const RecentSalaryList = ({ navigation }) => {
           visible={!!selectedPayment}
           transparent
           animationType="fade"
-          onRequestClose={() => setSelectedPayment(null)}
+          onRequestClose={() => { setSelectedPayment(null); setPayoutHistory(null); }}
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
@@ -427,6 +483,7 @@ const RecentSalaryList = ({ navigation }) => {
                 style={styles.receiptButton}
                 onPress={() => {
                   setSelectedPayment(null);
+                  setPayoutHistory(null);
                   setTimeout(() => setReceiptPayment(selectedPayment), 300);
                 }}
                 activeOpacity={0.8}
@@ -441,7 +498,7 @@ const RecentSalaryList = ({ navigation }) => {
 
               <TouchableOpacity
                 style={styles.modalButton}
-                onPress={() => setSelectedPayment(null)}
+                onPress={() => { setSelectedPayment(null); setPayoutHistory(null); }}
                 activeOpacity={0.8}
               >
                 <Typography
@@ -466,6 +523,55 @@ const RecentSalaryList = ({ navigation }) => {
                     {isMarkingPaid ? 'Updating...' : 'Mark as Paid'}
                   </Typography>
                 </TouchableOpacity>
+              )}
+
+              {selectedPayment?.status?.toLowerCase() === 'paid' && (
+                <TouchableOpacity
+                  style={[styles.markPaidButton, { backgroundColor: '#2196F3' }]}
+                  onPress={() => {
+                    const salaryId = selectedPayment?.id || selectedPayment?.salary_id;
+                    if (salaryId) {
+                      sendToBank(salaryId);
+                    } else {
+                      SimpleToast.show('Salary ID not found', SimpleToast.SHORT);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                  disabled={isSending}
+                >
+                  <Typography
+                    type={Font.Poppins_SemiBold}
+                    style={styles.markPaidButtonText}
+                  >
+                    {isSending ? 'Sending...' : 'Send to Bank (RazorpayX)'}
+                  </Typography>
+                </TouchableOpacity>
+              )}
+
+              {payoutHistory && payoutHistory.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Typography type={Font.Poppins_SemiBold} style={{ fontSize: 13, marginBottom: 6 }}>
+                    Payout History
+                  </Typography>
+                  {payoutHistory.map((p, idx) => (
+                    <View key={p.id || idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderTopWidth: 1, borderTopColor: '#f0f0f0' }}>
+                      <Typography type={Font.Poppins_Regular} size={11} color="#666">
+                        ₹{Number(p.amount || 0).toFixed(2)} — {p.mode || 'bank_transfer'}
+                      </Typography>
+                      <Typography
+                        type={Font.Poppins_Medium}
+                        size={11}
+                        color={
+                          ['processed', 'completed'].includes(p.status) ? '#4CAF50'
+                            : ['failed'].includes(p.status) ? '#F44336'
+                            : '#FF9800'
+                        }
+                      >
+                        {p.status || 'initiated'}
+                      </Typography>
+                    </View>
+                  ))}
+                </View>
               )}
             </View>
           </View>

@@ -326,7 +326,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const maskAadhar = num => num ? String(num).replace(/\d(?=\d{4})/g, 'x') : '';
 
   // KYC Document image URLs
-  const kycInfo = data?.kyc_information || {};
+  const kycInfo = data?.kycInformation || data?.kyc_information || {};
   const getDocUrl = (path) => {
     if (!path || isPlaceholderImage(path)) {
       return null;

@@ -5,6 +5,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import Typography from '../../Component/UI/Typography';
 import { Font } from '../../Constants/Font';
@@ -18,6 +19,7 @@ import {
   NotificationRead,
 } from '../../Backend/api_routes';
 import { useIsFocused } from '@react-navigation/native';
+import {emitNotificationChange} from '../../pushNotifacation/notificationEvents';
 
 const ICON_CONFIG = {
   leave: { bg: '#E8F5E9', color: '#4CAF50', label: 'L' },
@@ -93,7 +95,7 @@ const Notifications = ({ navigation }) => {
 
   useEffect(() => {
     if (isFocused) fetchNotifications();
-  }, [isFocused]);
+  }, [fetchNotifications, isFocused]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -105,6 +107,22 @@ const Notifications = ({ navigation }) => {
     setNotifications(prev =>
       prev.map(n => (n.id === id ? { ...n, read_at: new Date().toISOString(), status: 'read' } : n)),
     );
+    emitNotificationChange();
+  };
+
+  const handleNotificationPress = item => {
+    if (!item) return;
+    if (item.status === 'unread' || !item.read_at) {
+      markAsRead(item.id);
+    }
+    const type = (item?.type || '').toLowerCase();
+    if (type.includes('job_application_accepted') || type.includes('job_application_rejected')) {
+      navigation.navigate('My Work');
+    } else if (type.includes('leave')) {
+      navigation.navigate('My Work');
+    } else if (type.includes('salary') || type.includes('payment') || type.includes('advance')) {
+      navigation.navigate('DashboardHome');
+    }
   };
 
   const renderItem = ({ item }) => {
@@ -112,12 +130,10 @@ const Notifications = ({ navigation }) => {
     const isUnread = item.status === 'unread' || !item.read_at;
 
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.75}
         style={[styles.card, isUnread && styles.unreadCard]}
-        onStartShouldSetResponder={() => {
-          if (isUnread) markAsRead(item.id);
-          return false;
-        }}>
+        onPress={() => handleNotificationPress(item)}>
         <View style={[styles.iconCircle, { backgroundColor: config.bg }]}>
           <Typography
             style={[styles.iconLabel, { color: config.color }]}
@@ -142,7 +158,7 @@ const Notifications = ({ navigation }) => {
             {formatTime(item.created_at || item.time)}
           </Typography>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

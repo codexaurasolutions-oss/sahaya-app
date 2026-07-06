@@ -48,8 +48,19 @@ const MyJobPosting = ({ navigation, route }) => {
       res => {
         const sub = res?.subscription;
         const active = res?.is_active;
-        const price = sub?.subscription?.price ? parseFloat(sub.subscription.price) : 0;
-        if (active && sub && price > 0) {
+
+        const nestedPlan = sub?.subscription;
+        const planPrice = nestedPlan?.price ? parseFloat(nestedPlan.price) : 0;
+        const paidAmount = sub?.amount ? parseFloat(sub.amount) : 0;
+        const paymentStatus = String(sub?.payment_status || '').toLowerCase();
+        const subStatus = String(sub?.status || '').toLowerCase();
+
+        const hasActiveRecord = sub && (subStatus === 'active');
+        const hasPaidPrice = planPrice > 0;
+        const hasPaidAmount = paidAmount > 0;
+        const hasPaidPayment = paymentStatus === 'paid' || paymentStatus === 'completed';
+
+        if (active && hasActiveRecord && (hasPaidPrice || hasPaidAmount || hasPaidPayment)) {
           setIsPremium(true);
         } else {
           setIsPremium(false);

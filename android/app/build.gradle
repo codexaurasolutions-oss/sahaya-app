@@ -109,16 +109,15 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.firebase:firebase-analytics:17.3.0'
-    implementation project(':react-native-push-notification')
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-messaging")
     // The version of react-native is set by the React Native Gradle Plugin
      implementation 'com.google.android.gms:play-services-auth:20.4.0'
 
     // Razorpay - included via react-native-razorpay npm package
 
     implementation("com.facebook.react:react-android")
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation("com.google.firebase:firebase-analytics")
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

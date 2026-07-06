@@ -19,6 +19,7 @@ import {
   NotificationRead,
 } from '../../../Backend/api_routes';
 import { useIsFocused } from '@react-navigation/native';
+import {emitNotificationChange} from '../../../pushNotifacation/notificationEvents';
 
 const ICON_CONFIG = {
   leave: { bg: '#E8F5E9', color: '#4CAF50', label: 'L' },
@@ -101,8 +102,13 @@ const Notification = ({ navigation }) => {
   const markAsRead = id => {
     POST_WITH_TOKEN(NotificationRead, { notification_id: id });
     setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
+      prev.map(n =>
+        n.id === id
+          ? {...n, read_at: new Date().toISOString(), status: 'read'}
+          : n,
+      ),
     );
+    emitNotificationChange();
   };
 
   const getNotificationJobId = item => {

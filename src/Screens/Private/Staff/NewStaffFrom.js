@@ -9,6 +9,7 @@ import Button from '../../../Component/Button';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import UploadBox from '../../../Component/UploadBox';
 import Date_Picker from '../../../Component/Date_Picker';
+import GooglePlacesInput from '../../../Component/GooglePlacesInput';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 import LocalizedStrings from '../../../Constants/localization';
@@ -71,6 +72,10 @@ const NewStaffForm = ({ navigation, route }) => {
   // renamed to avoid confusion with React state
   const [stateName, setStateName] = useState('');
   const [pincode, setPincode] = useState('');
+  const [areaLocality, setAreaLocality] = useState('');
+  const [googleLocation, setGoogleLocation] = useState('');
+  const [lat, setLat] = useState('');
+  const [long, setLong] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactNumber, setEmergencyContactNumber] = useState('');
   const [relation, setRelation] = useState(null);
@@ -109,6 +114,8 @@ const NewStaffForm = ({ navigation, route }) => {
     city: '',
     stateName: '',
     pincode: '',
+    areaLocality: '',
+    googleLocation: '',
     emergencyContactName: '',
     emergencyContactNumber: '',
     relation: '',
@@ -244,6 +251,10 @@ const NewStaffForm = ({ navigation, route }) => {
         if (address && address.city) setCity(address.city);
         if (address && address.state) setStateName(address.state);
         if (address && address.pincode) setPincode(String(address.pincode));
+        if (address && address.area_locality) setAreaLocality(address.area_locality);
+        if (address && address.google_location) setGoogleLocation(address.google_location);
+        if (address && (address.lat || address.latitude)) setLat(String(address.lat || address.latitude));
+        if (address && (address.long || address.longitude)) setLong(String(address.long || address.longitude));
       }
 
       // Relation
@@ -415,7 +426,7 @@ const NewStaffForm = ({ navigation, route }) => {
         setRoleDesignation(roleObj.value || roleObj.id);
       }
     }
-  }, [roles]);
+  }, [roleDesignation, roles]);
 
   // Clear error handlers
   const clearError = field => {
@@ -477,6 +488,8 @@ const NewStaffForm = ({ navigation, route }) => {
       city: '',
       stateName: '',
       pincode: '',
+      areaLocality: '',
+      googleLocation: '',
       emergencyContactName: '',
       emergencyContactNumber: '',
       relation: '',
@@ -602,6 +615,16 @@ const NewStaffForm = ({ navigation, route }) => {
       hasError = true;
     }
 
+    if (!areaLocality || areaLocality.trim() === '') {
+      newErrors.areaLocality = 'Area / Locality field is required.';
+      hasError = true;
+    }
+
+    if (!googleLocation || googleLocation.trim() === '' || !lat || !long) {
+      newErrors.googleLocation = 'Please select Google location.';
+      hasError = true;
+    }
+
     // Validate Emergency Contact Name (optional - only if provided)
     if (emergencyContactName && emergencyContactName.trim()) {
       const emergencyNameError = validators.checkAlphabet(
@@ -714,6 +737,10 @@ const NewStaffForm = ({ navigation, route }) => {
     formData.append('city', city?.trim() || '');
     formData.append('state', stateName?.trim() || '');
     formData.append('pincode', pincode?.trim() || '');
+    formData.append('area_locality', areaLocality?.trim() || '');
+    formData.append('google_location', googleLocation?.trim() || '');
+    formData.append('lat', lat || '');
+    formData.append('long', long || '');
     formData.append(
       'emergency_contact_name',
       emergencyContactName?.trim() || '',
@@ -1193,6 +1220,43 @@ const NewStaffForm = ({ navigation, route }) => {
             numberOfLines={2}
             error={errors.street}
           />
+          <Input
+            style_title={{ color: '#8C8D8B' }}
+            placeholder="e.g. Phase 1, Model Town"
+            title="Area / Locality"
+            value={areaLocality}
+            onChange={value => {
+              setAreaLocality(value);
+              clearError('areaLocality');
+            }}
+            error={errors.areaLocality}
+          />
+          <View style={{ zIndex: 100 }}>
+            <GooglePlacesInput
+              title="Search Google Location (Mandatory)"
+              placeholder="Search for your location on Google Maps..."
+              onPlaceSelected={(location) => {
+                setGoogleLocation(location?.google_location || '');
+                setLat(location?.lat || '');
+                setLong(location?.long || '');
+                clearError('googleLocation');
+
+                if (location?.hasExtractedData) {
+                  if (!street && location.street) setStreet(location.street);
+                  if (!city && location.city) setCity(location.city);
+                  if (!stateName && location.state) setStateName(location.state);
+                  if (!pincode && location.pincode) setPincode(location.pincode);
+                }
+              }}
+              error={errors.googleLocation}
+            />
+          </View>
+          {googleLocation ? (
+            <View style={{ marginBottom: 15 }}>
+              <Typography size={12} color="green">Location Selected</Typography>
+              <Typography size={11} color="gray">{googleLocation}</Typography>
+            </View>
+          ) : null}
           <Input
             style_title={{ color: '#8C8D8B' }}
             placeholder={

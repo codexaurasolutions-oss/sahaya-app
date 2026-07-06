@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SplashScreen from 'react-native-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
 import AuthStack from './src/Navigation/AuthStack';
@@ -12,12 +12,15 @@ import { getLanguage, setLanguage } from './src/Constants/AsyncStorage';
 import localization from './src/Constants/localization';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import 'react-native-get-random-values';
-import { Alert, PermissionsAndroid, Platform, } from 'react-native';
+import { PermissionsAndroid, Platform, Linking, Alert } from 'react-native';
+import { navigationRef } from './src/Navigation/RootNavigation';
 import { fcmService } from './src/pushNotifacation/FMCService';
-import { localNotificationService } from './src/pushNotifacation/LocalNotificationService';
+import {localNotificationService} from './src/pushNotifacation/LocalNotificationService';
 
 const App = () => {
   const [langCode, setLangCode] = useState('');
+  const notifInitDone = useRef(false);
+
   const loadLanguage = async () => {
     const storedLangCode = await getLanguage();
     if (storedLangCode) {
@@ -30,11 +33,68 @@ const App = () => {
       localization.setLanguage('en');
     }
   };
+
   useEffect(() => {
     loadLanguage();
     const timer = setTimeout(() => {
       SplashScreen?.hide();
     }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const initNotif = async () => {
+      if (notifInitDone.current) return;
+      notifInitDone.current = true;
+
+      try {
+        if (Platform.OS === 'android' && Platform.Version >= 33) {
+          const alreadyGranted = await PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          );
+
+          if (!alreadyGranted) {
+            const granted = await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+              {
+                title: 'Sahayya Notifications',
+                message:
+                  'Sahayya needs notification permission to send you job alerts, salary updates, and important reminders.',
+                buttonPositive: 'Allow',
+                buttonNegative: 'Not Now',
+              },
+            );
+
+            if (
+              granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
+            ) {
+              setTimeout(() => {
+                Alert.alert(
+                  'Notification Permission',
+                  'Notification permission was denied. You can enable it later from App Settings to receive job alerts and updates.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Open Settings',
+                      onPress: () => Linking.openSettings(),
+                    },
+                  ],
+                );
+              }, 1500);
+            }
+          }
+        }
+      } catch (error) {
+        // silent
+      }
+
+      await localNotificationService.configure();
+      fcmService.register();
+    };
+
+    const timer = setTimeout(() => {
+      initNotif();
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, []);
@@ -42,43 +102,6 @@ const App = () => {
   if (langCode === null) {
     return null;
   }
-
-  const requestNotificationPermissions = async () => {
-    if (Platform.OS === 'ios') {
-      PushNotificationIOS.requestPermissions();
-    } else {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-      );
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.warn('Notification permission denied');
-      }
-    }
-  };
-
-
-  useEffect(() => {
-    requestNotificationPermissions()
-    fcmService.registerAppWithFCM();
-    fcmService.register(onRegister, onNotification, onOpenNotification);
-
-    localNotificationService.configure(onOpenNotification);
-
-    function onRegister(token) { }
-
-    function onNotification(notify) {
-      localNotificationService.showlocalNotification(
-        'channel-id',
-        Platform.OS === 'ios' ? notify.message : notify.title,
-        notify.body,
-        notify,
-      );
-    }
-
-    function onOpenNotification(notify, data) {
-      console.log('[App] onOpenNotification: ', notify);
-    }
-  }, []);
 
   return (
     <Provider store={store}>
@@ -97,7 +120,7 @@ const MainNavigation = () => {
   const languageCode = useSelector(state => state.language_code);
 
   return (
-    <NavigationContainer key={languageCode}>
+    <NavigationContainer ref={navigationRef} key={languageCode}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
         <FocusAwareStatusBar />
         {isAuth ? userTypes == 2 ? <StaffStacks /> : <RootStack /> : <AuthStack />}

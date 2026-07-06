@@ -29,20 +29,22 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
 
   const amount = Math.max(0, Number(paymentData?.net_salary ?? paymentData?.amount ?? 0));
   const baseSalary = Number(
-    paymentData?.salary_breakdown?.base_salary ?? paymentData?.basic_salary ?? 0,
+    paymentData?.salary_breakdown?.base_salary ??
+      paymentData?.basic_salary ??
+      paymentData?.base_salary ??
+      0,
   );
   const bonus = Number(
     paymentData?.salary_breakdown?.performance_bonus ??
       paymentData?.performative_allowance ??
+      paymentData?.performance_bonus ??
       0,
   );
   const overtimePay = Number(
     paymentData?.salary_breakdown?.overtime_pay ??
       paymentData?.over_time_allowance ??
+      paymentData?.overtime_pay ??
       0,
-  );
-  const taxDeduction = Number(
-    paymentData?.salary_breakdown?.tax_deduction ?? paymentData?.tax ?? 0,
   );
   const advancePayment = Number(
     paymentData?.salary_breakdown?.advance_payment ??
@@ -52,9 +54,11 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
   const staffName =
     paymentData?.staff_name ??
     paymentData?.staff_member?.name ??
+    userDetails?.name ??
+    (userDetails?.first_name ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim() : null) ??
     'Staff Member';
-  const paymentDate = paymentData?.created_at
-    ? moment(paymentData.created_at).format('DD MMM YYYY, hh:mm A')
+  const paymentDate = (paymentData?.created_at || paymentData?.date)
+    ? moment(paymentData.created_at || paymentData.date).format('DD MMM YYYY, hh:mm A')
     : moment().format('DD MMM YYYY, hh:mm A');
   const paymentId =
     paymentData?.payment_id ?? paymentData?.id ?? paymentData?.salary_id ?? '--';
@@ -286,9 +290,6 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
                       value={overtimePay}
                       positive
                     />
-                  )}
-                  {taxDeduction > 0 && (
-                    <BreakdownRow label="Tax Deduction" value={taxDeduction} />
                   )}
                   {advancePayment > 0 && (
                     <BreakdownRow

@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "521377897719",
-    "project_id": "sahayya-a6422",
-    "storage_bucket": "sahayya-a6422.firebasestorage.app"
+    "project_number": "272294940495",
+    "project_id": "neon-cooler-417914",
+    "storage_bucket": "neon-cooler-417914.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:521377897719:android:eaf5e1fc5affb9e43f47f2",
+        "mobilesdk_app_id": "1:272294940495:android:5c075fe58b343d492e7f3a",
         "android_client_info": {
           "package_name": "com.sahayya"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDwxFFFkJqQXur_CHAYDClgj7QbHfbOmKE"
+          "current_key": "AIzaSyB-zKclmpqS9185oYSBW2FTuaWtVU_17ws"
         }
       ],
       "services": {

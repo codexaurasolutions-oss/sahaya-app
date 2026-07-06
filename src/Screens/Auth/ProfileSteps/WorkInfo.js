@@ -11,6 +11,12 @@ import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 
 const LastWorkExperience = ({ navigation }) => {
+    const [role, setRole] = useState(null);
+    const [languages, setLanguages] = useState('');
+    const [experience, setExperience] = useState('');
+    const [additionalInfo, setAdditionalInfo] = useState('');
+    const [voiceNote, setVoiceNote] = useState('');
+
     const [skills, setSkills] = useState([
         'Dietary Care',
         'Cooking',
@@ -48,6 +54,8 @@ const LastWorkExperience = ({ navigation }) => {
                 marginHorizontal={0}
                 style_title={{ textAlign: 'left' }}
                 data={[{ label: 'Cook', value: 'cook' }, { label: 'Driver', value: 'driver' }]}
+                value={role}
+                onChange={(item) => setRole(item)}
             />
 
 
@@ -72,8 +80,8 @@ const LastWorkExperience = ({ navigation }) => {
             <Input
                 title={LocalizedStrings.EditProfile?.Languages_Spoken || 'Languages Spoken'}
                 placeholder={LocalizedStrings.EditProfile?.Languages_Spoken || 'English, Hindi, Kannada'}
-                value=""
-                onChangeText={() => { }}
+                value={languages}
+                onChange={setLanguages}
                 style={styles.input}
             />
 
@@ -81,8 +89,8 @@ const LastWorkExperience = ({ navigation }) => {
             <Input
                 title={LocalizedStrings.StaffProfile?.Experience || 'Total Experience'}
                 placeholder={'Enter years'}
-                value=""
-                onChangeText={() => { }}
+                value={experience}
+                onChange={setExperience}
                 keyboardType="numeric"
                 maxLength={2}
                 style={styles.input}
@@ -92,8 +100,8 @@ const LastWorkExperience = ({ navigation }) => {
             <Input
                 title={LocalizedStrings.PostNewJob?.additional_requirements || 'Additional Info'}
                 placeholder={LocalizedStrings.PostNewJob?.additional_requirements_placeholder || "I'm a hardworking professional..."}
-                value=""
-                onChangeText={() => { }}
+                value={additionalInfo}
+                onChange={setAdditionalInfo}
                 multiline={true}
                 style_inputContainer={{ height: 100 }}
             />
@@ -102,8 +110,8 @@ const LastWorkExperience = ({ navigation }) => {
             <Input
                 title={LocalizedStrings.NewStaffForm?.Voice_Note || 'Voice Note (Optional)'}
                 placeholder={LocalizedStrings.NewStaffForm?.Voice_Note_Placeholder || 'Record/Upload Voice Note'}
-                value=""
-                onChangeText={() => { }}
+                value={voiceNote}
+                onChange={setVoiceNote}
                 keyboardType="phone-pad"
                 style={styles.input}
             />
@@ -112,7 +120,7 @@ const LastWorkExperience = ({ navigation }) => {
             <Button
                 title={LocalizedStrings.EditProfile?.Save_Changes || 'Save & Proceed'}
                 onPress={() => {
-                    navigation.navigate('NextScreen');
+                    navigation.goBack();
                 }}
                 containerStyle={styles.updateBtn}
             />

@@ -6,11 +6,8 @@ import {
   TouchableOpacity,
   Text,
   Alert,
-  Platform,
-  Linking,
 } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import Geolocation from '@react-native-community/geolocation';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
 import { ImageConstant } from '../../Constants/ImageConstant';
@@ -33,7 +30,6 @@ import {
 import SimpleToast from 'react-native-simple-toast';
 import {
   formatDateWithDashes,
-  fetchPincodeDetails,
 } from '../../Backend/Utility';
 import Date_Picker from '../../Component/Date_Picker';
 import moment from 'moment';
@@ -48,7 +44,6 @@ const EditProfile = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const userDetail = useSelector(store => store?.userDetails);
   const isFirstTime = route?.params?.isFirstTime || false;
-  const [loadingLocation, setLoadingLocation] = useState(false);
 
   // State for all form fields
   const [firstName, setFirstName] = useState('');
@@ -57,18 +52,6 @@ const EditProfile = ({ navigation, route }) => {
   const [dob, setDob] = useState(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
-
-  // Current Address
-  const [currentStreet, setCurrentStreet] = useState('');
-  const [currentCity, setCurrentCity] = useState('');
-  const [currentState, setCurrentState] = useState('');
-  const [currentPincode, setCurrentPincode] = useState('');
-
-  // Permanent Address
-  const [permanentStreet, setPermanentStreet] = useState('');
-  const [permanentCity, setPermanentCity] = useState('');
-  const [permanentState, setPermanentState] = useState('');
-  const [permanentPincode, setPermanentPincode] = useState('');
 
   // Work Info
   const [selectedRole, setSelectedRole] = useState(null);
@@ -97,7 +80,7 @@ const EditProfile = ({ navigation, route }) => {
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [emergencyRelation, setEmergencyRelation] = useState('');
-  const [preferredWorkCity, setPreferredWorkCity] = useState('');
+  const [preferredWorkCities, setPreferredWorkCities] = useState([]);
   const [stayType, setStayType] = useState([]);
 
   // Image modal states
@@ -116,42 +99,33 @@ const EditProfile = ({ navigation, route }) => {
   const isAadhaarImageMissing =
     isAadhaarVerified && (!aadhaarFront || !aadhaarBack);
 
-  const preferredWorkLocationOptions = React.useMemo(() => {
-    const options = [
-      { label: 'All India', value: 'All India' },
-      { label: 'South India', value: 'South India' },
-      { label: 'North India', value: 'North India' },
-      { label: 'East India', value: 'East India' },
-      { label: 'West India', value: 'West India' },
-      { label: 'Central India', value: 'Central India' },
-      { label: 'Metro Cities', value: 'Metro Cities' },
-    ];
+  const isAllIndiaSelected = preferredWorkCities.includes('All India');
 
-    if (currentCity) {
-      options.splice(1, 0, {
-        label: `Only ${currentCity}`,
-        value: currentCity,
-      });
+  const togglePreferredCity = (city) => {
+    if (city === 'All India') {
+      // All India => clear everything else, just set All India
+      setPreferredWorkCities(['All India']);
+      return;
     }
+    setPreferredWorkCities(prev => {
+      // Remove All India if present
+      const without = prev.filter(c => c !== 'All India');
+      if (without.includes(city)) {
+        return without.filter(c => c !== city); // deselect
+      }
+      return [...without, city]; // add
+    });
+  };
 
-    if (currentState) {
-      options.splice(currentCity ? 2 : 1, 0, {
-        label: `Within ${currentState}`,
-        value: `Within ${currentState}`,
-      });
-    }
-
-    return options;
-  }, [currentCity, currentState]);
-
-  const selectedPreferredWorkLocation =
-    preferredWorkLocationOptions.find(
-      option => option.value === preferredWorkCity,
-    ) || null;
-
-  const isPresetPreferredWorkLocation = preferredWorkLocationOptions.some(
-    option => option.value === preferredWorkCity,
-  );
+  const addCityFromText = (city) => {
+    const trimmed = city.trim();
+    if (!trimmed) return;
+    setPreferredWorkCities(prev => {
+      const without = prev.filter(c => c !== 'All India');
+      if (without.includes(trimmed)) return without;
+      return [...without, trimmed];
+    });
+  };
 
   // Languages list
   const languagesList = [
@@ -215,7 +189,6 @@ const EditProfile = ({ navigation, route }) => {
     if (item) {
       setSelectedLanguage(item);
       // Save to AsyncStorage
-      setLanguage('hi');
       await setNewLang(item.value);
       // Update LocalizedStrings immediately
       // alert (item.value)
@@ -234,44 +207,6 @@ const EditProfile = ({ navigation, route }) => {
     // Load profile data when store payload or roles change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userDetail, roles]); // Also depend on roles so it can match role when roles are loaded
-
-  useEffect(() => {
-    const syncCurrentAddressFromPincode = async () => {
-      if (currentPincode?.length !== 6) {
-        return;
-      }
-
-      const details = await fetchPincodeDetails(currentPincode);
-      if (details?.city) {
-        setCurrentCity(details.city);
-      }
-      if (details?.state) {
-        setCurrentState(details.state);
-      }
-    };
-
-    const timer = setTimeout(syncCurrentAddressFromPincode, 300);
-    return () => clearTimeout(timer);
-  }, [currentPincode]);
-
-  useEffect(() => {
-    const syncPermanentAddressFromPincode = async () => {
-      if (permanentPincode?.length !== 6) {
-        return;
-      }
-
-      const details = await fetchPincodeDetails(permanentPincode);
-      if (details?.city) {
-        setPermanentCity(details.city);
-      }
-      if (details?.state) {
-        setPermanentState(details.state);
-      }
-    };
-
-    const timer = setTimeout(syncPermanentAddressFromPincode, 300);
-    return () => clearTimeout(timer);
-  }, [permanentPincode]);
 
   const fetchProfile = () => {
     GET_WITH_TOKEN(
@@ -328,25 +263,6 @@ const EditProfile = ({ navigation, route }) => {
       }
     }
 
-    // Current Address
-    const addresses = userDetail?.addresses || [];
-    if (addresses.length > 0) {
-      const currentAddr = addresses[0];
-      if (currentAddr?.street) setCurrentStreet(currentAddr.street);
-      if (currentAddr?.city) setCurrentCity(currentAddr.city);
-      if (currentAddr?.state) setCurrentState(currentAddr.state);
-      if (currentAddr?.pincode) setCurrentPincode(currentAddr.pincode);
-    }
-
-    // Permanent Address
-    if (addresses.length > 1) {
-      const permanentAddr = addresses[1];
-      if (permanentAddr?.street) setPermanentStreet(permanentAddr.street);
-      if (permanentAddr?.city) setPermanentCity(permanentAddr.city);
-      if (permanentAddr?.state) setPermanentState(permanentAddr.state);
-      if (permanentAddr?.pincode) setPermanentPincode(permanentAddr.pincode);
-    }
-
     // Work Info
     const workInfo = userDetail?.user_work_info || userDetail?.work_info || {};
     if (workInfo?.primary_role) {
@@ -393,7 +309,15 @@ const EditProfile = ({ navigation, route }) => {
     if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
     if (userDetail?.relation) setEmergencyRelation(userDetail.relation);
     if (workInfo?.stay_type) setStayType([workInfo.stay_type]);
-    if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
+    if (workInfo?.preferred_work_location) {
+      const raw = workInfo.preferred_work_location;
+      const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
+      setPreferredWorkCities(parsed);
+    } else if (userDetail?.preferred_work_location) {
+      const raw = userDetail.preferred_work_location;
+      const parsed = typeof raw === 'string' ? raw.split(',').map(s => s.trim()).filter(Boolean) : Array.isArray(raw) ? raw : [];
+      setPreferredWorkCities(parsed);
+    }
     if (userDetail?.upi_id) setUpiId(userDetail.upi_id);
 
     // Last Work Experience
@@ -416,7 +340,7 @@ const EditProfile = ({ navigation, route }) => {
     if (lastExp?.salary) setSalary(String(lastExp.salary));
 
     // KYC Documents - check top-level user fields first, then kyc_information
-    const kycInfo = userDetail?.kyc_information || {};
+    const kycInfo = userDetail?.kycInformation || userDetail?.kyc_information || {};
 
     // Helper function to check if path is valid
     const isValidPath = path => {
@@ -468,8 +392,6 @@ const EditProfile = ({ navigation, route }) => {
     if (workInfo?.emergency_contact_number) setEmergencyPhone(workInfo.emergency_contact_number);
     if (userDetail?.relation) setEmergencyRelation(userDetail.relation);
     if (workInfo?.stay_type) setStayType([workInfo.stay_type]);
-    if (workInfo?.preferred_work_location) setPreferredWorkCity(workInfo.preferred_work_location);
-    else if (userDetail?.preferred_work_location) setPreferredWorkCity(userDetail.preferred_work_location);
   };
 
   // Toggle skill selection
@@ -749,95 +671,6 @@ const EditProfile = ({ navigation, route }) => {
     return null;
   };
 
-  // Function to get location from coordinates using reverse geocoding
-  const getLocationFromCoordinates = async (latitude, longitude) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=en`,
-        {
-          headers: {
-            'User-Agent': 'SahayaaApp/1.0'
-          }
-        }
-      );
-      const data = await response.json();
-      
-      if (data && data.address) {
-        const address = data.address;
-        const cityName = address.city || address.town || address.village || address.suburb || '';
-        const stateName = address.state || '';
-        const pincode = address.postcode || '';
-        
-        return {
-          city: cityName,
-          state: stateName,
-          pincode: pincode
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching location details:', error);
-      return null;
-    }
-  };
-
-  // Function to capture current location
-  const captureLocation = () => {
-    setLoadingLocation(true);
-    
-    Geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const locationDetails = await getLocationFromCoordinates(latitude, longitude);
-        
-        if (locationDetails) {
-          if (locationDetails.city) setCurrentCity(locationDetails.city);
-          if (locationDetails.state) setCurrentState(locationDetails.state);
-          if (locationDetails.pincode) setCurrentPincode(locationDetails.pincode);
-          Alert.alert('Success', 'Location captured successfully!');
-        } else {
-          Alert.alert('Error', 'Could not fetch location details. Please enter manually.');
-        }
-        setLoadingLocation(false);
-      },
-      (error) => {
-        console.error('Location error:', error);
-        setLoadingLocation(false);
-        
-        if (error.code === 1) {
-          Alert.alert(
-            'Location Permission Required',
-            'Please enable location permission in your device settings to use this feature.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { 
-                text: 'Open Settings', 
-                onPress: () => {
-                  if (Platform.OS === 'ios') {
-                    Linking.openURL('app-settings:');
-                  } else {
-                    Linking.openSettings();
-                  }
-                }
-              }
-            ]
-          );
-        } else if (error.code === 2) {
-          Alert.alert('Error', 'Location service is unavailable. Please check your GPS settings.');
-        } else if (error.code === 3) {
-          Alert.alert('Error', 'Location request timed out. Please try again.');
-        } else {
-          Alert.alert('Error', 'Could not get your location. Please enter manually.');
-        }
-      },
-      { 
-        enableHighAccuracy: false, 
-        timeout: 60000, 
-        maximumAge: 60000 
-      }
-    );
-  };
-
   // Handle update profile
   const handleUpdateProfile = () => {
     if (updating) return;
@@ -863,7 +696,7 @@ const EditProfile = ({ navigation, route }) => {
     if (emergencyPhone) formData.append('emergency_contact_number', emergencyPhone);
     if (emergencyRelation) formData.append('relation', emergencyRelation);
     if (stayType.length > 0) formData.append('stay_type', stayType[0]);
-    if (preferredWorkCity) formData.append('preferred_work_location', preferredWorkCity);
+    if (preferredWorkCities.length > 0) formData.append('preferred_work_location', preferredWorkCities.join(', '));
 
     // Profile Image (only if new image selected, not a remote URL)
     if (profileImage?.path && !profileImage.path.startsWith('http')) {
@@ -873,40 +706,6 @@ const EditProfile = ({ navigation, route }) => {
         type: profileImage.type || profileImage.mime || 'image/jpeg',
       });
     }
-
-    // Current Address
-    const addresses = [];
-    if (currentStreet || currentCity || currentState || currentPincode) {
-      addresses.push({
-        street: currentStreet || '',
-        city: currentCity || '',
-        state: currentState || '',
-        pincode: currentPincode || '',
-      });
-    }
-
-    // Permanent Address
-    if (
-      permanentStreet ||
-      permanentCity ||
-      permanentState ||
-      permanentPincode
-    ) {
-      addresses.push({
-        street: permanentStreet || '',
-        city: permanentCity || '',
-        state: permanentState || '',
-        pincode: permanentPincode || '',
-      });
-    }
-
-    // Append addresses
-    addresses.forEach((address, index) => {
-      formData.append(`addresses[${index}][street]`, address.street);
-      formData.append(`addresses[${index}][city]`, address.city);
-      formData.append(`addresses[${index}][state]`, address.state);
-      formData.append(`addresses[${index}][pincode]`, address.pincode);
-    });
 
     // Work Info - using same PROFILE_UPDATE API
     if (selectedRole?.value) {
@@ -1156,11 +955,29 @@ const EditProfile = ({ navigation, route }) => {
             onChange={text => setEmergencyPhone(text)}
             maxLength={10}
           />
-          <Input
-            placeholder="E.g. Brother, Friend, etc."
+          <DropdownComponent
             title="Relationship"
-            value={emergencyRelation}
-            onChange={text => setEmergencyRelation(text)}
+            placeholder="Select Relationship"
+            width={'100%'}
+            style_dropdown={{ marginHorizontal: 0 }}
+            selectedTextStyleNew={{ marginLeft: 10 }}
+            marginHorizontal={0}
+            style_title={{ textAlign: 'left' }}
+            value={emergencyRelation ? { label: emergencyRelation, value: emergencyRelation } : null}
+            onChange={item => setEmergencyRelation(item.value)}
+            data={[
+              { label: 'Father', value: 'Father' },
+              { label: 'Mother', value: 'Mother' },
+              { label: 'Brother', value: 'Brother' },
+              { label: 'Sister', value: 'Sister' },
+              { label: 'Husband', value: 'Husband' },
+              { label: 'Wife', value: 'Wife' },
+              { label: 'Son', value: 'Son' },
+              { label: 'Daughter', value: 'Daughter' },
+              { label: 'Friend', value: 'Friend' },
+              { label: 'Relative', value: 'Relative' },
+              { label: 'Other', value: 'Other' },
+            ]}
           />
         </View>
 
@@ -1196,105 +1013,88 @@ const EditProfile = ({ navigation, route }) => {
           <Typography type={Font?.Poppins_SemiBold} size={14} style={{ marginBottom: 10, marginTop: 5 }}>
             Preferred Work Cities
           </Typography>
-          <Input
-            title="Selected City or Preference"
-            placeholder="Type city name or select below"
-            value={preferredWorkCity}
-            onChange={text => setPreferredWorkCity(text)}
-            editable={true}
-          />
-          <View style={{ zIndex: 50, position: 'relative' }}>
+
+          {/* Selected city tags */}
+          {preferredWorkCities.length > 0 && (
+            <View style={[styles.skillContainer, { marginBottom: 12 }]}>
+              {preferredWorkCities.map((city, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.skillChip,
+                    styles.skillChipSelected,
+                    { flexDirection: 'row', alignItems: 'center' },
+                  ]}
+                >
+                  <Typography
+                    style={[styles.skillText, styles.skillTextSelected]}
+                    type={Font?.Manrope_SemiBold}
+                  >
+                    {city}
+                  </Typography>
+                  <TouchableOpacity
+                    onPress={() =>
+                      setPreferredWorkCities(prev => prev.filter(c => c !== city))
+                    }
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    style={{ marginLeft: 4, padding: 6 }}
+                  >
+                    <Typography style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>✕</Typography>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Single city search field with autocomplete suggestions */}
+          <View
+            style={{ zIndex: 50, position: 'relative', opacity: isAllIndiaSelected ? 0.45 : 1 }}
+            pointerEvents={isAllIndiaSelected ? 'none' : 'auto'}
+          >
             <GooglePlacesInput
-              title="Or Search City Name"
-              placeholder="Search for a city..."
+              title="Search City"
+              placeholder="Type city name for suggestions..."
               onPlaceSelected={location => {
-                if (location?.city) {
-                  setPreferredWorkCity(location.city);
-                } else if (location?.data?.description) {
-                  setPreferredWorkCity(location.data.description.split(',')[0]);
-                }
+                if (isAllIndiaSelected) return;
+                const city = location?.city || location?.data?.description?.split(',')[0];
+                if (city) addCityFromText(city);
               }}
             />
           </View>
-          <Typography size={11} color="#888" style={{ marginTop: -10, marginBottom: 10 }}>
-            Choose a preset option, or enter the exact city name manually.
+
+          <Typography size={11} color="#888" style={{ marginTop: -6, marginBottom: 10 }}>
+            {isAllIndiaSelected
+              ? 'All India selected — remove it to pick specific cities.'
+              : 'Start typing to see city suggestions. Multiple selections allowed.'}
           </Typography>
+
+          {/* Preset chips */}
           <View style={[styles.skillContainer, { marginBottom: 0 }]}>
-            <TouchableOpacity 
-              onPress={() => setPreferredWorkCity('All India')}
-              style={[
-                styles.skillChip,
-                preferredWorkCity === 'All India' && styles.skillChipSelected,
-              ]}
-            >
-              <Typography 
-                style={[
-                  styles.skillText,
-                  preferredWorkCity === 'All India' && styles.skillTextSelected,
-                ]}
-                type={Font?.Manrope_SemiBold}
-              >
-                All India (Anywhere)
-              </Typography>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              onPress={() => setPreferredWorkCity('Metro Cities')}
-              style={[
-                styles.skillChip,
-                preferredWorkCity === 'Metro Cities' && styles.skillChipSelected,
-              ]}
-            >
-              <Typography 
-                style={[
-                  styles.skillText,
-                  preferredWorkCity === 'Metro Cities' && styles.skillTextSelected,
-                ]}
-                type={Font?.Manrope_SemiBold}
-              >
-                Metro Cities
-              </Typography>
-            </TouchableOpacity>
-
-            {currentCity ? (
-              <TouchableOpacity 
-                onPress={() => setPreferredWorkCity(currentCity)}
-                style={[
-                  styles.skillChip,
-                  preferredWorkCity === currentCity && styles.skillChipSelected,
-                ]}
-              >
-                <Typography 
+            {[
+              { label: 'All India (Anywhere)', value: 'All India' },
+            ].map((opt) => {
+              const isSelected = preferredWorkCities.includes(opt.value);
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  onPress={() => togglePreferredCity(opt.value)}
                   style={[
-                    styles.skillText,
-                    preferredWorkCity === currentCity && styles.skillTextSelected,
+                    styles.skillChip,
+                    isSelected && styles.skillChipSelected,
                   ]}
-                  type={Font?.Manrope_SemiBold}
                 >
-                  Only {currentCity}
-                </Typography>
-              </TouchableOpacity>
-            ) : null}
-
-            {currentState ? (
-              <TouchableOpacity 
-                onPress={() => setPreferredWorkCity(`Within ${currentState}`)}
-                style={[
-                  styles.skillChip,
-                  preferredWorkCity === `Within ${currentState}` && styles.skillChipSelected,
-                ]}
-              >
-                <Typography 
-                  style={[
-                    styles.skillText,
-                    preferredWorkCity === `Within ${currentState}` && styles.skillTextSelected,
-                  ]}
-                  type={Font?.Manrope_SemiBold}
-                >
-                  Within {currentState}
-                </Typography>
-              </TouchableOpacity>
-            ) : null}
+                  <Typography
+                    style={[
+                      styles.skillText,
+                      isSelected && styles.skillTextSelected,
+                    ]}
+                    type={Font?.Manrope_SemiBold}
+                  >
+                    {opt.label}
+                  </Typography>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -1319,95 +1119,6 @@ const EditProfile = ({ navigation, route }) => {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.headerWithLocation}>
-            <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
-              Current Address
-            </Typography>
-            <TouchableOpacity 
-              onPress={captureLocation} 
-              style={styles.locationButton}
-              disabled={loadingLocation}
-            >
-              <Image 
-                source={ImageConstant?.Location} 
-                style={styles.locationIcon} 
-              />
-              <Typography color='rgba(217, 133, 121, 1)' size={12}>
-                {loadingLocation ? 'Getting location...' : 'Use my location'}
-              </Typography>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Input
-                placeholder=""
-                title="City"
-                value={currentCity}
-                onChange={text => setCurrentCity(text)}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Input
-                placeholder=""
-                title="State"
-                value={currentState}
-                onChange={text => setCurrentState(text)}
-              />
-            </View>
-          </View>
-          <Input
-            placeholder=""
-            title="Street"
-            value={currentStreet}
-            onChange={text => setCurrentStreet(text)}
-          />
-          <Input
-            placeholder=""
-            title="Pincode"
-            keyboardType="number-pad"
-            value={currentPincode}
-            onChange={text => setCurrentPincode(text)}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Typography type={Font?.Poppins_SemiBold} style={styles.sectionTitle}>
-            Permanent Address
-          </Typography>
-          <Input
-            placeholder=""
-            title="Street"
-            value={permanentStreet}
-            onChange={text => setPermanentStreet(text)}
-          />
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Input
-                placeholder=""
-                title="City"
-                value={permanentCity}
-                onChange={text => setPermanentCity(text)}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Input
-                placeholder=""
-                title="State"
-                value={permanentState}
-                onChange={text => setPermanentState(text)}
-              />
-            </View>
-          </View>
-          <Input
-            placeholder=""
-            title="Pincode"
-            keyboardType="number-pad"
-            value={permanentPincode}
-            onChange={text => setPermanentPincode(text)}
-          />
-        </View>
-
-        <View style={styles.container}>
           <View style={styles.rowBetween}>
             <Typography
               style={styles.sectionTitle}
@@ -1416,7 +1127,7 @@ const EditProfile = ({ navigation, route }) => {
             >
               Work Info
             </Typography>
-            <Image source={ImageConstant?.house} style={styles.closeIcon} />
+            <Image source={ImageConstant?.Home} style={styles.closeIcon} />
           </View>
 
           <DropdownComponent
@@ -1437,63 +1148,75 @@ const EditProfile = ({ navigation, route }) => {
             Skills & Specialties
           </Typography>
 
-          <View style={styles.skillContainer}>
-            {skillsLoading ? (
-              <Typography
-                style={styles.loadingText}
-                type={Font?.Poppins_Regular}
-                size={14}
-              >
-                Loading skills...
-              </Typography>
-            ) : availableSkills.length > 0 ? (
-              availableSkills.map((skill, index) => {
-                const isSelected = skills.includes(skill);
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => toggleSkill(skill)}
-                    style={[
-                      styles.skillChip,
-                      isSelected && styles.skillChipSelected,
-                    ]}
+          {skillsLoading ? (
+            <Typography
+              style={styles.loadingText}
+              type={Font?.Poppins_Regular}
+              size={14}
+            >
+              Loading skills...
+            </Typography>
+          ) : availableSkills.length > 0 ? (
+            <DropdownComponent
+              placeholder={skills.length > 0 ? `${skills.length} skill(s) selected` : "Select Skills"}
+              width={'100%'}
+              style_dropdown={{ marginHorizontal: 0, marginBottom: 10 }}
+              selectedTextStyleNew={{ marginLeft: 10 }}
+              marginHorizontal={0}
+              value={skills.map(s => ({ label: s, value: s }))}
+              multiSelect={true}
+              selectedValues={skills}
+              onChange={(item) => {
+                if (Array.isArray(item)) {
+                  setSkills(item.map(i => i?.value || i));
+                } else if (item && item.value) {
+                  toggleSkill(item.value);
+                }
+              }}
+              data={availableSkills.map((skill, index) => ({
+                label: skill,
+                value: skill,
+                id: index,
+              }))}
+              disable={false}
+            />
+          ) : selectedRole ? (
+            <Typography
+              style={styles.noSkillsText}
+              type={Font?.Poppins_Regular}
+              size={14}
+            >
+              No skills available for this role
+            </Typography>
+          ) : (
+            <Typography
+              style={styles.noSkillsText}
+              type={Font?.Poppins_Regular}
+              size={14}
+            >
+              Please select a role to view skills
+            </Typography>
+          )}
+
+          {skills.length > 0 && (
+            <View style={styles.skillContainer}>
+              {skills.map((skill, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => toggleSkill(skill)}
+                  style={[styles.skillChip, styles.skillChipSelected]}
+                >
+                  <Typography
+                    style={[styles.skillText, styles.skillTextSelected]}
+                    type={Font?.Manrope_SemiBold}
                   >
-                    <Typography
-                      style={[
-                        styles.skillText,
-                        isSelected && styles.skillTextSelected,
-                      ]}
-                      type={Font?.Manrope_SemiBold}
-                    >
-                      {skill}
-                    </Typography>
-                    {isSelected && (
-                      <Image
-                        source={ImageConstant?.X}
-                        style={styles.closeIcon}
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              })
-            ) : selectedRole ? (
-              <Typography
-                style={styles.noSkillsText}
-                type={Font?.Poppins_Regular}
-                size={14}
-              >
-                No skills available for this role
-              </Typography>
-            ) : (
-              <Typography
-                style={styles.noSkillsText}
-                type={Font?.Poppins_Regular}
-                size={14}
-              >
-                Please select a role to view skills
-              </Typography>
-            )}
-          </View>
+                    {skill}
+                  </Typography>
+                  <Image source={ImageConstant?.X} style={styles.closeIcon} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           {/* <Input
             title="Languages Spoken"
@@ -1531,11 +1254,18 @@ const EditProfile = ({ navigation, route }) => {
               Last Work Experience (Optional)
             </Typography>
           </View>
-          <Input
+          <DropdownComponent
             title={'Role/Designation (Optional)'}
-            placeholder={''}
-            value={lastRole}
-            onChange={text => setLastRole(text)}
+            placeholder={'Select Role'}
+            width={'100%'}
+            style_dropdown={{ marginHorizontal: 0 }}
+            selectedTextStyleNew={{ marginLeft: 10 }}
+            marginHorizontal={0}
+            style_title={{ textAlign: 'left' }}
+            value={roles.find(r => r.label === lastRole) || null}
+            onChange={item => setLastRole(item.label)}
+            data={roles}
+            loading={rolesLoading}
           />
           <View style={styles.row}>
             <View style={styles.halfInput}>

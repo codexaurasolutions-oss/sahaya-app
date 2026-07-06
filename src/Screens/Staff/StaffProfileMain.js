@@ -66,7 +66,7 @@ const StaffProfileMain = ({ navigation }) => {
             PROFILE,
             success => {
                 setLoading(false);
-                setAdhar(success.data?.kyc_information?.aadhaar_front_path)
+                setAdhar(success.data?.kycInformation?.aadhaar_front_path || success.data?.kyc_information?.aadhaar_front_path || success.data?.aadhar_front)
                 if (success?.data) {
                     dispatch(userDetails(success.data));
                 }
@@ -132,11 +132,18 @@ const StaffProfileMain = ({ navigation }) => {
     const aadhaarName = userDetail?.aadhar_name || userName;
     const aadharVerify = userDetail?.aadhar__verify == 1 || userDetail?.aadhar__verify === true;
 
-    // Get KYC information
-    const kycInfo = userDetail?.kyc_information || {};
-    const aadhaarFront = isPlaceholderImage(kycInfo?.aadhaar_front_path) ? null : kycInfo.aadhaar_front_path;
-    const aadhaarBack = isPlaceholderImage(kycInfo?.aadhaar_back_path) ? null : kycInfo.aadhaar_back_path;
-    const policeVerification = isPlaceholderImage(kycInfo?.police_verification_path) ? null : kycInfo.police_verification_path;
+    // Get KYC information — check both camelCase (kycInformation) and snake_case (kyc_information) keys
+    const kycInfo = userDetail?.kycInformation || userDetail?.kyc_information || {};
+    // Check kyc_verifications table fields, then fall back to users table fields
+    const aadhaarFront = (kycInfo?.aadhaar_front_path || userDetail?.aadhar_front || kycInfo?.aadhar_front || kycInfo?.adharfront_path)
+        && !isPlaceholderImage(kycInfo?.aadhaar_front_path || userDetail?.aadhar_front || kycInfo?.aadhar_front || kycInfo?.adharfront_path)
+        ? (kycInfo?.aadhaar_front_path || userDetail?.aadhar_front || kycInfo?.aadhar_front || kycInfo?.adharfront_path) : null;
+    const aadhaarBack = (kycInfo?.aadhaar_back_path || userDetail?.aadhar_back || kycInfo?.aadhar_back || kycInfo?.adharbackend_path)
+        && !isPlaceholderImage(kycInfo?.aadhaar_back_path || userDetail?.aadhar_back || kycInfo?.aadhar_back || kycInfo?.adharbackend_path)
+        ? (kycInfo?.aadhaar_back_path || userDetail?.aadhar_back || kycInfo?.aadhar_back || kycInfo?.adharbackend_path) : null;
+    const policeVerification = (kycInfo?.police_verification_path || userDetail?.verification_certificate || kycInfo?.verification_certificate || kycInfo?.police_clearance_certificate_path)
+        && !isPlaceholderImage(kycInfo?.police_verification_path || userDetail?.verification_certificate || kycInfo?.verification_certificate || kycInfo?.police_clearance_certificate_path)
+        ? (kycInfo?.police_verification_path || userDetail?.verification_certificate || kycInfo?.verification_certificate || kycInfo?.police_clearance_certificate_path) : null;
 
     // Fetch notification settings
     const fetchNotificationSettings = () => {

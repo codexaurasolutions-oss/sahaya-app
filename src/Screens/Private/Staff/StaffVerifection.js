@@ -90,6 +90,33 @@ const StaffVerifection = ({ navigation, route }) => {
   const last4 = adharNumber?.slice(-4) || '****';
 
   useEffect(() => {
+    // Auto-send OTP on mount when navigated from job application flow
+    if (adharNumber) {
+      const body = {
+        aadhar_number: adharNumber,
+        is_staff_add: 1,
+      };
+      POST_FORM_DATA(
+        AADHAR_SAVE,
+        body,
+        () => {
+          setResendTimer(60);
+        },
+        error => {
+          let errorMsg = 'Failed to send OTP. Please tap Resend.';
+          if (error?.data?.message) errorMsg = error.data.message;
+          setOtpError(errorMsg);
+          setResendTimer(0);
+        },
+        () => {
+          setOtpError('Network error. Please tap Resend.');
+          setResendTimer(0);
+        },
+      );
+    }
+  }, []);
+
+  useEffect(() => {
     let timer;
     if (resendTimer > 0) {
       timer = setInterval(() => {

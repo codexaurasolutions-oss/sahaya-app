@@ -18,6 +18,7 @@ import { validators } from '../../../Backend/Validator';
 import { isValidForm, fetchPincodeDetails } from '../../../Backend/Utility';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../../Constants/localization';
+import GooglePlacesInput from '../../../Component/GooglePlacesInput';
 
 const StepLoactionStaff = forwardRef((props, ref) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -26,6 +27,10 @@ const StepLoactionStaff = forwardRef((props, ref) => {
   const [currentCity, setCurrentCity] = useState('');
   const [currentState, setCurrentState] = useState('');
   const [currentPincode, setCurrentPincode] = useState('');
+  const [currentAreaLocality, setCurrentAreaLocality] = useState('');
+  const [currentGoogleLocation, setCurrentGoogleLocation] = useState('');
+  const [currentLat, setCurrentLat] = useState('');
+  const [currentLong, setCurrentLong] = useState('');
   const [currentId, setCurrentId] = useState(null);
 
   // State for permanent address (index 1)
@@ -33,6 +38,10 @@ const StepLoactionStaff = forwardRef((props, ref) => {
   const [permanentCity, setPermanentCity] = useState('');
   const [permanentState, setPermanentState] = useState('');
   const [permanentPincode, setPermanentPincode] = useState('');
+  const [permanentAreaLocality, setPermanentAreaLocality] = useState('');
+  const [permanentGoogleLocation, setPermanentGoogleLocation] = useState('');
+  const [permanentLat, setPermanentLat] = useState('');
+  const [permanentLong, setPermanentLong] = useState('');
   const [permanentId, setPermanentId] = useState(null);
   // State for errors
   const [errors, setErrors] = useState({});
@@ -97,6 +106,7 @@ const StepLoactionStaff = forwardRef((props, ref) => {
   const addressesString = useMemo(() => {
     return JSON.stringify(userDetail?.addresses || []);
   }, [userDetail?.addresses]);
+  const addresses = useMemo(() => userDetail?.addresses || [], [userDetail?.addresses]);
 
   const previousAddressesStringRef = useRef('');
   const isInitialMount = useRef(true);
@@ -105,7 +115,7 @@ const StepLoactionStaff = forwardRef((props, ref) => {
     // Skip on initial mount if no addresses
     if (isInitialMount.current) {
       isInitialMount.current = false;
-      if (!userDetail?.addresses || userDetail.addresses.length === 0) {
+      if (addresses.length === 0) {
         previousAddressesStringRef.current = addressesString;
         return;
       }
@@ -116,8 +126,6 @@ const StepLoactionStaff = forwardRef((props, ref) => {
       return; // No change, exit early
     }
 
-    const addresses = userDetail?.addresses || [];
-
     if (addresses && addresses.length > 0) {
       const currentAddress =
         addresses.find(addr => addr.is_primary == 0) || addresses[0];
@@ -126,11 +134,19 @@ const StepLoactionStaff = forwardRef((props, ref) => {
         const newCity = currentAddress.city || '';
         const newState = currentAddress.state || '';
         const newPincode = currentAddress.pincode || '';
+        const newAreaLocality = currentAddress.area_locality || '';
+        const newGoogleLocation = currentAddress.google_location || '';
+        const newLat = currentAddress.lat || currentAddress.latitude || '';
+        const newLong = currentAddress.long || currentAddress.longitude || '';
         const newId = currentAddress.id || null;
         setCurrentStreet(prev => (prev !== newStreet ? newStreet : prev));
         setCurrentCity(prev => (prev !== newCity ? newCity : prev));
         setCurrentState(prev => (prev !== newState ? newState : prev));
         setCurrentPincode(prev => (prev !== newPincode ? newPincode : prev));
+        setCurrentAreaLocality(prev => (prev !== newAreaLocality ? newAreaLocality : prev));
+        setCurrentGoogleLocation(prev => (prev !== newGoogleLocation ? newGoogleLocation : prev));
+        setCurrentLat(prev => (prev !== newLat ? newLat : prev));
+        setCurrentLong(prev => (prev !== newLong ? newLong : prev));
         setCurrentId(prev => (prev !== newId ? newId : prev));
       }
 
@@ -143,18 +159,26 @@ const StepLoactionStaff = forwardRef((props, ref) => {
         const newCity = permanentAddress.city || '';
         const newState = permanentAddress.state || '';
         const newPincode = permanentAddress.pincode || '';
+        const newAreaLocality = permanentAddress.area_locality || '';
+        const newGoogleLocation = permanentAddress.google_location || '';
+        const newLat = permanentAddress.lat || permanentAddress.latitude || '';
+        const newLong = permanentAddress.long || permanentAddress.longitude || '';
         const newId = permanentAddress.id || null;
         setPermanentStreet(prev => (prev !== newStreet ? newStreet : prev));
         setPermanentCity(prev => (prev !== newCity ? newCity : prev));
         setPermanentState(prev => (prev !== newState ? newState : prev));
         setPermanentPincode(prev => (prev !== newPincode ? newPincode : prev));
+        setPermanentAreaLocality(prev => (prev !== newAreaLocality ? newAreaLocality : prev));
+        setPermanentGoogleLocation(prev => (prev !== newGoogleLocation ? newGoogleLocation : prev));
+        setPermanentLat(prev => (prev !== newLat ? newLat : prev));
+        setPermanentLong(prev => (prev !== newLong ? newLong : prev));
         setPermanentId(prev => (prev !== newId ? newId : prev));
       }
     }
 
     // Update ref after processing
     previousAddressesStringRef.current = addressesString;
-  }, [addressesString]);
+  }, [addresses, addressesString]);
 
   // Clear city and state when pincode is cleared or changed
   useEffect(() => {
@@ -246,6 +270,14 @@ const StepLoactionStaff = forwardRef((props, ref) => {
         'Current Pincode',
         currentPincode,
       ),
+      currentAreaLocality: validators?.checkRequire(
+        'Current Area / Locality',
+        currentAreaLocality,
+      ),
+      currentGoogleLocation: validators?.checkRequire(
+        'Current Google Location',
+        currentGoogleLocation,
+      ),
       permanentStreet: validators?.checkRequire(
         'Permanent Street',
         permanentStreet,
@@ -258,6 +290,14 @@ const StepLoactionStaff = forwardRef((props, ref) => {
       permanentPincode: validators?.checkRequire(
         'Permanent Pincode',
         permanentPincode,
+      ),
+      permanentAreaLocality: validators?.checkRequire(
+        'Permanent Area / Locality',
+        permanentAreaLocality,
+      ),
+      permanentGoogleLocation: validators?.checkRequire(
+        'Permanent Google Location',
+        permanentGoogleLocation,
       ),
     };
 
@@ -278,6 +318,10 @@ const StepLoactionStaff = forwardRef((props, ref) => {
     formData.append('street[0]', currentStreet);
     formData.append('is_primary[0]', '0'); // Not primary
     formData.append('state[0]', currentState);
+    formData.append('area_locality[0]', currentAreaLocality);
+    formData.append('google_location[0]', currentGoogleLocation);
+    formData.append('lat[0]', currentLat);
+    formData.append('long[0]', currentLong);
 
     // Permanent address (index 1) - Set as primary
     formData.append('state[1]', permanentState);
@@ -285,6 +329,10 @@ const StepLoactionStaff = forwardRef((props, ref) => {
     formData.append('city[1]', permanentCity);
     formData.append('pincode[1]', permanentPincode);
     formData.append('street[1]', permanentStreet);
+    formData.append('area_locality[1]', permanentAreaLocality);
+    formData.append('google_location[1]', permanentGoogleLocation);
+    formData.append('lat[1]', permanentLat);
+    formData.append('long[1]', permanentLong);
     if (permanentId) formData.append('id[1]', permanentId);
 
     setLoader(true);
@@ -363,6 +411,46 @@ const StepLoactionStaff = forwardRef((props, ref) => {
           </View>
 
           <Input
+            title="Area / Locality"
+            placeholder="e.g. Phase 1, Model Town"
+            value={currentAreaLocality}
+            onChange={text => {
+              setCurrentAreaLocality(text);
+              if (errors.currentAreaLocality) setErrors({ ...errors, currentAreaLocality: null });
+            }}
+            error={errors.currentAreaLocality}
+          />
+
+          {/* Google Location */}
+          <View style={{ zIndex: 100 }}>
+            <GooglePlacesInput
+              title="Search Google Location (Mandatory)"
+              placeholder="Search for your location on Google Maps..."
+              onPlaceSelected={(location) => {
+                setCurrentGoogleLocation(location?.google_location || "");
+                setCurrentLat(location?.lat || "");
+                setCurrentLong(location?.long || "");
+                if (errors.currentGoogleLocation) setErrors({ ...errors, currentGoogleLocation: null });
+                
+                if (location?.hasExtractedData) {
+                  if (!currentStreet && location.street) setCurrentStreet(location.street);
+                  if (!currentCity && location.city) setCurrentCity(location.city);
+                  if (!currentState && location.state) setCurrentState(location.state);
+                  if (!currentPincode && location.pincode) setCurrentPincode(location.pincode);
+                }
+              }}
+              error={errors.currentGoogleLocation}
+            />
+          </View>
+
+          {currentGoogleLocation ? (
+            <View style={{ marginBottom: 15 }}>
+              <Typography size={12} color="green">Location Selected âœ“</Typography>
+              <Typography size={11} color="gray">{currentGoogleLocation}</Typography>
+            </View>
+          ) : null}
+
+          <Input
             title={
               LocalizedStrings.EditProfile?.Street ||
               LocalizedStrings.StaffProfile?.Street ||
@@ -431,6 +519,46 @@ const StepLoactionStaff = forwardRef((props, ref) => {
               />
             </View>
           </View>
+          <Input
+            title="Area / Locality"
+            placeholder="e.g. Phase 1, Model Town"
+            value={permanentAreaLocality}
+            onChange={text => {
+              setPermanentAreaLocality(text);
+              if (errors.permanentAreaLocality) setErrors({ ...errors, permanentAreaLocality: null });
+            }}
+            error={errors.permanentAreaLocality}
+          />
+
+          {/* Google Location */}
+          <View style={{ zIndex: 90 }}>
+            <GooglePlacesInput
+              title="Search Google Location (Mandatory)"
+              placeholder="Search for your location on Google Maps..."
+              onPlaceSelected={(location) => {
+                setPermanentGoogleLocation(location?.google_location || "");
+                setPermanentLat(location?.lat || "");
+                setPermanentLong(location?.long || "");
+                if (errors.permanentGoogleLocation) setErrors({ ...errors, permanentGoogleLocation: null });
+                
+                if (location?.hasExtractedData) {
+                  if (!permanentStreet && location.street) setPermanentStreet(location.street);
+                  if (!permanentCity && location.city) setPermanentCity(location.city);
+                  if (!permanentState && location.state) setPermanentState(location.state);
+                  if (!permanentPincode && location.pincode) setPermanentPincode(location.pincode);
+                }
+              }}
+              error={errors.permanentGoogleLocation}
+            />
+          </View>
+
+          {permanentGoogleLocation ? (
+            <View style={{ marginBottom: 15 }}>
+              <Typography size={12} color="green">Location Selected âœ“</Typography>
+              <Typography size={11} color="gray">{permanentGoogleLocation}</Typography>
+            </View>
+          ) : null}
+
           <Input
             title={
               LocalizedStrings.EditProfile?.Street ||

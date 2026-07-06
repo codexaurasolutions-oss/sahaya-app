@@ -1,4 +1,4 @@
-import { StyleSheet, View, Image, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, Modal, Switch } from 'react-native';
 import React, { useState, useCallback } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -7,12 +7,13 @@ import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
 import { isAuth, userDetails } from '../../../Redux/action';
 import { useDispatch, useSelector } from 'react-redux';
-import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../../Backend/Backend';
-import { DELETE_ACCOUNT, LOGOUT, PROFILE } from '../../../Backend/api_routes';
+import { POST_WITH_TOKEN, GET_WITH_TOKEN, POST_FORM_DATA } from '../../../Backend/Backend';
+import { DELETE_ACCOUNT, LOGOUT, PROFILE, PROFILE_UPDATE } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../../Constants/localization';
 import Button from '../../../Component/Button';
 import { useFocusEffect } from '@react-navigation/native';
+import { clearFcmToken } from '../../../Constants/AsyncStorage';
 
 const More = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -20,6 +21,10 @@ const More = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [autoPresent, setAutoPresent] = useState(
+    userDetail?.auto_attendence === 1 || userDetail?.auto_attendence === '1' || userDetail?.auto_attendence === true,
+  );
+  const [autoPresentLoading, setAutoPresentLoading] = useState(false);
 
   // Fetch profile data when screen is focused
   useFocusEffect(
@@ -90,61 +95,139 @@ const More = ({ navigation }) => {
       success => {
         setLoading(false);
         SimpleToast.show('Logged out successfully', SimpleToast.SHORT);
-        // Clear auth state and user details
+        clearFcmToken();
         dispatch(isAuth(false));
         dispatch(userDetails({}));
       },
       error => {
         setLoading(false);
-        // Even if API fails, logout locally
+        clearFcmToken();
         dispatch(isAuth(false));
         dispatch(userDetails({}));
         SimpleToast.show('Logged out', SimpleToast.SHORT);
       },
       fail => {
         setLoading(false);
-        // Even if network fails, logout locally
+        clearFcmToken();
         dispatch(isAuth(false));
         dispatch(userDetails({}));
         SimpleToast.show('Logged out', SimpleToast.SHORT);
       },
     );
   };
+
+  const handleAutoPresentToggle = value => {
+    setAutoPresent(value);
+    setAutoPresentLoading(true);
+    const formData = new FormData();
+    formData.append('auto_attendence', value ? 1 : 0);
+    formData.append('is_edit', '1');
+    POST_FORM_DATA(
+      PROFILE_UPDATE,
+      formData,
+      success => {
+        setAutoPresentLoading(false);
+        dispatch(userDetails(success?.data));
+        SimpleToast.show(
+          value ? 'Auto Present enabled' : 'Auto Present disabled',
+          SimpleToast.SHORT,
+        );
+      },
+      error => {
+        setAutoPresentLoading(false);
+        setAutoPresent(!value);
+        SimpleToast.show('Failed to update setting', SimpleToast.SHORT);
+      },
+      fail => {
+        setAutoPresentLoading(false);
+        setAutoPresent(!value);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
+      },
+    );
+  };
+
+  const userName = userDetail?.first_name && userDetail?.last_name
+    ? `${userDetail.first_name} ${userDetail.last_name}`
+    : userDetail?.first_name || userDetail?.name || 'User';
+
+  const imgUrl = userDetail?.image?.toLowerCase() || '';
+  const isDefaultImage =
+    !userDetail?.image ||
+    imgUrl.includes('noimage') ||
+    imgUrl.includes('no_image') ||
+    imgUrl.includes('no-image') ||
+    imgUrl.includes('default') ||
+    imgUrl.includes('placeholder');
+  const userImage = isDefaultImage
+    ? ImageConstant?.user
+    : { uri: userDetail.image };
+
   return (
     <CommanView>
       <HeaderForUser title={LocalizedStrings.MoreOptions.title} style_title={{ fontSize: 18 }} />
 
       {/* Profile Card */}
       <View style={styles.profileCard}>
-        <Image
-          source={
-            userDetail?.image &&
-              !userDetail?.image?.toLowerCase()?.includes('noimage') &&
-              !userDetail?.image?.toLowerCase()?.includes('default') &&
-              !userDetail?.image?.toLowerCase()?.includes('placeholder')
-              ? { uri: userDetail?.image }
-              : ImageConstant.user
-          }
-          style={styles.avatar}
-        />
-        <View>
-          <Typography type={Font?.Poppins_Medium} size={15}>
-            {userDetail?.first_name} {userDetail?.last_name}
+        <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+          <Image
+            source={userImage}
+            style={styles.avatar}
+          />
+          <View style={{ flex: 1 }}>
+            <Typography type={Font?.Poppins_SemiBold} size={16}>
+              {userName}
+            </Typography>
+            <Typography type={Font?.Poppins_Regular} size={12} color="#888">
+              {LocalizedStrings.MoreOptions.household_owner}
+            </Typography>
+            {userDetail?.email ? (
+              <Typography type={Font?.Poppins_Regular} size={11} color="#999" style={{ marginTop: 2 }}>
+                {userDetail.email}
+              </Typography>
+            ) : null}
+            {userDetail?.dob ? (
+              <Typography type={Font?.Poppins_Regular} size={11} color="#999">
+                DOB: {userDetail.dob}
+              </Typography>
+            ) : null}
+            {userDetail?.gender ? (
+              <Typography type={Font?.Poppins_Regular} size={11} color="#999" style={{ textTransform: 'capitalize' }}>
+                {userDetail.gender}
+              </Typography>
+            ) : null}
+          </View>
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => {
+              navigation?.navigate('HouseholdProfile');
+            }}
+          >
+            <Typography type={Font?.Poppins_Medium} size={14} color="#D98579">
+              {LocalizedStrings.MoreOptions.edit_profile}
+            </Typography>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Auto Attendance Toggle */}
+      <View style={styles.autoAttendCard}>
+        <View style={{ flex: 1 }}>
+          <Typography type={Font?.Poppins_SemiBold} size={14}>
+            Auto Attendance
           </Typography>
-          <Typography type={Font?.Poppins_Regular} size={11}>
-            {LocalizedStrings.MoreOptions.household_owner}
+          <Typography type={Font?.Poppins_Regular} size={12} color="#888">
+            {autoPresent
+              ? 'Staff will be marked present automatically daily'
+              : 'Turn on to auto-mark staff as present'}
           </Typography>
         </View>
-        <TouchableOpacity
-          style={styles.editBtn}
-          onPress={() => {
-            navigation?.navigate('HouseholdProfile');
-          }}
-        >
-          <Typography type={Font?.Poppins_Medium} size={14} color="#D98579">
-            {LocalizedStrings.MoreOptions.edit_profile}
-          </Typography>
-        </TouchableOpacity>
+        <Switch
+          value={autoPresent}
+          onValueChange={handleAutoPresentToggle}
+          disabled={autoPresentLoading}
+          trackColor={{ false: '#E0E0E0', true: '#D98579' }}
+          thumbColor={autoPresent ? '#fff' : '#fff'}
+        />
       </View>
 
       {/* Options List */}
@@ -157,13 +240,6 @@ const More = ({ navigation }) => {
         {LocalizedStrings.MoreOptions.account_household}
       </Typography>
       <View style={styles.optionsBox}>
-        <Option
-          title={LocalizedStrings.MoreOptions.profile_settings}
-          subtitle={LocalizedStrings.MoreOptions.manage_personal}
-          onPress={() => {
-            navigation.navigate('ProfileManagement');
-          }}
-        />
         <Option
           Images={ImageConstant?.ic_bellring}
           title={LocalizedStrings.MoreOptions.alerts_notifications}
@@ -180,14 +256,6 @@ const More = ({ navigation }) => {
           }
         />
         <Option
-          Images={ImageConstant?.Salary}
-          isBorder={true}
-          title={LocalizedStrings.MoreOptions.leave_applications || 'Leave Applications'}
-          subtitle={LocalizedStrings.MoreOptions.leave_applications_subtitle || 'Staff Leave Applications'}
-          onPress={() => navigation.navigate('Leave')}
-        />
-
-        <Option
           Images={ImageConstant?.Dollar}
           title={LocalizedStrings.MoreOptions.membership || 'Membership'}
           subtitle={LocalizedStrings.MoreOptions.membership_subtitle || 'View and manage your membership'}
@@ -199,13 +267,6 @@ const More = ({ navigation }) => {
           title={'My Addresses'}
           subtitle={'Manage your saved addresses'}
           onPress={() => navigation.navigate('ManageAddresses')}
-        />
-        <Option
-          Images={ImageConstant?.Dollar}
-          isBorder={true}
-          title={'Pay Salary'}
-          subtitle={'Manage and pay staff salary'}
-          onPress={() => navigation.navigate('Salary')}
         />
         <Option
           Images={ImageConstant?.lines}
@@ -494,8 +555,17 @@ const styles = StyleSheet.create({
     color: '#777',
   },
   editBtn: {
-    marginLeft: 'auto',
     paddingHorizontal: 8,
+  },
+  autoAttendCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EBEBEA',
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#FFF9F8',
   },
   editText: {
     fontSize: 14,

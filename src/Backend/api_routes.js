@@ -86,6 +86,8 @@ export const LeaveApprove = 'leave-approve';
 export const SalaryManagementStaff = 'housesold/salary/staff';
 export const SalaryStore = 'admin/salary/store';
 export const SalaryList = 'housesold/salary/list';
+export const SalarySendToBank = (id) => `housesold/salary/${id}/send-to-bank`;
+export const SalaryPayoutHistory = (id) => `housesold/salary/${id}/payouts`;
 export const EarningSummary = 'earnings/summary';
 export const SalarySlipDownload = 'salary/slip';
 export const SalaryAdvanceRequest = 'salary/advance/request';
@@ -165,6 +167,7 @@ export const StaffAvailabilityStatus = 'staff/availability/status';
 export const StaffAvailableList = 'staff/available-list';
 export const StaffGetAIData = 'admin/staff/get-ai-data';
 export const JobGetAIData = 'admin/staff/get-job-data';
+export const ChatEndpoint = 'chat';
 export const StaffAvailableDetail = 'staff/available';
 export const HireMeOptIn = 'staff/hire-me/opt-in';
 export const HireMeUpdate = 'staff/hire-me/update';
@@ -178,6 +181,7 @@ export const NotificationList = 'notifications/list';
 export const NotificationRead = 'notifications/read';
 export const NotificationReadAll = 'notifications/read-all';
 export const NotificationUnreadCount = 'notifications/unread-count';
+export const DeviceTokenUpdate = 'device-token';
 
 // ===========================================
 // REVIEWS & RATINGS
@@ -237,6 +241,13 @@ export const VERIFY_PAYMENT = 'payment/verify';
 export const PAYMENT_HISTORY = 'payment/history';
 export const SUBSCRIBE_PLAN = 'subscription/subscribe';
 export const SALARY_PAYMENT = 'payment/salary';
+
+// ===========================================
+// JOB APPLY LIMIT SYSTEM
+// ===========================================
+export const JOB_LIMIT_STATUS = 'job-limit/status';
+export const JOB_LIMIT_CREATE_ORDER = 'job-limit/create-order';
+export const JOB_LIMIT_VERIFY_PAYMENT = 'job-limit/verify-payment';
 
 // ===========================================
 // RAZORPAY API ROUTES (PHP Backend)
@@ -360,6 +371,8 @@ export default {
   SalaryEmiAdd,
   SalaryEmiList,
   SalaryAdjustment,
+  SalarySendToBank,
+  SalaryPayoutHistory,
   AdvanceWithdraw,
   AdvanceList,
   AdvanceStore,

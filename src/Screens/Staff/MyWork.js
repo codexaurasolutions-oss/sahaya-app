@@ -1,6 +1,7 @@
-import { StyleSheet, View, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, TouchableOpacity, Image, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
 import moment from 'moment';
+import { Calendar } from 'react-native-calendars';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
 import Typography from '../../Component/UI/Typography';
@@ -9,8 +10,9 @@ import { ImageConstant } from '../../Constants/ImageConstant';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../Constants/localization';
-import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { myWork, EarningSummary as EarningSummaryRoute } from '../../Backend/api_routes';
+import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../Backend/Backend';
+import { myWork, EarningSummary as EarningSummaryRoute, AttendanceStaff } from '../../Backend/api_routes';
+import SimpleToast from 'react-native-simple-toast';
 
 const formatDate = (dateString) => {
   if (!dateString || dateString === 'null' || dateString === 'undefined') return 'Not Found';
@@ -35,6 +37,15 @@ const MyWork = () => {
   const [employerName, setEmployerName] = useState(null);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
+
+  // Calendar attendance state
+  const [markedDates, setMarkedDates] = useState({});
+  const [attendanceStats, setAttendanceStats] = useState({ totalWorked: 0, absent: 0, leave: 0 });
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [calendarLoading, setCalendarLoading] = useState(false);
 
   // Safe name builder — never returns "null" or "undefined" strings
   const buildName = (obj) => {
@@ -77,6 +88,76 @@ const MyWork = () => {
       () => {},
     );
   };
+
+  const STATUS_COLORS = {
+    present: '#4CAF50',
+    late: '#FF9800',
+    on_leave: '#FFC107',
+    leave: '#FFC107',
+    holiday: '#2196F3',
+    absent: '#F44336',
+    weekend: '#9E9E9E',
+  };
+
+  const fetchAttendanceCalendar = useCallback((month) => {
+    if (!userDetail?.id) return;
+    setCalendarLoading(true);
+    const [year, mon] = month.split('-');
+    const formData = new FormData();
+    formData.append('id', userDetail.id);
+    formData.append('month', parseInt(mon, 10));
+    formData.append('year', parseInt(year, 10));
+
+    POST_FORM_DATA(
+      AttendanceStaff,
+      formData,
+      success => {
+        const records = success?.data?.attendance || success?.data || [];
+        const dates = {};
+        let totalWorked = 0;
+        let absentCount = 0;
+        let leaveCount = 0;
+
+        const today = new Date();
+        const yearNum = parseInt(year, 10);
+        const monNum = parseInt(mon, 10);
+        const daysInMonth = new Date(yearNum, monNum, 0).getDate();
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(yearNum, monNum - 1, day);
+          if (date > today) break;
+          const dayOfWeek = date.getDay();
+          const dateStr = `${year}-${String(monNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS.weekend };
+          }
+        }
+
+        if (Array.isArray(records)) {
+          records.forEach(record => {
+            const dateStr = record?.date;
+            const status = record?.status?.toLowerCase();
+            if (!dateStr || !status) return;
+            dates[dateStr] = { selected: true, marked: true, selectedColor: STATUS_COLORS[status] || '#9E9E9E' };
+            if (status === 'present' || status === 'late') totalWorked++;
+            else if (status === 'absent') absentCount++;
+            else if (status === 'leave' || status === 'on_leave') leaveCount++;
+          });
+        }
+
+        setAttendanceStats({ totalWorked, absent: absentCount, leave: leaveCount });
+        setMarkedDates(dates);
+        setCalendarLoading(false);
+      },
+      () => { setCalendarLoading(false); },
+      () => { setCalendarLoading(false); },
+    );
+  }, [userDetail?.id]);
+
+  const handleMonthChange = useCallback((month) => {
+    const newMonth = `${month.year}-${String(month.month).padStart(2, '0')}`;
+    setCurrentMonth(newMonth);
+  }, []);
 
   const fetchMyWork = () => {
     setLoading(true);
@@ -156,8 +237,9 @@ const MyWork = () => {
   useEffect(() => {
     if (isFocused) {
       fetchMyWork();
+      fetchAttendanceCalendar(currentMonth);
     }
-  }, [isFocused]);
+  }, [isFocused, currentMonth]);
 
   const getAttendanceCount = (status) => {
     const item = attendanceSummary.find(a => a.status === status);
@@ -198,10 +280,9 @@ const MyWork = () => {
           </Typography>
         </View>
       ) : (
-        <>
+        <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
           {hasActiveJob ? (
           <>
-          {/* Current Employer Section - only when staff has an active job */}
           <View style={styles.card}>
             <View
               style={[
@@ -270,11 +351,12 @@ const MyWork = () => {
 
             <TouchableOpacity
               style={styles.button}
-              onPress={() =>
+              onPress={() => {
+                const resolvedId = activeJobApplication?.job_id || workData?.job_id || workData?.id || null;
                 navigation.navigate('EarningSummary', {
-                  id: activeJobApplication?.job_id || workData?.job_id || workData?.id,
-                })
-              }
+                  id: resolvedId,
+                });
+              }}
             >
               <Typography size={14} style={styles.buttonText}>
                 {LocalizedStrings.staffSection?.MyWork?.view_details ||
@@ -293,9 +375,12 @@ const MyWork = () => {
 
             <TouchableOpacity
               style={[styles.button, styles.quitButton]}
-              onPress={() =>
-                navigation.navigate('QuitJob', { jobId: activeJobApplication?.job_id || workData?.job_id || workData?.id })
-              }
+              onPress={() => {
+                const resolvedId = activeJobApplication?.job_id || workData?.job_id || workData?.id;
+                if (resolvedId) {
+                  navigation.navigate('QuitJob', { jobId: resolvedId });
+                }
+              }}
             >
               <Image
                 source={ImageConstant?.Door}
@@ -334,46 +419,102 @@ const MyWork = () => {
           </View>
           )}
 
-          {/* Attendance Summary */}
-          {attendanceSummary.length > 0 && (
-            <View style={styles.card}>
-              <View
-                style={[
-                  styles.titleRow,
-                  { borderColor: 'white', marginTop: 0, paddingTop: 0 },
-                ]}
+          {/* Attendance Calendar */}
+          <View style={styles.card}>
+            <View
+              style={[
+                styles.titleRow,
+                { borderColor: 'white', marginTop: 0, paddingTop: 0 },
+              ]}
+            >
+              <Image source={ImageConstant?.lines} style={styles.titleIcon} />
+              <Typography
+                type={Font.Poppins_SemiBold}
+                size={17}
+                style={styles.title}
               >
-                <Image source={ImageConstant?.lines} style={styles.titleIcon} />
-                <Typography
-                  type={Font.Poppins_SemiBold}
-                  size={17}
-                  style={styles.title}
-                >
-                  Attendance Summary
+                Attendance
+              </Typography>
+            </View>
+
+            {calendarLoading && (
+              <ActivityIndicator size="small" color="#2196F3" style={{ marginVertical: 10 }} />
+            )}
+
+            <Calendar
+              monthFormat={'MMMM yyyy'}
+              hideExtraDays={true}
+              maxDate={new Date().toISOString().split('T')[0]}
+              onDayPress={() => {}}
+              onMonthChange={handleMonthChange}
+              markedDates={{
+                ...markedDates,
+              }}
+              theme={{
+                todayTextColor: '#2196F3',
+                arrowColor: '#2196F3',
+                textDayFontFamily: Font.Poppins_Regular,
+                textMonthFontFamily: Font.Poppins_Bold,
+                textDayHeaderFontFamily: Font.Poppins_Medium,
+              }}
+              disableArrowRight={
+                currentMonth >=
+                `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+              }
+            />
+
+            <View style={styles.attendanceSummary}>
+              <View style={styles.attendanceSummaryRow}>
+                <Typography size={14} type={Font.Poppins_Regular}>
+                  Days Worked
+                </Typography>
+                <Typography size={14} type={Font.Poppins_Bold}>
+                  {attendanceStats.totalWorked}
                 </Typography>
               </View>
-              <View style={styles.summaryRow}>
-                <View style={styles.summaryItem}>
-                  <Typography type={Font.Poppins_Bold} size={20} color="#4CAF50">
-                    {getAttendanceCount('present')}
-                  </Typography>
-                  <Typography size={12} color="#666">Present</Typography>
+              <View style={styles.attendanceSummaryRow}>
+                <Typography size={14} type={Font.Poppins_Regular}>
+                  Absent Days
+                </Typography>
+                <Typography size={14} type={Font.Poppins_Bold}>
+                  {attendanceStats.absent}
+                </Typography>
+              </View>
+              <View style={styles.attendanceSummaryRow}>
+                <Typography size={14} type={Font.Poppins_Regular}>
+                  Leave Days
+                </Typography>
+                <Typography size={14} type={Font.Poppins_Bold}>
+                  {attendanceStats.leave}
+                </Typography>
+              </View>
+            </View>
+
+            <View style={styles.legendContainer}>
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#4CAF50' }]} />
+                  <Typography size={12} type={Font.Poppins_Regular}>Present</Typography>
                 </View>
-                <View style={styles.summaryItem}>
-                  <Typography type={Font.Poppins_Bold} size={20} color="#FF9800">
-                    {getAttendanceCount('late')}
-                  </Typography>
-                  <Typography size={12} color="#666">Late</Typography>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#FFC107' }]} />
+                  <Typography size={12} type={Font.Poppins_Regular}>On Leave</Typography>
                 </View>
-                <View style={styles.summaryItem}>
-                  <Typography type={Font.Poppins_Bold} size={20} color="#F44336">
-                    {getAttendanceCount('absent')}
-                  </Typography>
-                  <Typography size={12} color="#666">Absent</Typography>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#2196F3' }]} />
+                  <Typography size={12} type={Font.Poppins_Regular}>Holiday</Typography>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#F44336' }]} />
+                  <Typography size={12} type={Font.Poppins_Regular}>Absent</Typography>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.dot, { backgroundColor: '#9E9E9E' }]} />
+                  <Typography size={12} type={Font.Poppins_Regular}>Weekend</Typography>
                 </View>
               </View>
             </View>
-          )}
+          </View>
 
           {/* Leave Requests */}
           {workData?.leave_requests?.length > 0 && (
@@ -428,7 +569,7 @@ const MyWork = () => {
               ))}
             </View>
           )}
-        </>
+        </ScrollView>
       )}
       <View style={styles.bottomSpacer} />
     </CommanView>
@@ -584,4 +725,31 @@ const styles = StyleSheet.create({
     tintColor: '#D98579',
     resizeMode: 'contain',
   },
+  attendanceSummary: {
+    marginTop: 12,
+    backgroundColor: '#FAFAFB',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EEE',
+  },
+  attendanceSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomColor: '#DEE1E6',
+    borderBottomWidth: 1,
+  },
+  legendContainer: {
+    marginTop: 10,
+  },
+  legend: { flexDirection: 'row', flexWrap: 'wrap' },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 14,
+    marginBottom: 6,
+  },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 4 },
 });

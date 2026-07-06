@@ -1,95 +1,105 @@
-import PushNotification from 'react-native-push-notification';
-import PushNotificationIOS from '@react-native-community/push-notification-ios';
-import {Platform} from 'react-native';
+import notifee, {
+  AndroidImportance,
+  EventType,
+} from '@notifee/react-native';
 import {notificationOpen} from './notificationAction';
 
+export const handleNotificationPressEvent = async ({type, detail}) => {
+  if (
+    (type === EventType.PRESS || type === EventType.ACTION_PRESS) &&
+    detail?.notification?.data
+  ) {
+    notificationOpen({data: detail.notification.data});
+  }
+};
+
 class LocalNotificationService {
-  configure = () => {
-    this.createChannel();
-    this.configureNotification();
+  channelId = 'sahayya-notifications';
+  unsubscribeForeground = null;
+
+  configure = async () => {
+    await this.createChannel();
+    this.setupListeners();
   };
 
-  createChannel = () => {
-    let config = {
-      channelId: 'channel-id', // (required)
-      channelName: 'My channel', // (required)
-      channelDescription: 'A channel to categorise your notifications', // (optional) default: undefined.
-      playSound: true, // (optional) default: true
-      allowWhileIdle: true,
-      // soundName: (Platform.OS=='ios')?"rushs.wav":"rushs", // (optional) See `soundName` parameter of `localNotification` function
-      // importance: 4, // (optional) default: 4. Int value of the Android notification importance
-      vibrate: true, // (optional) default: true. Creates the default vibration patten if true.
-      // repeatType: 1
-    };
+  setupListeners = () => {
+    if (this.unsubscribeForeground) {
+      return;
+    }
 
-    PushNotification.createChannel(config, created => {});
+    this.unsubscribeForeground = notifee.onForegroundEvent(
+      handleNotificationPressEvent,
+    );
   };
 
-  configureNotification = () => {
-    let config = {
-      onRegister: function (token) {},
-      onNotification: function (notification) {
-        if (notification.userInteraction) {
-          notificationOpen(notification);
-        }
-      },
-      permissions: {
-        alert: true,
+  createChannel = async () => {
+    try {
+      await notifee.createChannel({
+        id: this.channelId,
+        name: 'Sahayya Notifications',
+        description:
+          'Job alerts, salary updates, leave approvals, and important reminders',
+        importance: AndroidImportance.HIGH,
+        vibration: true,
+        sound: 'default',
         badge: true,
-        sound: true,
-      },
-      popInitialNotification: false,
-      requestPermissions: true,
-    };
-
-    PushNotification.configure(config);
-  };
-
-  unRegister = () => {
-    PushNotification.unregister();
-  };
-
-  showlocalNotification = ({notification, data}) => {
-    let config = {
-      title: notification?.title,
-      message: notification?.body,
-      // userInfo: data,
-      playSound: true,
-      // soundName:(Platform.OS=='ios')?"rushs.wav":'rushs',
-      // onlyAlertOnce: true,
-      number: 1,
-    };
-
-    if (Platform.OS == 'android') {
-      config.channelId = 'channel-id';
-      config.data = data;
-      config.message = notification?.body;
-    }
-
-    PushNotification.localNotification(config);
-  };
-
-  cancelAllLocalNotifications = () => {
-    if (Platform.OS === 'ios') {
-      PushNotificationIOS.removeAllDeliveredNotifications();
-    } else {
-      PushNotification.cancelAllLocalNotifications();
-    }
-  };
-
-  clearNotificationBadge = () => {
-    if (Platform.OS == 'ios') {
-      PushNotificationIOS.getApplicationIconBadgeNumber(num => {
-        // get current number
-        if (num >= 1) {
-          PushNotificationIOS.setApplicationIconBadgeNumber(0); //set number to 0
-        }
       });
+    } catch (error) {
+      // silent
     }
   };
 
-  removeAllDeliveredNotificationByID = notificationId => {
-    PushNotification.cancelLocalNotifications({id: `${notificationId}`});
+  showlocalNotification = async ({notification, data}) => {
+    try {
+      const title = notification?.title || 'Sahayya';
+      const message =
+        notification?.body || notification?.title || '';
+      if (!message) {
+        return;
+      }
+
+      await notifee.displayNotification({
+        title,
+        body: message,
+        data: data || {},
+        android: {
+          channelId: this.channelId,
+          importance: AndroidImportance.HIGH,
+          pressAction: {id: 'default'},
+          sound: 'default',
+        },
+        ios: {
+          sound: 'default',
+          badge: true,
+        },
+      });
+    } catch (error) {
+      // silent
+    }
+  };
+
+  cancelAllLocalNotifications = async () => {
+    try {
+      await notifee.cancelAllNotifications();
+    } catch (error) {
+      // silent
+    }
+  };
+
+  clearNotificationBadge = async () => {
+    try {
+      await notifee.setBadgeCount(0);
+    } catch (error) {
+      // silent
+    }
+  };
+
+  removeAllDeliveredNotificationByID = async notificationId => {
+    try {
+      await notifee.cancelNotification(notificationId);
+    } catch (error) {
+      // silent
+    }
   };
 }
 

@@ -17,7 +17,8 @@ import LocalizedStrings from '../../Constants/localization';
 import { useIsFocused } from '@react-navigation/native';
 import SimpleToast from 'react-native-simple-toast';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
-import { customerDashbord, ListJob, myWork, PROFILE, ReferralCode, NotificationUnreadCount } from '../../Backend/api_routes';
+import { customerDashbord, ListJob, myWork, PROFILE, ReferralCode } from '../../Backend/api_routes';
+import NotificationBell from '../../Component/NotificationBell';
 
 const StaffDashboard = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -28,24 +29,12 @@ const StaffDashboard = ({ navigation }) => {
   const [staffJobId, setStaffJobId] = useState(null);
   const [houseownerId, setHouseownerId] = useState(null);
   const [walletBalance, setWalletBalance] = useState('0.00');
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const fetchWalletBalance = useCallback(() => {
     GET_WITH_TOKEN(
       ReferralCode,
       success => {
-        setWalletBalance(success?.data?.total_earnings || '0.00');
-      },
-      error => {},
-      () => {},
-    );
-  }, []);
-
-  const fetchUnreadNotificationCount = useCallback(() => {
-    GET_WITH_TOKEN(
-      NotificationUnreadCount,
-      success => {
-        setUnreadNotificationCount(success?.unread_count || 0);
+        setWalletBalance(success?.data?.wallet_balance || '0.00');
       },
       error => {},
       () => {},
@@ -145,7 +134,6 @@ const StaffDashboard = ({ navigation }) => {
       fetchJobCount();
       fetchLeaveCount();
       fetchWalletBalance();
-      fetchUnreadNotificationCount();
       // Try to resolve houseownerId from userDetail first
       const fromUser =
         userDetail?.added_by ||
@@ -160,7 +148,6 @@ const StaffDashboard = ({ navigation }) => {
     GetUser,
     fetchJobCount,
     fetchLeaveCount,
-    fetchUnreadNotificationCount,
     fetchWalletBalance,
     isFocused,
     userDetail?.added_by,
@@ -196,16 +183,16 @@ const StaffDashboard = ({ navigation }) => {
             backgroundColor: '#FFFFFF',
             justifyContent: 'center', alignItems: 'center',
           }}>
-            <Typography type={Font?.Poppins_SemiBold} style={{ fontSize: 16, color: '#D98579' }}>
-              {'\u20B9'}
+            <Typography type={Font?.Poppins_SemiBold} style={{ fontSize: 14, color: '#D98579' }}>
+              &#x2726;
             </Typography>
           </View>
           <View style={{ marginLeft: 6 }}>
             <Typography type={Font?.Poppins_Medium} style={{ fontSize: 11, color: '#555' }}>
-              Wallet
+              Credits
             </Typography>
             <Typography type={Font?.Poppins_SemiBold} style={{ fontSize: 13, color: '#1a1a1a' }}>
-              {'\u20B9'}{walletBalance || '0.00'}
+              {walletBalance || '0'}
             </Typography>
           </View>
         </TouchableOpacity>
@@ -217,31 +204,7 @@ const StaffDashboard = ({ navigation }) => {
           {LocalizedStrings.staffSection?.StaffDashboard?.title || 'Staff Dashboard'}
         </Typography>
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Notifications')}
-          style={{ position: 'relative' }}
-        >
-          <Image source={ImageConstant?.notification} style={{ height: 30, width: 30, resizeMode: 'center' }} />
-          {unreadNotificationCount > 0 && (
-            <View
-              style={{
-                position: 'absolute',
-                top: -2,
-                right: -2,
-                backgroundColor: '#DC2626',
-                borderRadius: 8,
-                width: 16,
-                height: 16,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <Typography style={{ color: 'white', fontSize: 10, fontFamily: Font.Poppins_Bold, lineHeight: 14 }}>
-                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-              </Typography>
-            </View>
-          )}
-        </TouchableOpacity>
+        <NotificationBell navigateTo="Notifications" />
       </View>
       <View style={{ borderBottomWidth: 1, borderColor: '#EBEBEA' }} />
 

@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import CommanView from '../../../Component/CommanView';
 import Header from '../../../Component/Header';
@@ -153,6 +153,10 @@ const Step1 = () => {
           formData.append(`addresses[${index}][city]`, address.city);
           formData.append(`addresses[${index}][state]`, address.state);
           formData.append(`addresses[${index}][pincode]`, address.pinCode);
+          formData.append(`addresses[${index}][area_locality]`, address.area_locality || '');
+          formData.append(`addresses[${index}][google_location]`, address.google_location || '');
+          formData.append(`addresses[${index}][lat]`, address.lat || '');
+          formData.append(`addresses[${index}][long]`, address.long || '');
         });
       }
 
@@ -406,7 +410,21 @@ const Step1 = () => {
         onBackPress
         onBackPressFun={() => {
           if (activeTab === 0) {
-            confirmLogout();
+            Alert.alert(
+              'Exit Profile Setup',
+              'Are you sure you want to go back? Your progress will not be saved.',
+              [
+                { text: 'Stay', style: 'cancel' },
+                {
+                  text: 'Go Back',
+                  style: 'destructive',
+                  onPress: () => {
+                    Dispatch(isAuth(false));
+                    Dispatch(userDetails({}));
+                  },
+                },
+              ],
+            );
           } else {
             setActiveTab(activeTab - 1);
           }
