@@ -1663,7 +1663,7 @@ const StaffManagement = ({ navigation, route }) => {
                             type={Font.Poppins_Regular}
                             style={styles.paymentAmount}
                           >
-                            ₹{(item.net_salary ?? item.amount ?? 0).toFixed(2)}
+                            ₹{Number(item.net_salary ?? item.amount ?? 0).toFixed(2)}
                           </Typography>
                           <Typography
                             type={Font.Poppins_Regular}
@@ -1864,6 +1864,154 @@ const StaffManagement = ({ navigation, route }) => {
               onChangeText={text => setAdvanceAmount(text.replace(/[^0-9]/g, ''))}
               keyboardType="numeric"
             />
+
+            <View style={{ marginTop: 20, marginBottom: 10 }}>
+              <Typography type={Font.Poppins_Medium} size={14} style={{ marginBottom: 10 }}>
+                Deduct from Salary?
+              </Typography>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    shouldDeductAdvance && styles.toggleButtonActive,
+                  ]}
+                  onPress={() => {
+                    setShouldDeductAdvance(true);
+                    setDeductionMethod(null);
+                  }}
+                >
+                  <Typography
+                    type={Font.Poppins_Medium}
+                    size={13}
+                    color={shouldDeductAdvance ? '#D98579' : '#666'}
+                  >
+                    Yes, Deduct
+                  </Typography>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    !shouldDeductAdvance && styles.toggleButtonActive,
+                  ]}
+                  onPress={() => {
+                    setShouldDeductAdvance(false);
+                    setDeductionMethod(null);
+                  }}
+                >
+                  <Typography
+                    type={Font.Poppins_Medium}
+                    size={13}
+                    color={!shouldDeductAdvance ? '#D98579' : '#666'}
+                  >
+                    No, Don't Deduct
+                  </Typography>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {shouldDeductAdvance && (
+              <View style={{ marginTop: 10 }}>
+                <Typography type={Font.Poppins_Medium} size={14} style={{ marginBottom: 5 }}>
+                  Deduction Method
+                </Typography>
+                <DropdownComponent
+                  title="Select Deduction Method"
+                  placeholder="Choose how to deduct"
+                  width={'100%'}
+                  style_dropdown={{ marginHorizontal: 0 }}
+                  selectedTextStyleNew={{
+                    marginLeft: 10,
+                    fontFamily: Font.Poppins_Regular,
+                  }}
+                  marginHorizontal={0}
+                  style_title={{
+                    textAlign: 'left',
+                    fontFamily: Font.Poppins_Regular,
+                  }}
+                  data={deductionMethodData}
+                  value={deductionMethod}
+                  onChange={item => {
+                    setDeductionMethod(item);
+                    if (item?.value !== 'installments') {
+                      setNumInstallments('');
+                    }
+                  }}
+                />
+                {deductionMethod?.value === 'installments' && (
+                  <View style={{ marginTop: 10 }}>
+                    <Typography type={Font.Poppins_Medium} size={13} style={{ marginBottom: 5 }}>
+                      Deduct in how many months?
+                    </Typography>
+                    <TextInput
+                      style={styles.upiInput}
+                      placeholder="e.g. 3"
+                      placeholderTextColor="#999"
+                      keyboardType="numeric"
+                      maxLength={2}
+                      value={numInstallments}
+                      onChangeText={text => {
+                        const cleaned = text.replace(/[^0-9]/g, '');
+                        const num = parseInt(cleaned, 10);
+                        if (cleaned === '' || (num >= 1 && num <= 24)) {
+                          setNumInstallments(cleaned);
+                        }
+                      }}
+                    />
+                    {numInstallments && parseInt(numInstallments, 10) > 0 && advanceAmount ? (
+                      <View style={{
+                        marginTop: 8,
+                        padding: 10,
+                        backgroundColor: '#FFF7ED',
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: '#FED7AA',
+                      }}>
+                        <Typography type={Font.Poppins_Medium} size={13} color="#9A3412">
+                          Monthly deduction: {'\u20B9'}{Math.ceil(Number(advanceAmount) / parseInt(numInstallments, 10))} x {numInstallments} months
+                        </Typography>
+                      </View>
+                    ) : null}
+                  </View>
+                )}
+              </View>
+            )}
+
+            <Typography type={Font.Poppins_Medium} size={14} style={{ marginTop: 20, marginBottom: 10 }}>
+              Payment Method
+            </Typography>
+            <View style={styles.paymentMethodsVertical}>
+              {paymentOptions.map(method => (
+                <TouchableOpacity
+                  key={method.value}
+                  style={[
+                    styles.paymentBoxVertical,
+                    advancePaymentMethod === method.value && styles.selectedBoxVertical,
+                  ]}
+                  onPress={() => setAdvancePaymentMethod(method.value)}
+                >
+                  <Image
+                    source={method.icon}
+                    style={styles.paymentIconVertical}
+                    resizeMode="contain"
+                  />
+                  <Typography
+                    type={Font.Poppins_Regular}
+                    style={{
+                      fontSize: 14,
+                      marginLeft: 12,
+                      flex: 1,
+                    }}
+                  >
+                    {method.label}
+                  </Typography>
+                  {advancePaymentMethod === method.value && (
+                    <View style={styles.checkmark}>
+                      <Typography type={Font.Poppins_Bold} style={{ color: '#fff', fontSize: 12 }}>✓</Typography>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <Button
               title={advanceLoading ? 'Processing...' : 'Send Advance'}

@@ -20,58 +20,69 @@ import moment from 'moment';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const scale = (size) => (SCREEN_WIDTH / 375) * size;
 
-const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
+const PaymentReceipt = ({ visible, onClose, paymentData, userDetails, employerName: employerNameProp, attendanceSummary: attendanceSummaryProp }) => {
   const viewShotRef = useRef();
   const [isSharing, setIsSharing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   if (!paymentData) return null;
 
+  const sb = paymentData?.salary_breakdown || {};
+
   const amount = Math.max(0, Number(paymentData?.net_salary ?? paymentData?.amount ?? 0));
   const baseSalary = Number(
-    paymentData?.salary_breakdown?.base_salary ??
-      paymentData?.basic_salary ??
-      paymentData?.base_salary ??
-      0,
+    sb?.base_salary ?? paymentData?.basic_salary ?? paymentData?.base_salary ?? 0,
   );
   const bonus = Number(
-    paymentData?.salary_breakdown?.performance_bonus ??
-      paymentData?.performative_allowance ??
-      paymentData?.performance_bonus ??
-      0,
+    sb?.performance_bonus ?? paymentData?.performative_allowance ?? paymentData?.performance_bonus ?? 0,
   );
   const overtimePay = Number(
-    paymentData?.salary_breakdown?.overtime_pay ??
-      paymentData?.over_time_allowance ??
-      paymentData?.overtime_pay ??
-      0,
+    sb?.overtime_pay ?? paymentData?.over_time_allowance ?? paymentData?.overtime_pay ?? 0,
   );
   const advancePayment = Number(
-    paymentData?.salary_breakdown?.advance_payment ??
-      paymentData?.advance_payment ??
-      0,
+    sb?.advance_payment ?? paymentData?.advance_payment ?? 0,
   );
+  const totalDeductions = Number(sb?.total_deductions ?? advancePayment);
+
   const staffName =
     paymentData?.staff_name ??
     paymentData?.staff_member?.name ??
     userDetails?.name ??
-    (userDetails?.first_name ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim() : null) ??
+    (userDetails?.first_name
+      ? `${userDetails.first_name} ${userDetails.last_name || ''}`.trim()
+      : null) ??
     'Staff Member';
+
+  const employerName =
+    employerNameProp ||
+    userDetails?.employer_name ||
+    userDetails?.employer ||
+    userDetails?.added_by_user?.name ||
+    (userDetails?.added_by_user?.first_name
+      ? `${userDetails.added_by_user.first_name} ${userDetails.added_by_user.last_name || ''}`.trim()
+      : null) ||
+    'Employer';
+
   const paymentDate = (paymentData?.created_at || paymentData?.date)
-    ? moment(paymentData.created_at || paymentData.date).format('DD MMM YYYY, hh:mm A')
-    : moment().format('DD MMM YYYY, hh:mm A');
+    ? moment(paymentData.created_at || paymentData.date).format('DD MMM YYYY')
+    : moment().format('DD MMM YYYY');
+
+  const salaryPeriod = paymentData?.salary_period ||
+    moment(paymentData?.created_at || paymentData?.date || new Date()).format('MMMM YYYY');
+
   const paymentId =
     paymentData?.payment_id ?? paymentData?.id ?? paymentData?.salary_id ?? '--';
   const paymentMethod =
     paymentData?.payment_mode ?? paymentData?.payment_method ?? 'Cash';
   const status = paymentData?.status ?? 'Paid';
 
+  const workedDays = paymentData?.worked_days ?? paymentData?.attendance_summary?.present_days ?? attendanceSummaryProp?.totalWorked ?? null;
+  const totalDays = paymentData?.total_days ?? paymentData?.attendance_summary?.total_working_days ?? attendanceSummaryProp?.daysInMonth ?? null;
+  const monthlySalary = paymentData?.monthly_salary ?? paymentData?.salary_summary?.current_monthly_salary ?? null;
+
   const captureReceipt = async () => {
     try {
-      const uri = await viewShotRef.current.capture({
-        format: 'png',
-        quality: 1,
-      });
+      const uri = await viewShotRef.current.capture({ format: 'png', quality: 1 });
       return uri;
     } catch (error) {
       console.log('Capture error:', error);
@@ -88,26 +99,17 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
         setIsSaving(false);
         return;
       }
-
-      const fileName = `Sahayya_Receipt_${paymentId}_${Date.now()}.png`;
-      const downloadDir =
-        Platform.OS === 'android'
-          ? RNFS.DownloadDirectoryPath
-          : RNFS.DocumentDirectoryPath;
+      const fileName = `Sahayya_SalarySlip_${paymentId}_${Date.now()}.png`;
+      const downloadDir = Platform.OS === 'android' ? RNFS.DownloadDirectoryPath : RNFS.DocumentDirectoryPath;
       const destPath = `${downloadDir}/${fileName}`;
       const sourcePath = uri.startsWith('file://') ? uri.replace('file://', '') : uri;
-
       await RNFS.copyFile(sourcePath, destPath);
-
-      if (Platform.OS === 'android') {
-        await RNFS.scanFile(destPath);
-      }
-
+      if (Platform.OS === 'android') await RNFS.scanFile(destPath);
       setIsSaving(false);
-      SimpleToast.show('Receipt saved to Downloads!', SimpleToast.SHORT);
+      SimpleToast.show('Salary slip saved to Downloads!', SimpleToast.SHORT);
     } catch (error) {
       console.log('Download error:', error);
-      SimpleToast.show('Failed to save receipt', SimpleToast.SHORT);
+      SimpleToast.show('Failed to save salary slip', SimpleToast.SHORT);
       setIsSaving(false);
     }
   };
@@ -116,39 +118,27 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
     setIsSharing(true);
     try {
       const uri = await captureReceipt();
-      console.log('Share - Captured URI:', uri);
       if (!uri) {
-        SimpleToast.show('Failed to capture receipt', SimpleToast.SHORT);
+        SimpleToast.show('Failed to capture salary slip', SimpleToast.SHORT);
         setIsSharing(false);
         return;
       }
-
-      const fileName = `Sahayya_Receipt_${paymentId}_${Date.now()}.png`;
+      const fileName = `Sahayya_SalarySlip_${paymentId}_${Date.now()}.png`;
       const destPath = `${RNFS.CachesDirectoryPath}/${fileName}`;
       const sourcePath = uri.startsWith('file://') ? uri.replace('file://', '') : uri;
-
-      console.log('Share - Source:', sourcePath);
-      console.log('Share - Dest:', destPath);
-
       await RNFS.copyFile(sourcePath, destPath);
-
-      const shareUrl = Platform.OS === 'android'
-        ? `file://${destPath}`
-        : destPath;
-
-      console.log('Share - Share URL:', shareUrl);
-
+      const shareUrl = Platform.OS === 'android' ? `file://${destPath}` : destPath;
       await RNShare.open({
-        title: 'Sahayya Payment Receipt',
-        message: `Payment Receipt - ${staffName} - ₹${amount.toFixed(2)}`,
+        title: 'Sahayya Salary Slip',
+        message: `Salary Slip - ${staffName} - ₹${amount.toFixed(2)}`,
         url: shareUrl,
         type: 'image/png',
-        subject: 'Sahayya Payment Receipt',
+        subject: 'Sahayya Salary Slip',
       });
     } catch (error) {
       if (error?.message !== 'User did not share') {
         console.log('Share error:', error);
-        SimpleToast.show('Failed to share receipt', SimpleToast.SHORT);
+        SimpleToast.show('Failed to share salary slip', SimpleToast.SHORT);
       }
     } finally {
       setIsSharing(false);
@@ -164,7 +154,6 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
     >
       <View style={styles.backdrop}>
         <View style={styles.container}>
-          {/* Close button */}
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Typography type={Font.Poppins_SemiBold} style={styles.closeBtnText}>
               X
@@ -176,7 +165,6 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
             contentContainerStyle={{ flexGrow: 1 }}
             bounces={false}
           >
-            {/* Capturable receipt area */}
             <ViewShot
               ref={viewShotRef}
               options={{ format: 'png', quality: 1 }}
@@ -185,31 +173,26 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
               <View style={styles.receipt}>
                 {/* Header */}
                 <View style={styles.receiptHeader}>
-                  <Typography
-                    type={Font.Poppins_Bold}
-                    style={styles.receiptTitle}
-                  >
+                  <Typography type={Font.Poppins_Bold} style={styles.receiptTitle}>
                     SAHAYYA
                   </Typography>
-                  <Typography
-                    type={Font.Poppins_Regular}
-                    style={styles.receiptSubtitle}
-                  >
-                    Payment Receipt
+                  <Typography type={Font.Poppins_Regular} style={styles.receiptSubtitle}>
+                    Salary Slip
+                  </Typography>
+                  <Typography type={Font.Poppins_Regular} style={styles.periodText}>
+                    {salaryPeriod}
                   </Typography>
                 </View>
 
-                {/* Divider */}
                 <View style={styles.dashedLine} />
 
-                {/* Status badge */}
+                {/* Status */}
                 <View style={styles.statusContainer}>
                   <View
                     style={[
                       styles.statusBadge,
                       {
-                        backgroundColor:
-                          status?.toLowerCase() === 'paid' ? '#E8F5E9' : '#FFF3E0',
+                        backgroundColor: status?.toLowerCase() === 'paid' ? '#E8F5E9' : '#FFF3E0',
                       },
                     ]}
                   >
@@ -218,10 +201,7 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
                       style={[
                         styles.statusText,
                         {
-                          color:
-                            status?.toLowerCase() === 'paid'
-                              ? '#2E7D32'
-                              : '#E65100',
+                          color: status?.toLowerCase() === 'paid' ? '#2E7D32' : '#E65100',
                         },
                       ]}
                     >
@@ -230,102 +210,84 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
                   </View>
                 </View>
 
-                {/* Amount */}
+                {/* Net Amount */}
                 <View style={styles.amountSection}>
-                  <Typography
-                    type={Font.Poppins_Regular}
-                    style={styles.amountLabel}
-                  >
-                    Total Amount
+                  <Typography type={Font.Poppins_Regular} style={styles.amountLabel}>
+                    Net Salary
                   </Typography>
-                  <Typography
-                    type={Font.Poppins_Bold}
-                    style={styles.amountValue}
-                  >
-                    ₹{amount.toFixed(2)}
+                  <Typography type={Font.Poppins_Bold} style={styles.amountValue}>
+                    {'\u20B9'}{amount.toFixed(2)}
                   </Typography>
                 </View>
 
-                {/* Divider */}
                 <View style={styles.dashedLine} />
 
-                {/* Payment Info */}
+                {/* Employee & Employer Info */}
                 <View style={styles.infoSection}>
-                  <InfoRow label="Receipt No" value={`#${paymentId}`} />
-                  <InfoRow label="Date" value={paymentDate} />
-                  <InfoRow label="Staff Name" value={staffName} />
+                  <InfoRow label="Employee" value={staffName} />
+                  {employerName && <InfoRow label="Employer" value={employerName} />}
+                  <InfoRow label="Payment Date" value={paymentDate} />
                   <InfoRow label="Payment Method" value={paymentMethod} />
-                  <InfoRow
-                    label="Paid By"
-                    value={
-                      userDetails?.first_name && userDetails?.last_name
-                        ? `${userDetails.first_name} ${userDetails.last_name}`
-                        : userDetails?.first_name || userDetails?.name || 'N/A'
-                    }
-                  />
+                  <InfoRow label="Receipt No" value={`#${paymentId}`} />
+                  {workedDays != null && totalDays != null && (
+                    <InfoRow label="Attendance" value={`${workedDays} / ${totalDays} days`} />
+                  )}
                 </View>
 
-                {/* Divider */}
                 <View style={styles.dashedLine} />
 
-                {/* Salary Breakdown */}
+                {/* Earnings */}
                 <View style={styles.breakdownSection}>
-                  <Typography
-                    type={Font.Poppins_SemiBold}
-                    style={styles.breakdownTitle}
-                  >
-                    Salary Breakdown
+                  <Typography type={Font.Poppins_SemiBold} style={styles.breakdownTitle}>
+                    Earnings
                   </Typography>
-                  <BreakdownRow label="Base Salary" value={baseSalary} positive />
+                  {monthlySalary > 0 && (
+                    <BreakdownRow label={`Monthly Salary`} value={monthlySalary} positive />
+                  )}
+                  {baseSalary > 0 && (
+                    <BreakdownRow label="Pro-rata (worked days)" value={baseSalary} positive />
+                  )}
                   {bonus > 0 && (
-                    <BreakdownRow
-                      label="Performance Bonus"
-                      value={bonus}
-                      positive
-                    />
+                    <BreakdownRow label="Performance Bonus" value={bonus} positive />
                   )}
                   {overtimePay > 0 && (
-                    <BreakdownRow
-                      label="Overtime Pay"
-                      value={overtimePay}
-                      positive
-                    />
+                    <BreakdownRow label="Overtime Pay" value={overtimePay} positive />
                   )}
-                  {advancePayment > 0 && (
-                    <BreakdownRow
-                      label="Advance Payment"
-                      value={advancePayment}
-                    />
-                  )}
-                  <View style={styles.totalLine} />
-                  <View style={styles.totalRow}>
-                    <Typography
-                      type={Font.Poppins_SemiBold}
-                      style={styles.totalLabel}
-                    >
-                      Net Salary
-                    </Typography>
-                    <Typography
-                      type={Font.Poppins_Bold}
-                      style={styles.totalValue}
-                    >
-                      ₹{amount.toFixed(2)}
-                    </Typography>
-                  </View>
                 </View>
+
+                <View style={styles.dashedLine} />
+
+                {/* Deductions */}
+                <View style={styles.breakdownSection}>
+                  <Typography type={Font.Poppins_SemiBold} style={styles.breakdownTitle}>
+                    Deductions
+                  </Typography>
+                  {advancePayment > 0 ? (
+                    <BreakdownRow label="Advance Repayment" value={advancePayment} />
+                  ) : (
+                    <Typography type={Font.Poppins_Regular} size={12} color="#999">
+                      No deductions
+                    </Typography>
+                  )}
+                </View>
+
+                <View style={styles.totalLine} />
+                <View style={styles.totalRow}>
+                  <Typography type={Font.Poppins_SemiBold} style={styles.totalLabel}>
+                    Net Payable
+                  </Typography>
+                  <Typography type={Font.Poppins_Bold} style={styles.totalValue}>
+                    {'\u20B9'}{amount.toFixed(2)}
+                  </Typography>
+                </View>
+                <View style={styles.totalLine} />
 
                 {/* Footer */}
                 <View style={styles.receiptFooter}>
-                  <Typography
-                    type={Font.Poppins_Regular}
-                    style={styles.footerText}
-                  >
+                  <Typography type={Font.Poppins_Regular} style={styles.footerText}>
                     Generated by Sahayya App
                   </Typography>
-                  <Typography
-                    type={Font.Poppins_Regular}
-                    style={styles.footerText}
-                  >
+                  <Typography type={Font.Poppins_Regular} style={styles.footerText}>
                     {moment().format('DD MMM YYYY, hh:mm A')}
                   </Typography>
                 </View>
@@ -333,7 +295,6 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
             </ViewShot>
           </ScrollView>
 
-          {/* Action Buttons - fixed at bottom */}
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={styles.downloadBtn}
@@ -343,10 +304,7 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
               {isSaving ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Typography
-                  type={Font.Poppins_SemiBold}
-                  style={styles.btnText}
-                >
+                <Typography type={Font.Poppins_SemiBold} style={styles.btnText}>
                   Download
                 </Typography>
               )}
@@ -360,10 +318,7 @@ const PaymentReceipt = ({ visible, onClose, paymentData, userDetails }) => {
               {isSharing ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Typography
-                  type={Font.Poppins_SemiBold}
-                  style={styles.btnText}
-                >
+                <Typography type={Font.Poppins_SemiBold} style={styles.btnText}>
                   Share
                 </Typography>
               )}
@@ -398,7 +353,7 @@ const BreakdownRow = ({ label, value, positive }) => (
         { color: positive ? '#333' : '#D98579' },
       ]}
     >
-      {positive ? '+' : '-'}₹{Number(value).toFixed(2)}
+      {positive ? '+' : '-'}{'\u20B9'}{Number(value).toFixed(2)}
     </Typography>
   </View>
 );
@@ -445,7 +400,7 @@ const styles = StyleSheet.create({
   },
   receiptHeader: {
     alignItems: 'center',
-    marginBottom: scale(8),
+    marginBottom: scale(4),
     marginTop: scale(6),
   },
   receiptTitle: {
@@ -457,6 +412,12 @@ const styles = StyleSheet.create({
     fontSize: scale(12),
     color: '#888',
     marginTop: 2,
+  },
+  periodText: {
+    fontSize: scale(13),
+    color: '#333',
+    marginTop: 4,
+    fontFamily: Font?.Poppins_SemiBold,
   },
   dashedLine: {
     borderBottomWidth: 1,

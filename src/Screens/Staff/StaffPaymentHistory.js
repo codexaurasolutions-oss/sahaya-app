@@ -29,6 +29,18 @@ const StaffPaymentHistory = ({ navigation }) => {
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [receiptPayment, setReceiptPayment] = useState(null);
 
+  const normalizeRecord = (p, i) => ({
+    id: p.payment_id || p.id || `norm_${i}`,
+    amount: p.amount || p.net_salary || 0,
+    status: p.status || 'Paid',
+    type: p.type || 'salary',
+    month: p.month || '',
+    date: p.paid_on || p.date || p.created_at || '',
+    paid_by: p.paid_by || 'Employer',
+    payment_mode: p.payment_mode || 'cash',
+    raw: p,
+  });
+
   const fetchHistory = useCallback(() => {
     setLoading(true);
     // Fetch last 12 months of earnings
@@ -138,18 +150,6 @@ const StaffPaymentHistory = ({ navigation }) => {
   React.useEffect(() => {
     if (isFocused) fetchHistory();
   }, [isFocused, fetchHistory]);
-
-  const normalizeRecord = (p, i) => ({
-    id: p.payment_id || p.id || `norm_${i}`,
-    amount: p.amount || p.net_salary || 0,
-    status: p.status || 'Paid',
-    type: p.type || 'salary',
-    month: p.month || '',
-    date: p.paid_on || p.date || p.created_at || '',
-    paid_by: p.paid_by || 'Employer',
-    payment_mode: p.payment_mode || 'cash',
-    raw: p,
-  });
 
   const getStatusColor = status => {
     const s = (status || '').toLowerCase();

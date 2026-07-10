@@ -155,7 +155,7 @@ const GooglePlacesInput = ({
   }), [styleInput, error]);
 
   return (
-    <View style={[styles.container, mainStyle]}>
+    <View style={[styles.container, mainStyle, { overflow: 'visible' }]}>
       {showTitle && (
         <Typography
           style={[styles.title]}

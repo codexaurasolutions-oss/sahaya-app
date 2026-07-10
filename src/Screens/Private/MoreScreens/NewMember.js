@@ -203,24 +203,31 @@ const NewMember = ({ navigation, route }) => {
         navigation?.goBack();
       },
       error => {
-        const body =
-          (error && error.errors) || (error && error.message) || (error && error.error)
-            ? error
-            : error?.data || error?.response?.data || error || {};
+        console.log('storeNewMember error raw:', JSON.stringify(error));
         let errMsg;
-        if (body?.errors && typeof body.errors === 'object') {
-          const lines = [];
-          Object.keys(body.errors).forEach(k => {
-            const v = body.errors[k];
-            if (Array.isArray(v)) lines.push(`${k}: ${v.join(', ')}`);
-            else lines.push(`${k}: ${v}`);
-          });
-          errMsg = lines.join('\n') || 'Validation error';
-        } else if (body?.message) {
-          errMsg = body.message;
-        } else if (body?.error) {
-          errMsg = body.error;
-        } else {
+        try {
+          const body =
+            (error && error.errors) || (error && error.message) || (error && error.error)
+              ? error
+              : error?.data || error?.response?.data || error || {};
+          if (body?.errors && typeof body.errors === 'object') {
+            const lines = [];
+            Object.keys(body.errors).forEach(k => {
+              const v = body.errors[k];
+              if (Array.isArray(v)) lines.push(`${k}: ${v.join(', ')}`);
+              else lines.push(`${k}: ${v}`);
+            });
+            errMsg = lines.join('\n') || 'Validation error';
+          } else if (body?.message) {
+            errMsg = body.message;
+          } else if (body?.error) {
+            errMsg = body.error;
+          } else if (typeof body === 'string' && body.length > 10) {
+            errMsg = 'Server error. Please try again.';
+          } else {
+            errMsg = LocalizedStrings.AddNewMember.failed_to_add || 'Failed to add member';
+          }
+        } catch (e) {
           errMsg = LocalizedStrings.AddNewMember.failed_to_add || 'Failed to add member';
         }
         SimpleToast.show(String(errMsg).slice(0, 200), SimpleToast.LONG);

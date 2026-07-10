@@ -35,7 +35,7 @@ const AIJobSearch = ({navigation}) => {
             'Your free plan is over. Please purchase a membership to use AI job search.',
             SimpleToast.LONG,
           );
-          navigation.navigate('ChoosePlan', { userType: 2 });
+          navigation.navigate('MemberShip', { userType: 2 });
         }
       },
       () => {
@@ -44,11 +44,11 @@ const AIJobSearch = ({navigation}) => {
           'Please purchase a membership to use AI job search.',
           SimpleToast.LONG,
         );
-        navigation.navigate('ChoosePlan', { userType: 2 });
+        navigation.navigate('MemberShip', { userType: 2 });
       },
       () => {
         setChecking(false);
-        navigation.navigate('ChoosePlan', { userType: 2 });
+        navigation.navigate('MemberShip', { userType: 2 });
       },
     );
   };

@@ -103,7 +103,7 @@ const FamilyMembers = ({ navigation, route }) => {
   };
 
   const renderItem = ({ item }) => {
-    const initials = item.name
+    const initials = (item.name || '')
       .split(' ')
       .map(n => n[0])
       .join('')

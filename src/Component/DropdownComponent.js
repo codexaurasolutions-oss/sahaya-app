@@ -49,9 +49,12 @@ const DropdownComponent = ({
             alignItems: 'center',
             justifyContent: 'space-between',
             backgroundColor: isSelected ? '#FFF5F3' : 'white',
-            paddingHorizontal: 20,
+            paddingHorizontal: 16,
+            borderRadius: 8,
+            marginHorizontal: 6,
+            marginVertical: 2,
           }}>
-          <Typography style={{ width: width }} type={Font.Poppins_SemiBold}>
+          <Typography style={{ flex: 1 }} type={Font.Poppins_Medium} size={14}>
             {item?.label}
           </Typography>
           {multiSelect ? (
@@ -112,10 +115,10 @@ const DropdownComponent = ({
         <Dropdown
           disable={disable}
           showsVerticalScrollIndicator={false}
-          style={[styles.dropdown, style_dropdown,{ borderColor: error ? 'red' : '#DDDDDD' }]}
+          style={[styles.dropdown, style_dropdown,{ borderColor: error ? 'red' : '#E0E0E0' }]}
           selectedTextStyle={[styles.selectedTextStyle,selectedTextStyleNew]}
           iconStyle={styles.iconStyle}
-          placeholderStyle={[{ color: "gray"},{...selectedTextStyleNew}]}
+          placeholderStyle={[styles.placeholderStyle,{...selectedTextStyleNew}]}
           data={data}
           value={multiSelect ? (selectedValues || []) : value}
           multiSelect={multiSelect}
@@ -125,6 +128,7 @@ const DropdownComponent = ({
           placeholder={placeholder}
           dropdownPosition={dropdownPosition}
           iconColor={iconColor}
+          activeColor="#FFF5F3"
           onChange={item => {
             onChange(item);
           }}
@@ -208,41 +212,46 @@ const styles = StyleSheet.create({
   txt_style: {
     color: Colors.black,
     fontSize: 15,
-    fontWeight: '400',
+    fontWeight: '500',
     fontFamily: Font.Poppins_Medium,
-    
+    marginBottom: 4,
   },
   dropdown: {
     borderWidth: 1,
-    borderColor:"#DDDDDD",
-    backgroundColor: Colors.white,
-    borderRadius: 10,
+    borderColor:"#E0E0E0",
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
     marginHorizontal: 10,
-    height: 60
+    height: 56,
+    paddingHorizontal: 4,
   },
   placeholderStyle: {
-    color: Colors.white,
-
+    color: '#999',
+    fontSize: 14,
+    fontFamily: Font.Poppins_Regular,
+    flex: 1,
   },
   inputSearchStyle: {
     borderWidth: 1,
-
+    borderRadius: 10,
+    borderColor: '#E0E0E0',
   },
   iconStyle: {
-    height: 24,
-    width: 24,
+    height: 20,
+    width: 20,
     marginHorizontal: 10,
-    marginVertical: 13,
+    marginVertical: 18,
   },
   selectedTextStyle: {
     color: Colors.black,
-    // paddingLeft: 15,
- 
+    fontSize: 14,
+    fontFamily: Font.Poppins_Medium,
   },
   containerStyle: {
-    borderRadius: 20,
-    elevation: 2,
-    borderWidth: 0,
+    borderRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     overflow: 'visible',
     marginTop: 2,
   },

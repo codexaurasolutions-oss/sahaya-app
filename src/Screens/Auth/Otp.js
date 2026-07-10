@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFcmToken } from '../../Constants/AsyncStorage';
 
 const Otp = ({ navigation, route }) => {
-  const { type, aadhaar, mobile, countryCode, user_id } = route?.params;
+  const { type, aadhaar, mobile, countryCode, user_id } = route?.params || {};
   const [otp, setOtp] = useState('');
   const [resendTimer, setResendTimer] = useState(60); // 60 sec timer
   const [isLoading, setIsLoading] = useState(false);
@@ -54,9 +54,10 @@ const Otp = ({ navigation, route }) => {
     }
     setIsLoading(true);
     setOtpError('');
-    const payload = new FormData();
-    payload.append('phone_number', String(mobile));
-    payload.append('country_code', String(countryCode));
+    const payload = {
+      phone_number: String(mobile),
+      country_code: String(countryCode),
+    };
 
     POST(
       RESEND_OTP,
@@ -196,13 +197,18 @@ const Otp = ({ navigation, route }) => {
         setOtpError(errorMsg);
       },
       fail => {
-        console.log('API Fail (network):', fail);
-        if (retryCount < 1) {
-          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 1000);
+        console.log('API Fail (network):', fail?.code, fail?.message);
+        if (retryCount < 2) {
+          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 2000);
           return;
         }
         setIsLoading(false);
-        setOtpError('Network error. Please check your connection and try again.');
+        const failMsg = fail?.msg || fail?.message || '';
+        if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
+          setOtpError('Server is busy. Please try again in a moment.');
+        } else {
+          setOtpError('Network error. Please check your connection and try again.');
+        }
       },
     );
   };
@@ -231,13 +237,14 @@ const Otp = ({ navigation, route }) => {
     }
     setIsLoading(true);
     setOtpError('');
-    const payload = new FormData();
-    payload.append('otp', currentOtp);
-    payload.append('user_id', user_id);
-    payload.append('device_type', Platform.OS === 'android' ? 'android' : 'ios');
+    const payload = {
+      otp: currentOtp,
+      user_id: user_id,
+      device_type: Platform.OS === 'android' ? 'android' : 'ios',
+    };
 
     if (FcmToken) {
-      payload.append('device_token', FcmToken);
+      payload.device_token = FcmToken;
     }
 
     console.log('Sending OTP:', currentOtp, 'Length:', currentOtp.length);

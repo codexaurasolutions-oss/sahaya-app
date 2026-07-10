@@ -896,7 +896,7 @@ const NewStaffForm = ({ navigation, route }) => {
             error?.message || error?.data?.message || "Staff limit reached. Please upgrade your plan.",
             [
               { text: "Cancel", style: "cancel" },
-              { text: "Upgrade Plan", onPress: () => navigation.navigate("Subscriptions") }
+              { text: "Upgrade Plan", onPress: () => navigation.navigate("HouseholdManager") }
             ]
           );
           return;

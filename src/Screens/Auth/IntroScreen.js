@@ -172,7 +172,7 @@ const IntroScreen = () => {
                     styles.image,
                     index === 1 && styles.logoImage,
                   ]}
-                  resizeMode="cover"
+                  resizeMode={index === 1 ? 'contain' : 'cover'}
                 />
               </View>
               <View style={styles.textContainer}>
@@ -255,11 +255,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   logoImage: {
-    width: width * 0.7,
-    height: '80%',
+    width: width * 0.6,
+    height: '70%',
     alignSelf: 'center',
-    marginTop: '10%',
-    resizeMode: 'contain',
+    marginTop: '5%',
   },
   textContainer: {
     flex: 1,

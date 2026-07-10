@@ -168,7 +168,6 @@ const UpdateProfile = forwardRef((props, ref) => {
         success => {
           setLoader(false);
           SimpleToast.show('Last work experience saved successfully', SimpleToast.SHORT);
-          Profile();
           // Reset navigation stack to TabNavigationForStaff
           navigation.dispatch(
             CommonActions.reset({

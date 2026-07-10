@@ -66,7 +66,7 @@ const StaffProfileMain = ({ navigation }) => {
             PROFILE,
             success => {
                 setLoading(false);
-                setAdhar(success.data?.kycInformation?.aadhaar_front_path || success.data?.kyc_information?.aadhaar_front_path || success.data?.aadhar_front)
+                setAdhar(success?.data?.kycInformation?.aadhaar_front_path || success?.data?.kyc_information?.aadhaar_front_path || success?.data?.aadhar_front)
                 if (success?.data) {
                     dispatch(userDetails(success.data));
                 }
@@ -95,7 +95,7 @@ const StaffProfileMain = ({ navigation }) => {
     // Get user data from userDetails
     const imgUrl = userDetail?.image || '';
     const isDefaultImg = isPlaceholderImage(imgUrl);
-    const userImage = isDefaultImg ? ImageConstant.user : { uri: userDetail.image };
+    const userImage = isDefaultImg ? ImageConstant.user : { uri: userDetail?.image };
     const userName = userDetail?.first_name && userDetail?.last_name
         ? `${userDetail.first_name} ${userDetail.last_name}`
         : userDetail?.first_name || userDetail?.name || 'User';
@@ -116,7 +116,7 @@ const StaffProfileMain = ({ navigation }) => {
 
     // Gender
     const userGender = userDetail?.gender
-        ? userDetail.gender.charAt(0).toUpperCase() + userDetail.gender.slice(1)
+        ? userDetail?.gender.charAt(0).toUpperCase() + userDetail?.gender.slice(1)
         : 'Not Found';
 
     // Get address from userDetails

@@ -10,7 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { userDetails } from '../../../Redux/action';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -29,6 +30,7 @@ import {
   ApplicantsList,
   ListJob,
   CATEGORY,
+  PROFILE,
   SUBSCRIPTION_CREATE_EXTRA_JOB_ORDER,
   SUBSCRIPTION_VERIFY_EXTRA_JOB_PAYMENT,
 } from '../../../Backend/api_routes';
@@ -47,6 +49,7 @@ const PostNewJob = ({ navigation, route }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
+  const dispatch = useDispatch();
   const userDetail = useSelector(state => state?.userDetails);
   const userAddresses = userDetail?.addresses || [];
 
@@ -136,6 +139,19 @@ const PostNewJob = ({ navigation, route }) => {
         SimpleToast.show('Network error loading job roles', SimpleToast.SHORT);
       },
     );
+  }, []);
+
+  useEffect(() => {
+    if (!userAddresses || userAddresses.length === 0) {
+      GET_WITH_TOKEN(
+        PROFILE,
+        success => {
+          if (success?.data) dispatch(userDetails(success.data));
+        },
+        () => {},
+        () => {},
+      );
+    }
   }, []);
 
   // Add new skill modal state
@@ -521,8 +537,8 @@ const PostNewJob = ({ navigation, route }) => {
       formData.append('zip_code', selectedAddress.pincode || selectedAddress.zip_code || '');
       formData.append('area_locality', selectedAddress.area_locality || '');
       formData.append('google_location', selectedAddress.google_location || '');
-      formData.append('lat', selectedAddress.latitude || selectedAddress.lat || '');
-      formData.append('long', selectedAddress.longitude || selectedAddress.long || '');
+      formData.append('latitude', selectedAddress.latitude || selectedAddress.lat || '');
+      formData.append('longitude', selectedAddress.longitude || selectedAddress.long || '');
     }
 
     // Working Schedule
@@ -612,10 +628,13 @@ const PostNewJob = ({ navigation, route }) => {
         navigation?.goBack();
       },
       error => {
-        SimpleToast.show('Failed to post job', SimpleToast.SHORT);
+        console.log('Job Post Error:', JSON.stringify(error, null, 2));
+        const errMsg = error?.message || error?.error || error?.errors?.title?.[0] || 'Failed to post job';
+        SimpleToast.show(errMsg, SimpleToast.SHORT);
         setLoading(false);
       },
       fail => {
+        console.log('Job Post Network Fail:', fail?.code, fail?.message);
         SimpleToast.show(
           'Network error. Please try again.',
           SimpleToast.SHORT,
@@ -846,14 +865,17 @@ const PostNewJob = ({ navigation, route }) => {
       formData.append('zip_code', selectedAddress.pincode || selectedAddress.zip_code || '');
       formData.append('area_locality', selectedAddress.area_locality || '');
       formData.append('google_location', selectedAddress.google_location || '');
-      formData.append('lat', selectedAddress.latitude || selectedAddress.lat || '');
-      formData.append('long', selectedAddress.longitude || selectedAddress.long || '');
+      formData.append('latitude', selectedAddress.latitude || selectedAddress.lat || '');
+      formData.append('longitude', selectedAddress.longitude || selectedAddress.long || '');
     }
 
     // Working Schedule
     if (commitment.length > 0) {
       const commitmentValue = commitment[0].toLowerCase().replace('-', '-');
       formData.append('commitment_type', commitmentValue);
+    }
+    if (stayType.length > 0) {
+      formData.append('stay_type', stayType[0]);
     }
     const preferredHours = `${formatTime(startTime)} - ${formatTime(endTime)}`;
     formData.append('preferred_hours', preferredHours);
@@ -932,6 +954,7 @@ const PostNewJob = ({ navigation, route }) => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 100 }}
       >
         <View style={styles.card}>
@@ -1004,7 +1027,8 @@ const PostNewJob = ({ navigation, route }) => {
           />
           <DropdownComponent
             title="Select Address"
-            placeholder="Select from your existing addresses"
+            placeholder={userAddresses.length === 0 ? "Add address in Profile first" : "Choose an address"}
+            source={ImageConstant?.Location}
             data={mappedAddressOptions}
             value={selectedAddressKey}
             onChange={item => {

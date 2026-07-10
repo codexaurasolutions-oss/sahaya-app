@@ -18,7 +18,6 @@ import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
 import Input from '../../../Component/Input';
 import HeaderForUser from '../../../Component/HeaderForUser';
-import Button from '../../../Component/Button';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import Date_Picker from '../../../Component/Date_Picker';
 import { ImageConstant } from '../../../Constants/ImageConstant';
@@ -367,7 +366,7 @@ const HouseholdProfile = ({ navigation, route }) => {
           long: addr?.long || addr?.longitude || '',
           household: {
             residence_type: hh.residence_type
-              ? { label: hh.residence_type.charAt(0).toUpperCase() + hh.residence_type.slice(1), value: hh.residence_type }
+              ? { label: String(hh.residence_type).charAt(0).toUpperCase() + String(hh.residence_type).slice(1), value: hh.residence_type }
               : null,
             number_of_rooms: hh.number_of_rooms ? String(hh.number_of_rooms) : '',
             languages_spoken: hh.languages_spoken || [],
@@ -522,23 +521,21 @@ const HouseholdProfile = ({ navigation, route }) => {
 
   const handleUpdateProfile = () => {
     if (loading) return;
+    console.log('HOUSEHOLD PROFILE SAVE PRESSED');
 
     for (const address of addresses) {
       if (!address.street || !address.city || !address.pincode) {
-        SimpleToast.show('Please fill all required address fields', SimpleToast.SHORT);
+        Alert.alert('Missing address', 'Please fill street, city and pincode before saving.');
         return;
       }
       if (!address.area_locality?.trim()) {
-        SimpleToast.show('Area / Locality is required for every address', SimpleToast.SHORT);
-        return;
-      }
-      if (!address.google_location?.trim() || !address.lat || !address.long) {
-        SimpleToast.show('Please select Google location for every address', SimpleToast.SHORT);
+        Alert.alert('Missing area', 'Please fill area / locality before saving.');
         return;
       }
     }
 
     setLoading(true);
+    SimpleToast.show('Saving changes...', SimpleToast.SHORT);
     const formData = new FormData();
     // Basic Information
     if (firstName) formData.append('first_name', firstName);
@@ -615,14 +612,72 @@ const HouseholdProfile = ({ navigation, route }) => {
 
     formData.append('is_edit', '1');
 
+    const hasNewProfileImage =
+      profileImage &&
+      !profileImage.isExisting &&
+      profileImage.path &&
+      isLocalFile;
+    const jsonPayload = {
+      auto_attendence: autoPresent ? 1 : 0,
+      is_edit: 1,
+      addresses: addresses.map(address => {
+        const hh = address.household || {};
+        const residenceTypeValue =
+          hh.residence_type && typeof hh.residence_type === 'object'
+            ? hh.residence_type.value
+            : hh.residence_type || null;
+        const validPets = (address.pets || []).filter(p => {
+          const petType = String(p.pet_type || p.type || '').trim();
+          const petCount = String(p.count || p.pet_count || '').trim();
+          return petType !== '' && petCount !== '';
+        });
+
+        return {
+          title: address.title || address.name || '',
+          name: address.name || address.title || '',
+          street: address.street || '',
+          city: address.city || '',
+          state: address.state || '',
+          pincode: address.pincode || '',
+          area_locality: address.area_locality || '',
+          google_location: address.google_location || '',
+          lat: address.lat || '',
+          long: address.long || '',
+          household: {
+            residence_type: residenceTypeValue,
+            number_of_rooms: hh.number_of_rooms || null,
+            languages_spoken: hh.languages_spoken || [],
+            adults_count: hh.adults_count || null,
+            children_count: hh.children_count || null,
+            elderly_count: hh.elderly_count || null,
+            special_requirements: hh.special_requirements || null,
+          },
+          pets: validPets.map(pet => ({
+            pet_type: pet.pet_type || pet.type,
+            pet_count: pet.count || pet.pet_count,
+          })),
+        };
+      }),
+    };
+    if (firstName) jsonPayload.first_name = firstName;
+    if (lastName) jsonPayload.last_name = lastName;
+    if (gender?.value) jsonPayload.gender = gender.value;
+    if (email) jsonPayload.email = email;
+    if (dob) {
+      const formattedDob = formatDateWithDashes(dob);
+      if (formattedDob) jsonPayload.dob = formattedDob;
+    }
+    const requestBody = hasNewProfileImage ? formData : jsonPayload;
+
     POST_FORM_DATA(
       PROFILE_UPDATE,
-      formData,
+      requestBody,
       success => {
-        SimpleToast.show('Profile updated successfully!', SimpleToast.SHORT);
         dispatch(userDetails(success?.data));
         setLoading(false);
-        navigation.goBack();
+        Alert.alert('Saved', 'Profile updated successfully.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
       },
       error => {
         // POST_FORM_DATA passes DIFFERENT shapes depending on status:
@@ -679,6 +734,7 @@ const HouseholdProfile = ({ navigation, route }) => {
       <ScrollView 
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.profileContainer}>
           <View
@@ -1101,16 +1157,18 @@ const HouseholdProfile = ({ navigation, route }) => {
         </View>
 
       <View style={styles.bottomButton}>
-        <Button
-          title={
-            loading
-              ? LocalizedStrings.EditProfile.Updating || 'Updating...'
-              : LocalizedStrings.EditProfile.Save_Changes
-          }
+        <TouchableOpacity
+          activeOpacity={0.85}
           onPress={handleUpdateProfile}
-          main_style={styles.buttonStyle}
           disabled={loading}
-        />
+          style={[styles.directSaveButton, loading && styles.disabledButton]}
+        >
+          <Typography color="#FFFFFF" type={Font?.Poppins_SemiBold} size={16}>
+            {loading
+              ? LocalizedStrings.EditProfile.Updating || 'Updating...'
+              : LocalizedStrings.EditProfile.Save_Changes || 'Save Changes'}
+          </Typography>
+        </TouchableOpacity>
       </View>
 
       <ImageModal
@@ -1254,6 +1312,18 @@ const styles = StyleSheet.create({
   },
   buttonStyle: {
     width: '90%',
+  },
+  directSaveButton: {
+    width: '90%',
+    minHeight: 56,
+    borderRadius: 14,
+    backgroundColor: '#D98579',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   toggleRow: {
     flexDirection: 'row',

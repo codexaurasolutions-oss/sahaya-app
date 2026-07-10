@@ -288,7 +288,7 @@ const ManageAddresses = ({ navigation }) => {
         onPressLeftIcon={() => navigation.goBack()}
         style_title={{ fontSize: 18 }}
       />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {loading ? (
           <ActivityIndicator size="large" color="#D98579" style={{ marginTop: 50 }} />
         ) : (

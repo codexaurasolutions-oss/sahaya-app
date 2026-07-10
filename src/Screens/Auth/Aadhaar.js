@@ -56,7 +56,7 @@ const Aadhaar = ({ navigation }) => {
           console.log('Aadhaar Save Error:', error);
 
           let errorMsg = 'Something went wrong';
-          if (error?.data?.errors?.aadhar_number) {
+          if (Array.isArray(error?.data?.errors?.aadhar_number) && error.data.errors.aadhar_number.length > 0) {
             errorMsg = error.data.errors.aadhar_number[0];
           } else if (error?.data?.message) {
             errorMsg = error.data.message;

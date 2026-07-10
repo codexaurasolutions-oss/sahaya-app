@@ -9,7 +9,7 @@ import Button from '../../Component/Button';
 import { useDispatch, useSelector } from 'react-redux';
 import { isAuth, userType } from '../../Redux/action';
 import LocalizedStrings from '../../Constants/localization';
-import { POST_FORM_DATA, POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
+import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
 import { PROFILE_UPDATE, SUBSCRIPTIONS, SUBSCRIPTION_USER_SUBSCRIBE } from '../../Backend/api_routes';
 
 const ChooseUser = ({ navigation }) => {
@@ -91,12 +91,9 @@ const ChooseUser = ({ navigation }) => {
   };
 
   const SendStepsApi = (type) => {
-    const formData = new FormData();
-    formData.append('user_role_id', type);
-    formData.append('is_edit', 0);
-    POST_FORM_DATA(
+    POST_WITH_TOKEN(
       PROFILE_UPDATE,
-      formData,
+      { user_role_id: type, is_edit: 0 },
       sucess => {
         console.log('SendStepsApi---sucess====', sucess);
       },

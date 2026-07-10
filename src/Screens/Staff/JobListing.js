@@ -308,6 +308,16 @@ const JobsList = ({ navigation }) => {
         onPressRightIcon={() => navigation.navigate('Notifications')}
       />
 
+      <TouchableOpacity
+        style={styles.buyCreditsBtn}
+        onPress={() => navigation.navigate('StaffWallet')}
+      >
+        <Image source={ImageConstant?.Dollar} style={{ width: 16, height: 16, tintColor: '#fff', marginRight: 6 }} />
+        <Typography type={Font.Poppins_SemiBold} size={12} color="#fff">
+          Buy Credits
+        </Typography>
+      </TouchableOpacity>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#E87C6F" />
@@ -883,5 +893,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 10,
+  },
+  buyCreditsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#D98579',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginLeft: 16,
+    marginTop: 10,
+    marginBottom: 4,
   },
 });

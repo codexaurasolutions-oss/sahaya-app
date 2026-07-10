@@ -269,7 +269,7 @@ const StaffMore = ({ navigation }) => {
         />
         <Option
           Images={ImageConstant?.Dollar}
-          title="My Wallet"
+          title="Job Credits"
           isBorder={false}
           imageStyle={{tintColor:'rgba(140, 141, 139, 1)'}}
           subtitle="View balance and purchase credits"

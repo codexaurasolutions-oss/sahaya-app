@@ -32,7 +32,7 @@ const EarningSummary = ({ route }) => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [attendanceSummary, setAttendanceSummary] = useState({ totalWorked: 0, daysInMonth: 30 });
+  const [attendanceSummary, setAttendanceSummary] = useState({ totalWorked: 0, daysInMonth: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() });
   const [advanceBalance, setAdvanceBalance] = useState(0);
 
   const retryCountRef = useRef(0);
@@ -120,9 +120,6 @@ const EarningSummary = ({ route }) => {
         } else {
           setSummary2(null);
         }
-
-        fetchAttendanceSummary(userDetail?.id);
-        fetchAdvanceBalance();
       },
       error => {
         if (!mountedRef.current) return;
@@ -218,6 +215,10 @@ const EarningSummary = ({ route }) => {
   useEffect(() => {
     if (isFocused) {
       fetchSummary();
+      if (userDetail?.id) {
+        fetchAttendanceSummary(userDetail.id);
+      }
+      fetchAdvanceBalance();
     }
   }, [isFocused, jobID, userDetail?.id]);
 
@@ -262,6 +263,8 @@ const EarningSummary = ({ route }) => {
       ? Number(summary2?.total_payable_amount)
       : 0;
 
+  const staffName = userDetail?.name || (userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}`.trim() : 'Staff Member');
+  const employerDisplayName = summary2?.employer || userDetail?.employer_name || userDetail?.added_by_user?.name || (userDetail?.added_by_user?.first_name ? `${userDetail.added_by_user.first_name} ${userDetail.added_by_user.last_name || ''}`.trim() : null) || 'Employer';
   const monthlySalary = Number(summary2?.salary_summary?.current_monthly_salary || 0);
   const advanceRepayment = Number(summary2?.deductions?.advance_repayment?.amount || 0);
 
@@ -307,7 +310,7 @@ const EarningSummary = ({ route }) => {
               size={12}
               color={statusLabel?.toLowerCase() === 'paid' ? '#0F5132' : '#92400E'}
             >
-              {statusLabel?.charAt(0).toUpperCase() + (statusLabel?.slice(1) || '')}
+              {statusLabel ? statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1) : 'Pending'}
             </Typography>
           </View>
         </View>
@@ -419,7 +422,13 @@ const EarningSummary = ({ route }) => {
                 index !== paymentHistory.length - 1 && styles.historyRowBorder,
               ]}
               onPress={() => {
-                setSelectedPayment(entry);
+                setSelectedPayment({
+                  ...entry,
+                  staff_name: summary2?.staff_name || staffName,
+                  salary_period: entry?.month,
+                  monthly_salary: summary2?.salary_summary?.current_monthly_salary,
+                  attendance_summary: summary2?.attendance_summary,
+                });
                 setShowReceipt(true);
               }}
             >
@@ -458,6 +467,8 @@ const EarningSummary = ({ route }) => {
         onClose={() => { setShowReceipt(false); setSelectedPayment(null); }}
         paymentData={selectedPayment}
         userDetails={userDetail}
+        employerName={employerDisplayName}
+        attendanceSummary={attendanceSummary}
       />
 
       <View style={styles.bottomSpacing} />

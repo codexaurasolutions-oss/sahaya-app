@@ -40,10 +40,16 @@ const Step1 = () => {
   const [dob, setDob] = useState(null);
   const [error, setError] = useState(null);
   const [imageLoadError, setImageLoadError] = useState(false);
+  const [addressCount, setAddressCount] = useState(1);
   const Dispatch = useDispatch();
   const navigation = useNavigation();
   const stepLocationRef = React.useRef(null);
   const stepHouseholdRef = React.useRef(null);
+
+  const getFirstValidationMessage = errorsObj => {
+    const firstMessage = Object.values(errorsObj || {}).find(Boolean);
+    return firstMessage || 'Please complete the required fields.';
+  };
 
   useEffect(() => {
     if (userDetail && Object.keys(userDetail).length > 0) {
@@ -102,102 +108,40 @@ const Step1 = () => {
     }
   }, [userDetail]);
   const SendStepsApi = () => {
-    let validationErrors = {
-      firstName: validators?.checkRequire('First Name', firstName),
-      lastName: validators?.checkRequire('Last Name', lastName),
-      dob: validators?.checkRequire('Dob', dob),
-      gender: validators?.checkRequire('Gender', gender?.value),
-    };
-
     if (activeTab === 1 && stepLocationRef.current) {
       const isAddressValid = stepLocationRef.current.validateAddress();
       if (!isAddressValid) {
-        return; // Don't proceed if address validation fails
+        SimpleToast.show('Please complete the highlighted address fields.', SimpleToast.SHORT);
+        return;
       }
     }
 
     if (activeTab === 2 && stepHouseholdRef.current) {
       const isHouseholdValid = stepHouseholdRef.current.validateHousehold();
       if (!isHouseholdValid) {
-        return; // Don't proceed if household validation fails
+        SimpleToast.show('Please complete the highlighted household fields.', SimpleToast.SHORT);
+        return;
       }
     }
 
-    setError(validationErrors);
-    if (isValidForm(validationErrors)) {
+    let validationErrors = {};
+    if (activeTab === 0) {
+      validationErrors = {
+        firstName: validators?.checkRequire('First Name', firstName),
+        lastName: validators?.checkRequire('Last Name', lastName),
+        dob: validators?.checkRequire('Dob', dob),
+        gender: validators?.checkRequire('Gender', gender?.value),
+      };
+      setError(validationErrors);
+      if (!isValidForm(validationErrors)) {
+        SimpleToast.show(getFirstValidationMessage(validationErrors), SimpleToast.SHORT);
+        return;
+      }
+    }
+
       setIsLoading(true);
-      const formData = new FormData();
-      if (activeTab === 0) {
-        formData.append('first_name', firstName);
-        formData.append('last_name', lastName);
-        formData.append('gender', gender?.value);
-        formData.append('dob', moment(dob).format('YYYY-MM-DD'));
-        // formData.append('user_role_id', userTypes == 0 ? 3 : 2);
-        const imageUri = selectedPhoto?.path || selectedPhoto?.uri;
-        if (imageUri && imageUri !== userDetail?.image && !imageUri.startsWith('http')) {
-          formData.append('profile_picture', {
-            uri: imageUri,
-            name: selectedPhoto?.name || 'profile.jpg',
-            type: selectedPhoto?.mime || 'image/jpeg',
-          });
-        }
-      }
 
-      // Add address data if we're on location step
-      if (activeTab === 1 && stepLocationRef.current) {
-        const addresses = stepLocationRef.current.getAddressData();
-        // Add all addresses to formData
-        addresses.forEach((address, index) => {
-          formData.append(`addresses[${index}][name]`, address.name || '');
-          formData.append(`addresses[${index}][street]`, address.street);
-          formData.append(`addresses[${index}][city]`, address.city);
-          formData.append(`addresses[${index}][state]`, address.state);
-          formData.append(`addresses[${index}][pincode]`, address.pinCode);
-          formData.append(`addresses[${index}][area_locality]`, address.area_locality || '');
-          formData.append(`addresses[${index}][google_location]`, address.google_location || '');
-          formData.append(`addresses[${index}][lat]`, address.lat || '');
-          formData.append(`addresses[${index}][long]`, address.long || '');
-        });
-      }
-
-      // Add household data if we're on household step
-      if (activeTab === 2 && stepHouseholdRef.current) {
-        formData.append('user_role_id', userTypes);
-        const householdData = stepHouseholdRef.current.getHouseholdData();
-
-        formData.append('residence_type', householdData.residence_type);
-        formData.append('number_of_rooms', householdData.number_of_rooms);
-        // Add languages as array
-        if (householdData.languages_spoken) {
-          householdData.languages_spoken.forEach((lang, index) => {
-            formData.append(`languages_spoken[${index}]`, lang);
-          });
-        }
-        formData.append('adults_count', householdData.adults_count);
-        formData.append('children_count', householdData.children_count);
-        formData.append('elderly_count', householdData.elderly_count);
-        formData.append(
-          'special_requirements',
-          householdData.special_requirements,
-        );
-
-        // Add pet details as array
-        if (householdData.pet_details) {
-          householdData.pet_details.forEach((pet, index) => {
-            formData.append(`pet_details[${index}][pet_type]`, pet.pet_type);
-            formData.append(`pet_details[${index}][pet_count]`, pet.pet_count);
-          });
-        }
-      }
-
-      formData.append('is_edit', 0);
-      // Debug FormData
-      console.log('Post Profile Data:', formData);
-
-      POST_FORM_DATA(
-        PROFILE_UPDATE,
-        formData,
-        sucess => {
+      const onSuccess = (sucess) => {
           setIsLoading(false);
           console.log('Profile update success:', sucess);
           const currentStep = sucess?.data?.step || sucess?.data?.steps;
@@ -209,31 +153,136 @@ const Step1 = () => {
           } else if (currentStep == 3 || currentStep == '3') {
             setActiveTab(2);
           } else if (currentStep >= 4) {
-            // Navigate to home screen (TabNavigation)
             navigation.navigate('TabNavigation');
           } else {
-            // Fallback: move to next tab if it stays the same
             if (activeTab < 2) setActiveTab(activeTab + 1);
             else navigation.navigate('TabNavigation');
           }
           Dispatch(userDetails(sucess?.data));
-        },
-        errorResponse => {
+      };
+
+      const onError = (errorResponse) => {
           setIsLoading(false);
           console.log('Profile update error:', errorResponse);
           let errorMsg = 'Failed to update profile';
-          if (errorResponse?.data?.message) errorMsg = errorResponse.data.message;
+          const responseErrors = errorResponse?.errors || errorResponse?.data?.errors;
+          if (responseErrors) {
+            errorMsg = getFirstValidationMessage(
+              Object.fromEntries(
+                Object.entries(responseErrors).map(([key, value]) => [
+                  key,
+                  Array.isArray(value) ? value[0] : value,
+                ]),
+              ),
+            );
+          } else if (errorResponse?.data?.message) errorMsg = errorResponse.data.message;
           else if (errorResponse?.message) errorMsg = errorResponse.message;
-
           SimpleToast.show(errorMsg, SimpleToast.SHORT);
-        },
-        fail => {
+      };
+
+      const onFail = (fail) => {
           setIsLoading(false);
           console.log('Profile update fail:', fail);
-          SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
-        },
-      );
-    }
+          SimpleToast.show(fail?.msg || fail?.message || 'Network error. Please try again.', SimpleToast.SHORT);
+      };
+
+      if (activeTab === 0) {
+        const imageUri = selectedPhoto?.path || selectedPhoto?.uri;
+        const hasNewPhoto = imageUri && imageUri !== userDetail?.image && !imageUri.startsWith('http');
+        if (hasNewPhoto) {
+          const formData = new FormData();
+          formData.append('first_name', firstName);
+          formData.append('last_name', lastName);
+          formData.append('gender', gender?.value);
+          formData.append('dob', moment(dob).format('YYYY-MM-DD'));
+          formData.append('profile_picture', {
+            uri: imageUri,
+            name: selectedPhoto?.name || 'profile.jpg',
+            type: selectedPhoto?.mime || 'image/jpeg',
+          });
+          formData.append('is_edit', 0);
+          POST_FORM_DATA(PROFILE_UPDATE, formData, onSuccess, onError, onFail);
+        } else {
+          POST_WITH_TOKEN(PROFILE_UPDATE, {
+            first_name: firstName,
+            last_name: lastName,
+            gender: gender?.value,
+            dob: moment(dob).format('YYYY-MM-DD'),
+            is_edit: 0,
+          }, onSuccess, onError, onFail);
+        }
+      } else if (activeTab === 1) {
+        const addresses = stepLocationRef.current?.getAddressData() || [];
+        const addressPayload = addresses.map(address => ({
+          name: address.name || '',
+          street: address.street,
+          city: address.city,
+          state: address.state,
+          pincode: address.pinCode,
+          area_locality: address.area_locality || '',
+          google_location: address.google_location || '',
+          lat: address.lat || '',
+          long: address.long || '',
+        }));
+        POST_WITH_TOKEN(PROFILE_UPDATE, {
+          addresses: addressPayload,
+          is_edit: 0,
+        }, onSuccess, onError, onFail);
+      } else if (activeTab === 2) {
+        const householdDataArray = stepHouseholdRef.current?.getHouseholdData() || [];
+        const addressData = stepLocationRef.current?.getAddressData() || [];
+
+        if (householdDataArray.length === 1) {
+          const h = householdDataArray[0];
+          POST_WITH_TOKEN(PROFILE_UPDATE, {
+            user_role_id: userTypes,
+            residence_type: h.residence_type || '',
+            number_of_rooms: h.number_of_rooms || '',
+            languages_spoken: h.languages_spoken || [],
+            adults_count: h.adults_count || '',
+            children_count: h.children_count || '',
+            elderly_count: h.elderly_count || '',
+            special_requirements: h.special_requirements || '',
+            pet_details: (h.pet_details || []).map(pet => ({
+              pet_type: pet.pet_type,
+              pet_count: pet.pet_count,
+            })),
+            is_edit: 0,
+          }, onSuccess, onError, onFail);
+        } else {
+          const addressesWithHousehold = householdDataArray.map((h, index) => {
+            const addr = addressData[index] || {};
+            return {
+              name: addr.name || '',
+              street: addr.street || '',
+              city: addr.city || '',
+              state: addr.state || '',
+              pincode: addr.pinCode || '',
+              area_locality: addr.area_locality || '',
+              google_location: addr.google_location || '',
+              lat: addr.lat || '',
+              long: addr.long || '',
+              household: {
+                residence_type: h.residence_type || null,
+                number_of_rooms: h.number_of_rooms ? parseInt(h.number_of_rooms) : null,
+                languages_spoken: h.languages_spoken || [],
+                adults_count: h.adults_count ? parseInt(h.adults_count) : null,
+                children_count: h.children_count ? parseInt(h.children_count) : null,
+                elderly_count: h.elderly_count ? parseInt(h.elderly_count) : null,
+                special_requirements: h.special_requirements || null,
+              },
+              pets: (h.pet_details || []).map(pet => ({
+                pet_type: pet.pet_type,
+                pet_count: pet.pet_count ? parseInt(pet.pet_count) : null,
+              })),
+            };
+          });
+          POST_WITH_TOKEN(PROFILE_UPDATE, {
+            addresses: addressesWithHousehold,
+            is_edit: 0,
+          }, onSuccess, onError, onFail);
+        }
+      }
   };
 
   const renderContent = () => {
@@ -246,10 +295,7 @@ const Step1 = () => {
                 <Image
                   source={
                     !imageLoadError &&
-                    (selectedPhoto?.path || selectedPhoto?.uri) &&
-                    !(selectedPhoto?.path || selectedPhoto?.uri)
-                      ?.toLowerCase()
-                      ?.includes('noimage')
+                    selectedPhoto?.path || selectedPhoto?.uri
                       ? { uri: selectedPhoto.path || selectedPhoto.uri }
                       : ImageConstant.user
                   }
@@ -353,13 +399,13 @@ const Step1 = () => {
       case 1:
         return (
           <>
-            <StepLocation ref={stepLocationRef} />
+            <StepLocation ref={stepLocationRef} onAddressCountChange={setAddressCount} />
           </>
         );
       case 2:
         return (
           <>
-            <StepHousehold ref={stepHouseholdRef} />
+            <StepHousehold ref={stepHouseholdRef} addressCount={addressCount} />
           </>
         );
 

@@ -247,6 +247,10 @@ const JobDetails = ({ navigation, route }) => {
       error => {
         setPayingLimit(false);
         SimpleToast.show('Failed to create order on server.', SimpleToast.SHORT);
+      },
+      fail => {
+        setPayingLimit(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       }
     );
   };
@@ -294,7 +298,7 @@ const JobDetails = ({ navigation, route }) => {
 
     setApplyLoading(true);
     const formData = new FormData();
-    formData.append('job_id', jobId.toString());
+    formData.append('job_id', jobId?.toString() ?? '');
     formData.append('expected_salary', expectedSalary.trim());
     formData.append('cover_letter', 'Not applicable');
 

@@ -53,16 +53,17 @@ const Login = ({ navigation }) => {
 
     if (isValidForm(error)) {
       setIsLoading(true);
-      var formdata = new FormData();
-      formdata.append('phone_number', mobile);
-      formdata.append('country_code', selectedCountry.dial_code);
+      var payload = {
+        phone_number: mobile,
+        country_code: selectedCountry.dial_code,
+      };
 
       POST(
         LOGIN,
-        formdata,
+        payload,
         response => {
           setIsLoading(false);
-          if (response.status === true) {
+          if (response?.status === true) {
             navigation?.navigate('Otp', {
               type: 'login',
               mobile: mobile,
@@ -71,7 +72,7 @@ const Login = ({ navigation }) => {
             });
           } else {
             setMobileError(
-              response.message ||
+              response?.message ||
                 LocalizedStrings.Auth?.mobile_invalid ||
                 'Login failed. Please try again.',
             );
@@ -91,6 +92,14 @@ const Login = ({ navigation }) => {
           }
         },
         fail => {
+          console.log('Login Network Fail:', fail?.code, fail?.message);
+          setIsLoading(false);
+          const failMsg = fail?.msg || fail?.message || '';
+          if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
+            setMobileError('Server is busy. Please try again in a moment.');
+          } else {
+            setMobileError('Network error. Please check your connection.');
+          }
         },
       );
     }

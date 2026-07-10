@@ -401,7 +401,10 @@ const StepLocation = React.forwardRef((props, ref) => {
           maxLength={6}
         />
 
-        <TouchableOpacity onPress={() => setShow(true)}>
+        <TouchableOpacity onPress={() => {
+          setShow(true);
+          if (props.onAddressCountChange) props.onAddressCountChange(2);
+        }}>
           <Typography color='rgba(217, 133, 121, 1)'>+ {LocalizedStrings.EditProfile?.add_more_address || 'Add more address'}</Typography>
         </TouchableOpacity>
       </View>
@@ -413,7 +416,10 @@ const StepLocation = React.forwardRef((props, ref) => {
             <Typography type={Font?.Poppins_SemiBold} size={18}>
               {LocalizedStrings.EditProfile?.Home_Address || LocalizedStrings.NewStaffForm?.Home_Address || 'Home Address'}
             </Typography>
-            <TouchableOpacity onPress={() => setShow(false)}>
+            <TouchableOpacity onPress={() => {
+              setShow(false);
+              if (props.onAddressCountChange) props.onAddressCountChange(1);
+            }}>
               <Image source={ImageConstant?.X} style={styles.closeIcon} />
             </TouchableOpacity>
           </View>

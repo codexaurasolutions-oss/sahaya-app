@@ -482,9 +482,10 @@ const RecentSalaryList = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.receiptButton}
                 onPress={() => {
+                  const paymentForReceipt = selectedPayment;
                   setSelectedPayment(null);
                   setPayoutHistory(null);
-                  setTimeout(() => setReceiptPayment(selectedPayment), 300);
+                  setTimeout(() => setReceiptPayment(paymentForReceipt), 300);
                 }}
                 activeOpacity={0.8}
               >

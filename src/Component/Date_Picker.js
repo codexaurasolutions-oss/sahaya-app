@@ -6,12 +6,13 @@ import Typography from './UI/Typography';
 import { ImageConstant } from '../Constants/ImageConstant';
 import { Colors } from '../Constants/Colors';
 import { Font } from '../Constants/Font';
+import LocalizedStrings from '../Constants/localization';
 
 const Date_Picker = ({
   onChange = () => {},
   onConfirm = () => {},
   placeholder = 'DD-MM-YYYY',
-  title = localization?.personalInfo?.dob,
+  title = LocalizedStrings?.personalInfo?.dob,
   selected_date = '',
   error,
   allowFutureDates,

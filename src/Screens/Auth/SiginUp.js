@@ -40,7 +40,9 @@ const SiginUp = ({ navigation }) => {
     console.log('Selected country:', country);
   };
 
-  const handleVerify = () => {
+  const handleVerifyRequest = (retryCount = 0) => {
+    if (isLoading) return;
+
     let error = {
       number: validators?.checkPhoneNumberWithFixLength('Mobile', 10, mobile),
     };
@@ -56,14 +58,15 @@ const SiginUp = ({ navigation }) => {
     if (isValidForm(error)) {
       setIsLoading(true);
 
-      var formdata = new FormData();
-      formdata.append('phone_number', mobile);
-      formdata.append('country_code', selectedCountry.dial_code);
+      var payload = {
+        phone_number: mobile,
+        country_code: selectedCountry.dial_code,
+      };
 
       console.log('Calling signup API with:', { phone: mobile, country: selectedCountry.dial_code });
       POST(
         SIGINUP,
-        formdata,
+        payload,
         response => {
           console.log('Signup Success Response:', response);
           setIsLoading(false);
@@ -78,12 +81,10 @@ const SiginUp = ({ navigation }) => {
           console.log('Signup Error Response:', JSON.stringify(error, null, 2));
           setIsLoading(false);
           
-          // Check if phone number already exists — redirect to Login
           if (error?.data?.errors?.phone_number) {
             const errorMsg = Array.isArray(error.data.errors.phone_number) 
               ? error.data.errors.phone_number[0] 
               : error.data.errors.phone_number;
-            // If already registered, go directly to Login
             if (errorMsg.toLowerCase().includes('already') || errorMsg.toLowerCase().includes('taken')) {
               SimpleToast.show('This number is already registered. Please login.', SimpleToast.LONG);
               navigation.navigate('Login');
@@ -105,13 +106,25 @@ const SiginUp = ({ navigation }) => {
           }
         },
         fail => {
+          console.log('Signup Network Fail:', fail?.code, fail?.message);
+          if (retryCount < 2) {
+            setTimeout(() => handleVerifyRequest(retryCount + 1), 2000);
+            return;
+          }
           setIsLoading(false);
-          setMobileError(
-            'Network error. Please check your connection.'
-          );
+          const failMsg = fail?.msg || fail?.message || '';
+          if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
+            setMobileError('Server is busy. Please try again in a moment.');
+          } else {
+            setMobileError('Network error. Please check your connection.');
+          }
         }
       );
     }
+  };
+
+  const handleVerify = () => {
+    handleVerifyRequest(0);
   };
 
   return (
