@@ -13,7 +13,6 @@ import { API, POST, GET_WITH_TOKEN } from './../../Backend/Backend';
 import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
-import axios from 'axios';
 
 const Otp = ({ navigation, route }) => {
   const { type, aadhaar, mobile, countryCode, user_id } = route?.params || {};
@@ -150,24 +149,49 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  // Keep OTP verification intentionally simple: one axios request, no retries,
+  const parseJsonResponse = async response => {
+    const text = await response.text();
+    if (!text) {
+      return {};
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      return {
+        message: text,
+      };
+    }
+  };
+
+  const getVerificationErrorMessage = (data, status) => {
+    if (data?.error) {
+      return data.error;
+    }
+    if (data?.message) {
+      return data.message;
+    }
+    if (data?.errors) {
+      return Object.values(data.errors).flat().join('\n');
+    }
+    return `Verification failed (${status}). Please try again.`;
+  };
+
+  // Keep OTP verification intentionally simple: native fetch, no axios,
   // no FCM/device-token side effects, and no shared helper error remapping.
   const submitOtpVerification = async payload => {
     try {
-      const response = await axios({
-        url: `${API}${VERIFY_OTP}`,
+      const response = await fetch(`${API}${VERIFY_OTP}`, {
         method: 'POST',
-        data: payload,
-        timeout: 30000,
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        validateStatus: status => status >= 200 && status <= 599,
+        body: JSON.stringify(payload),
       });
-      const data = response?.data || {};
+      const data = await parseJsonResponse(response);
 
-      if (response?.status >= 200 && response?.status < 300) {
+      if (response.ok) {
         const responseData = data;
         await dispatch(Token(responseData?.token));
         console.log('OTP', responseData);
@@ -184,29 +208,15 @@ const Otp = ({ navigation, route }) => {
       }
 
       console.log('Verify OTP HTTP Error:', response?.status, data);
-      let errorMsg = '';
-      if (data?.error) {
-        errorMsg = data.error;
-        if (data.debug_stored) {
-          errorMsg += `\n(Expect: ${data.debug_stored} | Sent: ${data.debug_sent})`;
-        }
-      } else if (data?.message) {
-        errorMsg = data.message;
-      } else if (data?.errors) {
-        errorMsg = Object.values(data.errors).flat().join('\n');
-      } else {
-        errorMsg = `Verification failed (${response?.status}). Please try again.`;
-      }
+      const errorMsg = getVerificationErrorMessage(data, response?.status);
       setIsLoading(false);
       setOtpError(errorMsg);
     } catch (error) {
-      console.log('Verify OTP Network Error:', error?.code, error?.message, error?.response?.data);
+      console.log('Verify OTP Fetch Error:', error?.name, error?.message);
       setIsLoading(false);
-      if (error?.code === 'ECONNABORTED') {
-        setOtpError('Server is taking too long. Please try again.');
-      } else {
-        setOtpError(error?.response?.data?.error || error?.response?.data?.message || `Network error: ${error?.message || 'Please check your connection and try again.'}`);
-      }
+      setOtpError(
+        'Could not reach the server. Please tap Verify again or switch network once.',
+      );
     }
   };
 
