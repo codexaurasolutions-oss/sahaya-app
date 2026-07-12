@@ -9,7 +9,7 @@ import Button from '../../Component/Button';
 import { OtpInput } from 'react-native-otp-entry';
 import { useDispatch } from 'react-redux';
 import { isAuth, Token, userDetails, userType } from '../../Redux/action';
-import { POST, GET_WITH_TOKEN } from './../../Backend/Backend';
+import { API, POST, GET_WITH_TOKEN } from './../../Backend/Backend';
 import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
@@ -19,7 +19,7 @@ import { getFcmToken } from '../../Constants/AsyncStorage';
 const Otp = ({ navigation, route }) => {
   const { type, aadhaar, mobile, countryCode, user_id } = route?.params || {};
   const [otp, setOtp] = useState('');
-  const [resendTimer, setResendTimer] = useState(60); // 60 sec timer
+  const [resendTimer, setResendTimer] = useState(30); // 30 sec timer
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
   const otpRef = useRef('');
@@ -71,7 +71,7 @@ const Otp = ({ navigation, route }) => {
           'OTP sent successfully!',
           SimpleToast.SHORT,
         );
-        setResendTimer(60);
+        setResendTimer(30);
       },
       error => {
         setIsLoading(false);
@@ -147,70 +147,84 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  // Verify OTP function
-  const submitOtpVerification = (payload, currentOtp, retryCount = 0) => {
-    POST(
-      VERIFY_OTP,
-      payload,
-      async response => {
-        await dispatch(Token(response?.token));
-        console.log('OTP', response);
-        if (response) {
-          dispatch(userDetails(response?.user));
-          dispatch(userType(response?.user?.user_role_id));
-          SimpleToast.show(response?.message, SimpleToast.SHORT);
-          if (!response?.user?.user_role_id || type === 'signup') {
+  const readResponseJson = async response => {
+    try {
+      return await response.json();
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Verify OTP function. Use fetch directly so HTTP validation errors are never
+  // misclassified as "Network error" by the shared helper.
+  const submitOtpVerification = async payload => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const response = await fetch(`${API}${VERIFY_OTP}`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await readResponseJson(response);
+
+      if (response.ok) {
+        const responseData = data || {};
+        await dispatch(Token(responseData?.token));
+        console.log('OTP', responseData);
+        if (responseData) {
+          dispatch(userDetails(responseData?.user));
+          dispatch(userType(responseData?.user?.user_role_id));
+          SimpleToast.show(responseData?.message || 'OTP verified successfully', SimpleToast.SHORT);
+          if (!responseData?.user?.user_role_id || type === 'signup') {
             setIsLoading(false);
             navigation?.navigate('ChooseUser');
           } else {
-            fetchProfileAndProceed(response?.user?.user_role_id);
+            fetchProfileAndProceed(responseData?.user?.user_role_id);
           }
         } else {
           setIsLoading(false);
           setOtpError(
-            response?.message ||
+            responseData?.message ||
             LocalizedStrings.Auth?.mobile_invalid ||
             'Invalid OTP. Please try again.',
           );
         }
-      },
-      error => {
-        console.log('Verify OTP Error:', error);
+        return;
+      }
 
-        setIsLoading(false);
-        let errorMsg = '';
-
-        // error is now res.data (the JSON body from the server)
-        if (error?.error) {
-          errorMsg = error.error;
-          if (error.debug_stored) {
-            errorMsg += `\n(Expect: ${error.debug_stored} | Sent: ${error.debug_sent})`;
-          }
-        } else if (error?.message) {
-          errorMsg = error.message;
-        } else if (error?.errors) {
-          const errs = error.errors;
-          errorMsg = Object.values(errs).flat().join('\n');
-        } else {
-          errorMsg = 'Invalid OTP. Please try again.';
+      console.log('Verify OTP HTTP Error:', response.status, data);
+      let errorMsg = '';
+      if (data?.error) {
+        errorMsg = data.error;
+        if (data.debug_stored) {
+          errorMsg += `\n(Expect: ${data.debug_stored} | Sent: ${data.debug_sent})`;
         }
-        setOtpError(errorMsg);
-      },
-      fail => {
-        console.log('API Fail (network):', fail?.code, fail?.message);
-        if (retryCount < 2) {
-          setTimeout(() => submitOtpVerification(payload, currentOtp, retryCount + 1), 2000);
-          return;
-        }
-        setIsLoading(false);
-        const failMsg = fail?.msg || fail?.message || '';
-        if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
-          setOtpError('Server is busy. Please try again in a moment.');
-        } else {
-          setOtpError('Network error. Please check your connection and try again.');
-        }
-      },
-    );
+      } else if (data?.message) {
+        errorMsg = data.message;
+      } else if (data?.errors) {
+        errorMsg = Object.values(data.errors).flat().join('\n');
+      } else {
+        errorMsg = `Verification failed (${response.status}). Please try again.`;
+      }
+      setIsLoading(false);
+      setOtpError(errorMsg);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.log('Verify OTP Network Error:', error?.name, error?.message);
+      setIsLoading(false);
+      if (error?.name === 'AbortError') {
+        setOtpError('Server is taking too long. Please try again.');
+      } else {
+        setOtpError(`Network error: ${error?.message || 'Please check your connection and try again.'}`);
+      }
+    }
   };
 
   const handleVerify = async () => {
@@ -250,7 +264,7 @@ const Otp = ({ navigation, route }) => {
     console.log('Sending OTP:', currentOtp, 'Length:', currentOtp.length);
     console.log('-----payload-----', payload);
 
-    submitOtpVerification(payload, currentOtp);
+    submitOtpVerification(payload);
   };
 
   return (
