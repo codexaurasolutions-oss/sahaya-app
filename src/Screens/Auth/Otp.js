@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import CommanView from '../../Component/CommanView';
 import Header from '../../Component/Header';
@@ -13,8 +13,7 @@ import { API, POST, GET_WITH_TOKEN } from './../../Backend/Backend';
 import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getFcmToken } from '../../Constants/AsyncStorage';
+import axios from 'axios';
 
 const Otp = ({ navigation, route }) => {
   const { type, aadhaar, mobile, countryCode, user_id } = route?.params || {};
@@ -22,6 +21,7 @@ const Otp = ({ navigation, route }) => {
   const [resendTimer, setResendTimer] = useState(30); // 30 sec timer
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const [currentUserId, setCurrentUserId] = useState(user_id);
   const otpRef = useRef('');
   const dispatch = useDispatch();
 
@@ -64,6 +64,9 @@ const Otp = ({ navigation, route }) => {
       payload,
       response => {
         setIsLoading(false);
+        if (response?.user_id) {
+          setCurrentUserId(response.user_id);
+        }
         SimpleToast.show(
           response?.message ||
           response?.msg ||
@@ -147,59 +150,40 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  const readResponseJson = async response => {
-    try {
-      return await response.json();
-    } catch (e) {
-      return null;
-    }
-  };
-
-  // Verify OTP function. Use fetch directly so HTTP validation errors are never
-  // misclassified as "Network error" by the shared helper.
+  // Keep OTP verification intentionally simple: one axios request, no retries,
+  // no FCM/device-token side effects, and no shared helper error remapping.
   const submitOtpVerification = async payload => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
     try {
-      const response = await fetch(`${API}${VERIFY_OTP}`, {
+      const response = await axios({
+        url: `${API}${VERIFY_OTP}`,
         method: 'POST',
+        data: payload,
+        timeout: 30000,
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
+        validateStatus: status => status >= 200 && status <= 599,
       });
-      clearTimeout(timeoutId);
-      const data = await readResponseJson(response);
+      const data = response?.data || {};
 
-      if (response.ok) {
-        const responseData = data || {};
+      if (response?.status >= 200 && response?.status < 300) {
+        const responseData = data;
         await dispatch(Token(responseData?.token));
         console.log('OTP', responseData);
-        if (responseData) {
-          dispatch(userDetails(responseData?.user));
-          dispatch(userType(responseData?.user?.user_role_id));
-          SimpleToast.show(responseData?.message || 'OTP verified successfully', SimpleToast.SHORT);
-          if (!responseData?.user?.user_role_id || type === 'signup') {
-            setIsLoading(false);
-            navigation?.navigate('ChooseUser');
-          } else {
-            fetchProfileAndProceed(responseData?.user?.user_role_id);
-          }
-        } else {
+        dispatch(userDetails(responseData?.user));
+        dispatch(userType(responseData?.user?.user_role_id));
+        SimpleToast.show(responseData?.message || 'OTP verified successfully', SimpleToast.SHORT);
+        if (!responseData?.user?.user_role_id || type === 'signup') {
           setIsLoading(false);
-          setOtpError(
-            responseData?.message ||
-            LocalizedStrings.Auth?.mobile_invalid ||
-            'Invalid OTP. Please try again.',
-          );
+          navigation?.navigate('ChooseUser');
+        } else {
+          fetchProfileAndProceed(responseData?.user?.user_role_id);
         }
         return;
       }
 
-      console.log('Verify OTP HTTP Error:', response.status, data);
+      console.log('Verify OTP HTTP Error:', response?.status, data);
       let errorMsg = '';
       if (data?.error) {
         errorMsg = data.error;
@@ -211,24 +195,22 @@ const Otp = ({ navigation, route }) => {
       } else if (data?.errors) {
         errorMsg = Object.values(data.errors).flat().join('\n');
       } else {
-        errorMsg = `Verification failed (${response.status}). Please try again.`;
+        errorMsg = `Verification failed (${response?.status}). Please try again.`;
       }
       setIsLoading(false);
       setOtpError(errorMsg);
     } catch (error) {
-      clearTimeout(timeoutId);
-      console.log('Verify OTP Network Error:', error?.name, error?.message);
+      console.log('Verify OTP Network Error:', error?.code, error?.message, error?.response?.data);
       setIsLoading(false);
-      if (error?.name === 'AbortError') {
+      if (error?.code === 'ECONNABORTED') {
         setOtpError('Server is taking too long. Please try again.');
       } else {
-        setOtpError(`Network error: ${error?.message || 'Please check your connection and try again.'}`);
+        setOtpError(error?.response?.data?.error || error?.response?.data?.message || `Network error: ${error?.message || 'Please check your connection and try again.'}`);
       }
     }
   };
 
   const handleVerify = async () => {
-    const FcmToken = await getFcmToken();
     const currentOtp = String(otpRef.current || otp || '').trim();
 
     if (currentOtp.length !== 6) {
@@ -253,13 +235,10 @@ const Otp = ({ navigation, route }) => {
     setOtpError('');
     const payload = {
       otp: currentOtp,
-      user_id: user_id,
-      device_type: Platform.OS === 'android' ? 'android' : 'ios',
+      user_id: currentUserId,
+      phone_number: String(mobile),
+      country_code: String(countryCode),
     };
-
-    if (FcmToken) {
-      payload.device_token = FcmToken;
-    }
 
     console.log('Sending OTP:', currentOtp, 'Length:', currentOtp.length);
     console.log('-----payload-----', payload);
