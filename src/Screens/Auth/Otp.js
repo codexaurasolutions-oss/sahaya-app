@@ -10,7 +10,7 @@ import { OtpInput } from 'react-native-otp-entry';
 import { useDispatch } from 'react-redux';
 import { isAuth, Token, userDetails, userType } from '../../Redux/action';
 import { API, POST, GET_WITH_TOKEN } from './../../Backend/Backend';
-import { VERIFY_OTP, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
+import { OTP_LOGIN, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 
@@ -181,7 +181,7 @@ const Otp = ({ navigation, route }) => {
   // no FCM/device-token side effects, and no shared helper error remapping.
   const submitOtpVerification = async payload => {
     try {
-      const response = await fetch(`${API}${VERIFY_OTP}`, {
+      const response = await fetch(`${API}${OTP_LOGIN}`, {
         method: 'POST',
         headers: {
           Accept: 'application/json',

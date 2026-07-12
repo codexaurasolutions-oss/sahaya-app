@@ -13,6 +13,7 @@ export const INTRO_API = 'customer/intro_api';
 export const LOGIN = 'customer/login';
 export const SIGINUP = 'customer/signup';
 export const VERIFY_OTP = 'verify-otp';
+export const OTP_LOGIN = 'otp-login';
 export const RESEND_OTP = 'resend-otp';
 export const PROFILE_UPDATE = 'profile/update';
 export const POLICY = 'cms-page';
