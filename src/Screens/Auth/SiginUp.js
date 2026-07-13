@@ -75,6 +75,7 @@ const SiginUp = ({ navigation }) => {
             mobile: mobile,
             countryCode: selectedCountry.dial_code,
             user_id: response?.user_id,
+            testOtp: response?.otp,
           });
         },
         error => {

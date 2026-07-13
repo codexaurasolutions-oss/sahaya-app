@@ -69,6 +69,7 @@ const Login = ({ navigation }) => {
               mobile: mobile,
               countryCode: selectedCountry.dial_code,
               user_id: response?.user_id,
+              testOtp: response?.otp,
             });
           } else {
             setMobileError(

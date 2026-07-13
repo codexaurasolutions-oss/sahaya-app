@@ -15,11 +15,12 @@ import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 
 const Otp = ({ navigation, route }) => {
-  const { type, aadhaar, mobile, countryCode, user_id } = route?.params || {};
+  const { type, aadhaar, mobile, countryCode, user_id, testOtp } = route?.params || {};
   const [otp, setOtp] = useState('');
   const [resendTimer, setResendTimer] = useState(30); // 30 sec timer
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const [visibleOtp, setVisibleOtp] = useState(testOtp);
   const [currentUserId, setCurrentUserId] = useState(user_id);
   const otpRef = useRef('');
   const dispatch = useDispatch();
@@ -65,6 +66,9 @@ const Otp = ({ navigation, route }) => {
         setIsLoading(false);
         if (response?.user_id) {
           setCurrentUserId(response.user_id);
+        }
+        if (response?.otp) {
+          setVisibleOtp(response.otp);
         }
         SimpleToast.show(
           response?.message ||
@@ -337,6 +341,17 @@ const Otp = ({ navigation, route }) => {
             style={{ textAlign: 'center', marginBottom: 10 }}
           >
             {otpError}
+          </Typography>
+        ) : null}
+
+        {visibleOtp ? (
+          <Typography
+            size={14}
+            color="#D98579"
+            type={Font?.Poppins_Medium}
+            style={{ textAlign: 'center', marginBottom: 10 }}
+          >
+            Test OTP: {visibleOtp}
           </Typography>
         ) : null}
 
