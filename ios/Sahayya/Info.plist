@@ -33,6 +33,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sahayya AI uses the microphone to convert your voice into text.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Sahayya AI uses speech recognition to understand your spoken questions.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

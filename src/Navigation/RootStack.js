@@ -28,6 +28,7 @@ import PolicyScreen from '../Component/PolicyScreen';
 import AppUpdate from '../Screens/Private/MoreScreens/AppUpdate';
 import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
 import RecentSalaryList from '../Screens/Private/Salary/RecentSalaryList';
+import AiCopilot from '../Screens/Private/AiCopilot/AiCopilot';
 import Salary from '../Screens/Private/Salary/Salary';
 import ManageAddresses from '../Screens/Private/MoreScreens/ManageAddresses';
 import { useSelector } from 'react-redux';
@@ -67,6 +68,11 @@ const RootStack = () => {
         name="AllStaff"
         component={AllStaff}
         options={{ ...commonOptions }}
+      />
+      <Stack.Screen
+        name="AiCopilot"
+        component={AiCopilot}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="FamilyMembers"
