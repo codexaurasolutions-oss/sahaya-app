@@ -111,8 +111,24 @@ const Otp = ({ navigation, route }) => {
     });
   };
 
+  const buildOtpRequestPayload = () => ({
+    phone_number: String(mobile),
+    country_code: String(countryCode),
+  });
+
+  const requestFreshOtp = async (shouldReveal = false) => {
+    const response = await postOtpRequest(RESEND_OTP, buildOtpRequestPayload());
+    const nextUserId = readUserIdFromResponse(response);
+    if (nextUserId) {
+      setCurrentUserId(nextUserId);
+    }
+    const nextOtp = updateOtpFromResponse(response, shouldReveal);
+    setResendTimer(30);
+    return { response, otp: nextOtp };
+  };
+
   // Send OTP function (used for auto-send and resend)
-  const sendOTP = () => {
+  const sendOTP = async () => {
     if (!mobile || !countryCode) {
       SimpleToast.show(
         LocalizedStrings.Auth?.mobile_required ||
@@ -123,44 +139,28 @@ const Otp = ({ navigation, route }) => {
     }
     setIsLoading(true);
     setOtpError('');
-    const payload = {
-      phone_number: String(mobile),
-      country_code: String(countryCode),
-    };
+    setVisibleOtp('');
 
-    POST(
-      RESEND_OTP,
-      payload,
-      response => {
-        setIsLoading(false);
-        const nextUserId = readUserIdFromResponse(response);
-        if (nextUserId) {
-          setCurrentUserId(nextUserId);
-        }
-        updateOtpFromResponse(response);
-        SimpleToast.show(
-          response?.message ||
-          response?.msg ||
-          LocalizedStrings.Auth?.otp_message ||
-          'OTP sent successfully!',
-          SimpleToast.SHORT,
-        );
-        setResendTimer(30);
-      },
-      error => {
-        setIsLoading(false);
-        updateOtpFromResponse(error);
-        setOtpError(readErrorMessage(error));
-      },
-      fail => {
-        setIsLoading(false);
-        setOtpError(
-          fail?.msg ||
-            fail?.message ||
-            'OTP request is taking longer than expected. Please try Resend once.',
-        );
-      },
-    );
+    try {
+      const { response } = await requestFreshOtp(false);
+      SimpleToast.show(
+        response?.message ||
+        response?.msg ||
+        LocalizedStrings.Auth?.otp_message ||
+        'OTP sent successfully!',
+        SimpleToast.SHORT,
+      );
+    } catch (requestError) {
+      const errorData = requestError?.error || requestError;
+      updateOtpFromResponse(errorData);
+      setOtpError(
+        requestError?.kind === 'connection'
+          ? 'OTP request is taking longer than expected. Please try Resend once.'
+          : readErrorMessage(errorData),
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Resend OTP function
@@ -256,13 +256,38 @@ const Otp = ({ navigation, route }) => {
           continue;
         }
 
-        setIsLoading(false);
         const errorData = requestError?.error || requestError;
         const errorMessage = readErrorMessage(errorData);
+        const isExpiredOtp = /expired/i.test(errorMessage);
+
+        if (isExpiredOtp && requestError?.kind !== 'connection') {
+          try {
+            const { otp: refreshedOtp } = await requestFreshOtp(true);
+            setOtpError(
+              refreshedOtp
+                ? 'OTP expired. New Test OTP generated below.'
+                : 'OTP expired. Please tap Resend to get a new OTP.',
+            );
+          } catch (resendError) {
+            const resendErrorData = resendError?.error || resendError;
+            const resendOtp = updateOtpFromResponse(resendErrorData, true);
+            setResendTimer(0);
+            setOtpError(
+              resendOtp
+                ? 'OTP expired. Please enter the Test OTP shown below.'
+                : 'OTP expired. Please tap Resend once to get a new OTP.',
+            );
+          } finally {
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        setIsLoading(false);
         const serverOtp = updateOtpFromResponse(errorData, true);
         const cachedOtp = !serverOtp &&
           requestError?.kind !== 'connection' &&
-          !/expired/i.test(errorMessage)
+          !isExpiredOtp
           ? revealCachedTestOtp()
           : '';
         setOtpError(
