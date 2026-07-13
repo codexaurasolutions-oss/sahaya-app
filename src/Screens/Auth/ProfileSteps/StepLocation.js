@@ -1,6 +1,5 @@
-import { Image, StyleSheet, TouchableOpacity, View, Alert, Platform, Linking } from 'react-native';
-import React, { useState, useCallback, useEffect } from 'react';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { Alert, Image, Linking, PermissionsAndroid, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
 import GooglePlacesInput from '../../../Component/GooglePlacesInput';
 import Geolocation from '@react-native-community/geolocation';
 
@@ -13,7 +12,26 @@ import Typography from '../../../Component/UI/Typography';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import LocalizedStrings from '../../../Constants/localization';
 
+const buildGoogleMapLink = (latitude, longitude) =>
+  `https://maps.google.com/?q=${latitude},${longitude}`;
 
+const requestLocationPermission = async () => {
+  if (Platform.OS !== 'android') {
+    return true;
+  }
+
+  const granted = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    {
+      title: 'Location Permission Required',
+      message: 'Allow Sahayya to detect your current location.',
+      buttonPositive: 'Allow',
+      buttonNegative: 'Cancel',
+    },
+  );
+
+  return granted === PermissionsAndroid.RESULTS.GRANTED;
+};
 
 const StepLocation = React.forwardRef((props, ref) => {
   const [show, setShow] = useState(false);
@@ -58,6 +76,16 @@ const StepLocation = React.forwardRef((props, ref) => {
       
       if (data && data.address) {
         const address = data.address;
+        const streetName = [
+          address.house_number,
+          address.road || address.pedestrian || address.path,
+        ].filter(Boolean).join(' ');
+        const areaName =
+          address.suburb ||
+          address.neighbourhood ||
+          address.city_district ||
+          address.county ||
+          '';
         // Extract city (can be city, town, village, or suburb)
         const cityName = address.city || address.town || address.village || address.suburb || '';
         // Extract state
@@ -66,53 +94,179 @@ const StepLocation = React.forwardRef((props, ref) => {
         const pincode = address.postcode || '';
         
         return {
+          street: streetName || data.display_name?.split(',')?.[0] || '',
+          areaLocality: areaName,
           city: cityName,
           state: stateName,
           pincode: pincode
         };
       }
       return null;
-    } catch (error) {
-      console.error('Error fetching location details:', error);
+    } catch (locationLookupError) {
+      console.error('Error fetching location details:', locationLookupError);
       return null;
     }
   };
 
   // Function to capture current location
-  const captureLocation = () => {
+  const applyPrimaryLocationDetails = (locationDetails) => {
+    if (!locationDetails) {
+      return;
+    }
+    if (!street && locationDetails.street) {
+      setStreet(locationDetails.street);
+      setError(prev => prev?.street ? {...prev, street: null} : prev);
+    }
+    if (!areaLocality && locationDetails.areaLocality) {
+      setAreaLocality(locationDetails.areaLocality);
+      setError(prev => prev?.areaLocality ? {...prev, areaLocality: null} : prev);
+    }
+    if (locationDetails.city) {
+      setCity(locationDetails.city);
+      setError(prev => prev?.city ? {...prev, city: null} : prev);
+    }
+    if (locationDetails.state) {
+      setState(locationDetails.state);
+      setError(prev => prev?.state ? {...prev, state: null} : prev);
+    }
+    if (locationDetails.pincode) {
+      setPinCode(locationDetails.pincode);
+      setError(prev => prev?.pinCode ? {...prev, pinCode: null} : prev);
+    }
+  };
+
+  const applySecondaryLocationDetails = (locationDetails) => {
+    if (!locationDetails) {
+      return;
+    }
+    if (!street2 && locationDetails.street) {
+      setStreet2(locationDetails.street);
+      setError(prev => prev?.street2 ? {...prev, street2: null} : prev);
+    }
+    if (!areaLocality2 && locationDetails.areaLocality) {
+      setAreaLocality2(locationDetails.areaLocality);
+      setError(prev => prev?.areaLocality2 ? {...prev, areaLocality2: null} : prev);
+    }
+    if (locationDetails.city) {
+      setCity2(locationDetails.city);
+      setError(prev => prev?.city2 ? {...prev, city2: null} : prev);
+    }
+    if (locationDetails.state) {
+      setState2(locationDetails.state);
+      setError(prev => prev?.state2 ? {...prev, state2: null} : prev);
+    }
+    if (locationDetails.pincode) {
+      setPinCode2(locationDetails.pincode);
+      setError(prev => prev?.pinCode2 ? {...prev, pinCode2: null} : prev);
+    }
+  };
+
+  const handlePrimaryPlaceSelected = async (location) => {
+    const latitude = location?.lat ? String(location.lat) : '';
+    const longitude = location?.long ? String(location.long) : '';
+    const googleMapLink = location?.google_location || (
+      latitude && longitude ? buildGoogleMapLink(latitude, longitude) : ''
+    );
+
+    setGoogleLocation(googleMapLink);
+    setLat(latitude);
+    setLong(longitude);
+    if (googleMapLink && error?.googleLocation) {
+      setError(prev => ({...prev, googleLocation: null}));
+    }
+
+    if (location?.hasExtractedData && !location?.fromMap) {
+      if (!street && location.street) setStreet(location.street);
+      if (!city && location.city) setCity(location.city);
+      if (!state && location.state) setState(location.state);
+      if (!pinCode && location.pincode) setPinCode(location.pincode);
+    }
+
+    if (location?.fromMap && latitude && longitude) {
+      const locationDetails = await getLocationFromCoordinates(latitude, longitude);
+      applyPrimaryLocationDetails(locationDetails);
+    }
+  };
+
+  const handleSecondaryPlaceSelected = async (location) => {
+    const latitude = location?.lat ? String(location.lat) : '';
+    const longitude = location?.long ? String(location.long) : '';
+    const googleMapLink = location?.google_location || (
+      latitude && longitude ? buildGoogleMapLink(latitude, longitude) : ''
+    );
+
+    setGoogleLocation2(googleMapLink);
+    setLat2(latitude);
+    setLong2(longitude);
+    if (googleMapLink && error?.googleLocation2) {
+      setError(prev => ({...prev, googleLocation2: null}));
+    }
+
+    if (location?.hasExtractedData && !location?.fromMap) {
+      if (!street2 && location.street) setStreet2(location.street);
+      if (!city2 && location.city) setCity2(location.city);
+      if (!state2 && location.state) setState2(location.state);
+      if (!pinCode2 && location.pincode) setPinCode2(location.pincode);
+    }
+
+    if (location?.fromMap && latitude && longitude) {
+      const locationDetails = await getLocationFromCoordinates(latitude, longitude);
+      applySecondaryLocationDetails(locationDetails);
+    }
+  };
+
+  const captureLocation = async () => {
     setLoadingLocation(true);
+
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      setLoadingLocation(false);
+      Alert.alert(
+        'Location Permission Required',
+        'Please enable location permission in your device settings to use this feature.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              } else {
+                Linking.openSettings();
+              }
+            }
+          }
+        ]
+      );
+      return;
+    }
     
     Geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        const googleMapLink = buildGoogleMapLink(latitude, longitude);
+
+        setLat(String(latitude));
+        setLong(String(longitude));
+        setGoogleLocation(googleMapLink);
+        setError(prev => prev?.googleLocation ? {...prev, googleLocation: null} : prev);
         
         // Get location details from coordinates
         const locationDetails = await getLocationFromCoordinates(latitude, longitude);
         
         if (locationDetails) {
-          if (locationDetails.city) {
-            setCity(locationDetails.city);
-            setError(prev => prev?.city ? {...prev, city: null} : prev);
-          }
-          if (locationDetails.state) {
-            setState(locationDetails.state);
-            setError(prev => prev?.state ? {...prev, state: null} : prev);
-          }
-          if (locationDetails.pincode) {
-            setPinCode(locationDetails.pincode);
-            setError(prev => prev?.pinCode ? {...prev, pinCode: null} : prev);
-          }
-          Alert.alert('Success', 'Location captured successfully!');
+          applyPrimaryLocationDetails(locationDetails);
+          Alert.alert('Success', 'Location captured successfully. You can move the pin on the map if needed.');
         } else {
-          Alert.alert('Error', 'Could not fetch location details. Please enter manually.');
+          Alert.alert('Success', 'Location captured. Please enter address details manually if needed.');
         }
         setLoadingLocation(false);
       },
-      (error) => {
-        console.error('Location error:', error);
+      (locationError) => {
+        console.error('Location error:', locationError);
         setLoadingLocation(false);
         
-        if (error.code === 1) {
+        if (locationError.code === 1) {
           // Permission denied
           Alert.alert(
             'Location Permission Required',
@@ -131,10 +285,10 @@ const StepLocation = React.forwardRef((props, ref) => {
               }
             ]
           );
-        } else if (error.code === 2) {
+        } else if (locationError.code === 2) {
           // Position unavailable
           Alert.alert('Error', 'Location service is unavailable. Please check your GPS settings.');
-        } else if (error.code === 3) {
+        } else if (locationError.code === 3) {
           // Timeout
           Alert.alert('Error', 'Location request timed out. Please try again.');
         } else {
@@ -316,32 +470,22 @@ const StepLocation = React.forwardRef((props, ref) => {
         />
 
         {/* Google Location */}
-        <View style={{ zIndex: 100 }}>
+        <View style={styles.primaryGoogleLocationWrap}>
           <GooglePlacesInput
             title="Search Google Location (Mandatory)"
             placeholder="Search for your location on Google Maps..."
-            onPlaceSelected={(location) => {
-              setGoogleLocation(location?.google_location || "");
-              setLat(location?.lat || "");
-              setLong(location?.long || "");
-              if (error?.googleLocation) setError({...error, googleLocation: null});
-              
-              // Optional: auto-fill other fields if they are empty
-              if (location?.hasExtractedData) {
-                if (!street && location.street) setStreet(location.street);
-                if (!city && location.city) setCity(location.city);
-                if (!state && location.state) setState(location.state);
-                if (!pinCode && location.pincode) setPinCode(location.pincode);
-              }
-            }}
+            showMap={true}
+            selectedLat={lat}
+            selectedLong={long}
+            onPlaceSelected={handlePrimaryPlaceSelected}
             error={error?.googleLocation}
           />
         </View>
 
         {/* Read-only parsed Google Location URL display */}
         {googleLocation ? (
-          <View style={{ marginBottom: 15 }}>
-            <Typography size={12} color="green">Location Selected âœ“</Typography>
+          <View style={styles.googleLocationPreview}>
+            <Typography size={12} color="green">Location Selected</Typography>
             <Typography size={11} color="gray">{googleLocation}</Typography>
           </View>
         ) : null}
@@ -449,31 +593,22 @@ const StepLocation = React.forwardRef((props, ref) => {
         />
 
           {/* Google Location */}
-          <View style={{ zIndex: 90 }}>
+          <View style={styles.secondaryGoogleLocationWrap}>
             <GooglePlacesInput
               title="Search Google Location (Mandatory)"
               placeholder="Search for your location on Google Maps..."
-              onPlaceSelected={(location) => {
-                setGoogleLocation2(location?.google_location || "");
-                setLat2(location?.lat || "");
-                setLong2(location?.long || "");
-                if (error?.googleLocation2) setError({...error, googleLocation2: null});
-                
-                if (location?.hasExtractedData) {
-                  if (!street2 && location.street) setStreet2(location.street);
-                  if (!city2 && location.city) setCity2(location.city);
-                  if (!state2 && location.state) setState2(location.state);
-                  if (!pinCode2 && location.pincode) setPinCode2(location.pincode);
-                }
-              }}
+              showMap={true}
+              selectedLat={lat2}
+              selectedLong={long2}
+              onPlaceSelected={handleSecondaryPlaceSelected}
               error={error?.googleLocation2}
             />
           </View>
 
           {/* Read-only parsed Google Location URL display */}
           {googleLocation2 ? (
-            <View style={{ marginBottom: 15 }}>
-              <Typography size={12} color="green">Location Selected âœ“</Typography>
+            <View style={styles.googleLocationPreview}>
+              <Typography size={12} color="green">Location Selected</Typography>
               <Typography size={11} color="gray">{googleLocation2}</Typography>
             </View>
           ) : null}
@@ -569,6 +704,15 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     marginTop: 20,
+  },
+  primaryGoogleLocationWrap: {
+    zIndex: 100,
+  },
+  secondaryGoogleLocationWrap: {
+    zIndex: 90,
+  },
+  googleLocationPreview: {
+    marginBottom: 15,
   },
   headerRow: {
     flexDirection: 'row',

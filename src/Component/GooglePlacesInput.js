@@ -1,11 +1,12 @@
-import React, { useRef, useMemo, useCallback } from 'react';
-import { StyleSheet, View, Image } from 'react-native';
+import React, { useRef, useMemo, useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Colors } from '../Constants/Colors';
 import Typography from './UI/Typography';
 import { Font } from '../Constants/Font';
 import { ImageConstant } from '../Constants/ImageConstant';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { mapKey } from '../Backend/env';
+import LocationMap from './LocationMap';
 
 const GooglePlacesInput = ({
   title = 'Location',
@@ -18,8 +19,22 @@ const GooglePlacesInput = ({
   showIcon = false,
   source = ImageConstant.location_icon,
   error = '',
+  showMap = false,
+  selectedLat = '',
+  selectedLong = '',
+  autoLocate = true,
 }) => {
   const ref = useRef();
+  const [selectedCoords, setSelectedCoords] = useState(null);
+
+  useEffect(() => {
+    const latitude = parseFloat(selectedLat);
+    const longitude = parseFloat(selectedLong);
+
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      setSelectedCoords({latitude, longitude});
+    }
+  }, [selectedLat, selectedLong]);
   
   const query = useMemo(() => ({
     key: mapKey || '',
@@ -90,8 +105,12 @@ const GooglePlacesInput = ({
         lat: String(lat),
         long: String(lng),
         google_location,
-        hasExtractedData: true, // Flag to indicate we have extracted data
+        hasExtractedData: true,
       };
+
+      if (showMap && lat && lng) {
+        setSelectedCoords({latitude: parseFloat(lat), longitude: parseFloat(lng)});
+      }
     } else {
       // If no details, use description or formatted address as fallback for street
       const fallbackStreet = data?.description || details?.formatted_address?.split(',')[0] || '';
@@ -101,11 +120,24 @@ const GooglePlacesInput = ({
         lat: '',
         long: '',
         google_location: '',
-        hasExtractedData: false, // Flag to indicate we don't have full extracted data
+        hasExtractedData: false,
       };
+      if (showMap) setSelectedCoords(null);
     }
     
     onPlaceSelected?.(extractedData);
+  }, [onPlaceSelected, showMap]);
+
+  const handleMapDrag = useCallback(({latitude, longitude}) => {
+    const google_location = `https://maps.google.com/?q=${latitude},${longitude}`;
+    setSelectedCoords({latitude, longitude});
+    onPlaceSelected?.({
+      lat: String(latitude),
+      long: String(longitude),
+      google_location,
+      hasExtractedData: true,
+      fromMap: true,
+    });
   }, [onPlaceSelected]);
 
   const textInputProps = useMemo(() => ({
@@ -155,7 +187,7 @@ const GooglePlacesInput = ({
   }), [styleInput, error]);
 
   return (
-    <View style={[styles.container, mainStyle, { overflow: 'visible' }]}>
+    <View style={[styles.container, mainStyle, styles.visibleOverflow]}>
       {showTitle && (
         <Typography
           style={[styles.title]}
@@ -190,6 +222,16 @@ const GooglePlacesInput = ({
           keyboardShouldPersistTaps="handled"
           listViewDisplayed="auto"
         />
+
+        {showMap && (
+          <LocationMap
+            lat={selectedCoords?.latitude || selectedLat}
+            long={selectedCoords?.longitude || selectedLong}
+            onMarkerDragEnd={handleMapDrag}
+            height={180}
+            autoLocate={autoLocate}
+          />
+        )}
       
       {error && (
         <Typography style={styles.errorText}>
@@ -206,6 +248,9 @@ export default React.memo(GooglePlacesInput);
 const styles = StyleSheet.create({
   container: {
     marginVertical: 10,
+  },
+  visibleOverflow: {
+    overflow: 'visible',
   },
   title: {
     marginBottom: 5,
