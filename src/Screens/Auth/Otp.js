@@ -9,7 +9,7 @@ import Button from '../../Component/Button';
 import { OtpInput } from 'react-native-otp-entry';
 import { useDispatch } from 'react-redux';
 import { isAuth, Token, userDetails, userType } from '../../Redux/action';
-import { API, POST, GET_WITH_TOKEN } from './../../Backend/Backend';
+import { POST, GET_WITH_TOKEN } from './../../Backend/Backend';
 import { OTP_LOGIN, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
@@ -20,7 +20,7 @@ const Otp = ({ navigation, route }) => {
   const [resendTimer, setResendTimer] = useState(30); // 30 sec timer
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
-  const [visibleOtp, setVisibleOtp] = useState(testOtp);
+  const [visibleOtp, setVisibleOtp] = useState(testOtp ? String(testOtp) : '');
   const [currentUserId, setCurrentUserId] = useState(user_id);
   const otpRef = useRef('');
   const dispatch = useDispatch();
@@ -41,6 +41,48 @@ const Otp = ({ navigation, route }) => {
     return () => clearInterval(timer);
   }, [resendTimer]);
 
+
+  const normalizeOtp = value => {
+    if (value === undefined || value === null) return '';
+    return String(value).replace(/\D/g, '').slice(0, 6);
+  };
+
+  const readOtpFromResponse = response => {
+    return normalizeOtp(
+      response?.otp ||
+        response?.data?.otp ||
+        response?.debug_stored ||
+        response?.data?.debug_stored,
+    );
+  };
+
+  const readUserIdFromResponse = response => {
+    return response?.user_id || response?.data?.user_id || response?.user?.id;
+  };
+
+  const readErrorMessage = error => {
+    if (error?.data?.errors) {
+      return Object.values(error.data.errors).flat().join('\n');
+    }
+    if (error?.errors) {
+      return Object.values(error.errors).flat().join('\n');
+    }
+    return (
+      error?.data?.message ||
+      error?.message ||
+      error?.data?.error ||
+      error?.error ||
+      'Something went wrong. Please try again.'
+    );
+  };
+
+  const updateOtpFromResponse = response => {
+    const nextOtp = readOtpFromResponse(response);
+    if (nextOtp) {
+      setVisibleOtp(nextOtp);
+    }
+    return nextOtp;
+  };
 
   // Send OTP function (used for auto-send and resend)
   const sendOTP = () => {
@@ -64,12 +106,11 @@ const Otp = ({ navigation, route }) => {
       payload,
       response => {
         setIsLoading(false);
-        if (response?.user_id) {
-          setCurrentUserId(response.user_id);
+        const nextUserId = readUserIdFromResponse(response);
+        if (nextUserId) {
+          setCurrentUserId(nextUserId);
         }
-        if (response?.otp) {
-          setVisibleOtp(response.otp);
-        }
+        updateOtpFromResponse(response);
         SimpleToast.show(
           response?.message ||
           response?.msg ||
@@ -81,15 +122,16 @@ const Otp = ({ navigation, route }) => {
       },
       error => {
         setIsLoading(false);
-        if (error?.data?.message) {
-          setOtpError(error?.data?.message);
-        } else if (error?.message) {
-          setOtpError(error.message);
-        } else {
-          setOtpError(
-            'Failed to send OTP. Please try again.',
-          );
-        }
+        updateOtpFromResponse(error);
+        setOtpError(readErrorMessage(error));
+      },
+      fail => {
+        setIsLoading(false);
+        setOtpError(
+          fail?.msg ||
+            fail?.message ||
+            'Could not send OTP. Please check your connection and try again.',
+        );
       },
     );
   };
@@ -153,75 +195,48 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  const parseJsonResponse = async response => {
-    const text = await response.text();
-    if (!text) {
-      return {};
-    }
-
-    try {
-      return JSON.parse(text);
-    } catch (error) {
-      return {
-        message: text,
-      };
-    }
-  };
-
-  const getVerificationErrorMessage = (data, status) => {
-    if (data?.error) {
-      return data.error;
-    }
-    if (data?.message) {
-      return data.message;
-    }
-    if (data?.errors) {
-      return Object.values(data.errors).flat().join('\n');
-    }
-    return `Verification failed (${status}). Please try again.`;
-  };
-
-  // Keep OTP verification intentionally simple: native fetch, no axios,
-  // no FCM/device-token side effects, and no shared helper error remapping.
-  const submitOtpVerification = async payload => {
-    try {
-      const response = await fetch(`${API}${OTP_LOGIN}`, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-      const data = await parseJsonResponse(response);
-
-      if (response.ok) {
-        const responseData = data;
-        await dispatch(Token(responseData?.token));
-        console.log('OTP', responseData);
+  const submitOtpVerification = payload => {
+    POST(
+      OTP_LOGIN,
+      payload,
+      responseData => {
+        const nextUserId = readUserIdFromResponse(responseData);
+        if (nextUserId) {
+          setCurrentUserId(nextUserId);
+        }
+        dispatch(Token(responseData?.token));
         dispatch(userDetails(responseData?.user));
         dispatch(userType(responseData?.user?.user_role_id));
-        SimpleToast.show(responseData?.message || 'OTP verified successfully', SimpleToast.SHORT);
+        SimpleToast.show(
+          responseData?.message || 'OTP verified successfully',
+          SimpleToast.SHORT,
+        );
+
         if (!responseData?.user?.user_role_id || type === 'signup') {
           setIsLoading(false);
           navigation?.navigate('ChooseUser');
         } else {
           fetchProfileAndProceed(responseData?.user?.user_role_id);
         }
-        return;
-      }
-
-      console.log('Verify OTP HTTP Error:', response?.status, data);
-      const errorMsg = getVerificationErrorMessage(data, response?.status);
-      setIsLoading(false);
-      setOtpError(errorMsg);
-    } catch (error) {
-      console.log('Verify OTP Fetch Error:', error?.name, error?.message);
-      setIsLoading(false);
-      setOtpError(
-        'Could not reach the server. Please tap Verify again or switch network once.',
-      );
-    }
+      },
+      error => {
+        setIsLoading(false);
+        const serverOtp = updateOtpFromResponse(error);
+        setOtpError(
+          serverOtp
+            ? 'OTP refreshed. Please enter the Test OTP shown below.'
+            : readErrorMessage(error),
+        );
+      },
+      fail => {
+        setIsLoading(false);
+        setOtpError(
+          fail?.msg ||
+            fail?.message ||
+            'Could not reach the server. Please tap Verify again or switch network once.',
+        );
+      },
+    );
   };
 
   const handleVerify = async () => {
@@ -443,7 +458,7 @@ const Otp = ({ navigation, route }) => {
       </View>
 
       {/* Bottom Text */}
-      {type != 'login' && !aadhaar && (
+      {type !== 'login' && !aadhaar && (
         <View style={styles.bottomText}>
           <Typography type={Font?.Poppins_Regular}>
             {LocalizedStrings.Auth?.already_have_account ||
