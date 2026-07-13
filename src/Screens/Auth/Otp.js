@@ -24,6 +24,7 @@ const Otp = ({ navigation, route }) => {
   const [currentUserId, setCurrentUserId] = useState(user_id);
   const otpRef = useRef('');
   const dispatch = useDispatch();
+  const MAX_VERIFY_ATTEMPTS = 2;
 
   useEffect(() => {
     let timer;
@@ -84,6 +85,18 @@ const Otp = ({ navigation, route }) => {
     return nextOtp;
   };
 
+  const postOtpRequest = (routeName, payload) => {
+    return new Promise((resolve, reject) => {
+      POST(
+        routeName,
+        payload,
+        resolve,
+        error => reject({ kind: 'api', error }),
+        error => reject({ kind: 'connection', error }),
+      );
+    });
+  };
+
   // Send OTP function (used for auto-send and resend)
   const sendOTP = () => {
     if (!mobile || !countryCode) {
@@ -130,7 +143,7 @@ const Otp = ({ navigation, route }) => {
         setOtpError(
           fail?.msg ||
             fail?.message ||
-            'Could not send OTP. Please check your connection and try again.',
+            'OTP request is taking longer than expected. Please try Resend once.',
         );
       },
     );
@@ -195,48 +208,53 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  const submitOtpVerification = payload => {
-    POST(
-      OTP_LOGIN,
-      payload,
-      responseData => {
-        const nextUserId = readUserIdFromResponse(responseData);
-        if (nextUserId) {
-          setCurrentUserId(nextUserId);
-        }
-        dispatch(Token(responseData?.token));
-        dispatch(userDetails(responseData?.user));
-        dispatch(userType(responseData?.user?.user_role_id));
-        SimpleToast.show(
-          responseData?.message || 'OTP verified successfully',
-          SimpleToast.SHORT,
-        );
+  const completeOtpLogin = responseData => {
+    const nextUserId = readUserIdFromResponse(responseData);
+    if (nextUserId) {
+      setCurrentUserId(nextUserId);
+    }
+    dispatch(Token(responseData?.token));
+    dispatch(userDetails(responseData?.user));
+    dispatch(userType(responseData?.user?.user_role_id));
+    SimpleToast.show(
+      responseData?.message || 'OTP verified successfully',
+      SimpleToast.SHORT,
+    );
 
-        if (!responseData?.user?.user_role_id || type === 'signup') {
-          setIsLoading(false);
-          navigation?.navigate('ChooseUser');
-        } else {
-          fetchProfileAndProceed(responseData?.user?.user_role_id);
+    if (!responseData?.user?.user_role_id || type === 'signup') {
+      setIsLoading(false);
+      navigation?.navigate('ChooseUser');
+    } else {
+      fetchProfileAndProceed(responseData?.user?.user_role_id);
+    }
+  };
+
+  const submitOtpVerification = async payload => {
+    for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt += 1) {
+      try {
+        const responseData = await postOtpRequest(OTP_LOGIN, payload);
+        completeOtpLogin(responseData);
+        return;
+      } catch (requestError) {
+        const isLastAttempt = attempt === MAX_VERIFY_ATTEMPTS;
+
+        if (requestError?.kind === 'connection' && !isLastAttempt) {
+          continue;
         }
-      },
-      error => {
+
         setIsLoading(false);
-        const serverOtp = updateOtpFromResponse(error);
+        const errorData = requestError?.error || requestError;
+        const serverOtp = updateOtpFromResponse(errorData);
         setOtpError(
           serverOtp
             ? 'OTP refreshed. Please enter the Test OTP shown below.'
-            : readErrorMessage(error),
+            : requestError?.kind === 'connection'
+            ? 'Verification is taking longer than expected. Please tap Verify again.'
+            : readErrorMessage(errorData),
         );
-      },
-      fail => {
-        setIsLoading(false);
-        setOtpError(
-          fail?.msg ||
-            fail?.message ||
-            'Could not reach the server. Please tap Verify again or switch network once.',
-        );
-      },
-    );
+        return;
+      }
+    }
   };
 
   const handleVerify = async () => {
