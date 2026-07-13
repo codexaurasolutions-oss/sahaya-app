@@ -28,7 +28,6 @@ import LocalizedStrings from '../../../Constants/localization';
 import SimpleToast from 'react-native-simple-toast';
 
 const Step1 = () => {
-  const userTypes = useSelector(store => store?.userType);
   const userDetail = useSelector(store => store?.userDetails);
   const [activeTab, setActiveTab] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -45,11 +44,56 @@ const Step1 = () => {
   const navigation = useNavigation();
   const stepLocationRef = React.useRef(null);
   const stepHouseholdRef = React.useRef(null);
+  const savedAddressDataRef = React.useRef(null);
 
   const getFirstValidationMessage = errorsObj => {
     const firstMessage = Object.values(errorsObj || {}).find(Boolean);
     return firstMessage || 'Please complete the required fields.';
   };
+
+  const toIntOrNull = value => {
+    const text = String(value ?? '').trim();
+    if (!text) return null;
+    const parsed = Number.parseInt(text, 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  };
+
+  const normalizeAddress = address => ({
+    name: address?.name || address?.title || '',
+    street: address?.street || '',
+    city: address?.city || '',
+    state: address?.state || '',
+    pincode: address?.pinCode || address?.pincode || '',
+    area_locality: address?.area_locality || address?.areaLocality || '',
+    google_location: address?.google_location || address?.googleLocation || '',
+    lat: address?.lat || address?.latitude || '',
+    long: address?.long || address?.longitude || '',
+  });
+
+  const hasCompleteAddress = address =>
+    ['street', 'city', 'state', 'pincode'].every(key =>
+      String(address?.[key] ?? '').trim(),
+    );
+
+  const normalizeHousehold = household => ({
+    residence_type: household?.residence_type || null,
+    number_of_rooms: toIntOrNull(household?.number_of_rooms),
+    languages_spoken: Array.isArray(household?.languages_spoken)
+      ? household.languages_spoken
+      : [],
+    adults_count: toIntOrNull(household?.adults_count),
+    children_count: toIntOrNull(household?.children_count),
+    elderly_count: toIntOrNull(household?.elderly_count),
+    special_requirements: household?.special_requirements || null,
+  });
+
+  const normalizePets = household =>
+    (household?.pet_details || [])
+      .filter(pet => pet?.pet_type && String(pet?.pet_count ?? '').trim())
+      .map(pet => ({
+        pet_type: pet.pet_type,
+        pet_count: toIntOrNull(pet.pet_count),
+      }));
 
   useEffect(() => {
     if (userDetail && Object.keys(userDetail).length > 0) {
@@ -105,52 +149,75 @@ const Step1 = () => {
           });
         }
       }
+
+      const profileStep = Number(userDetail?.step ?? userDetail?.steps);
+      if (!Number.isNaN(profileStep) && profileStep > 0 && profileStep < 4) {
+        if (profileStep <= 1) setActiveTab(0);
+        else if (profileStep === 2) setActiveTab(1);
+        else if (profileStep === 3) setActiveTab(2);
+      }
+
+      if (Array.isArray(userDetail?.addresses) && userDetail.addresses.length) {
+        const savedAddresses = userDetail.addresses
+          .map(normalizeAddress)
+          .filter(hasCompleteAddress);
+
+        if (savedAddresses.length) {
+          savedAddressDataRef.current = savedAddresses;
+          setAddressCount(savedAddresses.length);
+        }
+      }
     }
   }, [userDetail]);
-  const SendStepsApi = () => {
-    if (activeTab === 1 && stepLocationRef.current) {
-      const isAddressValid = stepLocationRef.current.validateAddress();
-      if (!isAddressValid) {
-        SimpleToast.show('Please complete the highlighted address fields.', SimpleToast.SHORT);
-        return;
-      }
-    }
+  const SendStepsApi = async () => {
+    if (isLoading) return;
 
-    if (activeTab === 2 && stepHouseholdRef.current) {
-      const isHouseholdValid = stepHouseholdRef.current.validateHousehold();
-      if (!isHouseholdValid) {
-        SimpleToast.show('Please complete the highlighted household fields.', SimpleToast.SHORT);
-        return;
+    try {
+      if (activeTab === 1 && stepLocationRef.current) {
+        const isAddressValid = stepLocationRef.current.validateAddress();
+        if (!isAddressValid) {
+          SimpleToast.show('Please complete the highlighted address fields.', SimpleToast.SHORT);
+          return;
+        }
       }
-    }
 
-    let validationErrors = {};
-    if (activeTab === 0) {
-      validationErrors = {
-        firstName: validators?.checkRequire('First Name', firstName),
-        lastName: validators?.checkRequire('Last Name', lastName),
-        dob: validators?.checkRequire('Dob', dob),
-        gender: validators?.checkRequire('Gender', gender?.value),
-      };
-      setError(validationErrors);
-      if (!isValidForm(validationErrors)) {
-        SimpleToast.show(getFirstValidationMessage(validationErrors), SimpleToast.SHORT);
-        return;
+      if (activeTab === 2 && stepHouseholdRef.current) {
+        const isHouseholdValid = stepHouseholdRef.current.validateHousehold();
+        if (!isHouseholdValid) {
+          SimpleToast.show('Please complete the highlighted household fields.', SimpleToast.SHORT);
+          return;
+        }
       }
-    }
+
+      let validationErrors = {};
+      if (activeTab === 0) {
+        validationErrors = {
+          firstName: validators?.checkRequire('First Name', firstName),
+          lastName: validators?.checkRequire('Last Name', lastName),
+          dob: validators?.checkRequire('Dob', dob),
+          gender: validators?.checkRequire('Gender', gender?.value),
+        };
+        setError(validationErrors);
+        if (!isValidForm(validationErrors)) {
+          SimpleToast.show(getFirstValidationMessage(validationErrors), SimpleToast.SHORT);
+          return;
+        }
+      }
 
       setIsLoading(true);
 
       const onSuccess = (sucess) => {
           setIsLoading(false);
-          console.log('Profile update success:', sucess);
-          const currentStep = sucess?.data?.step || sucess?.data?.steps;
+          const currentStep = Number(sucess?.data?.step ?? sucess?.data?.steps);
 
-          if (currentStep == 1 || currentStep == '1') {
-            setActiveTab(0);
-          } else if (currentStep == 2 || currentStep == '2') {
+          if (activeTab === 2 && currentStep < 4) {
+            SimpleToast.show('Please save your address first, then save household details.', SimpleToast.SHORT);
             setActiveTab(1);
-          } else if (currentStep == 3 || currentStep == '3') {
+          } else if (currentStep === 1) {
+            setActiveTab(0);
+          } else if (currentStep === 2) {
+            setActiveTab(1);
+          } else if (currentStep === 3) {
             setActiveTab(2);
           } else if (currentStep >= 4) {
             navigation.navigate('TabNavigation');
@@ -163,7 +230,6 @@ const Step1 = () => {
 
       const onError = (errorResponse) => {
           setIsLoading(false);
-          console.log('Profile update error:', errorResponse);
           let errorMsg = 'Failed to update profile';
           const responseErrors = errorResponse?.errors || errorResponse?.data?.errors;
           if (responseErrors) {
@@ -182,7 +248,6 @@ const Step1 = () => {
 
       const onFail = (fail) => {
           setIsLoading(false);
-          console.log('Profile update fail:', fail);
           SimpleToast.show(fail?.msg || fail?.message || 'Network error. Please try again.', SimpleToast.SHORT);
       };
 
@@ -198,9 +263,9 @@ const Step1 = () => {
           formData.append('profile_picture', {
             uri: imageUri,
             name: selectedPhoto?.name || 'profile.jpg',
-            type: selectedPhoto?.mime || 'image/jpeg',
+            type: selectedPhoto?.type || selectedPhoto?.mime || 'image/jpeg',
           });
-          formData.append('is_edit', 0);
+          formData.append('is_edit', '0');
           POST_FORM_DATA(PROFILE_UPDATE, formData, onSuccess, onError, onFail);
         } else {
           POST_WITH_TOKEN(PROFILE_UPDATE, {
@@ -208,81 +273,62 @@ const Step1 = () => {
             last_name: lastName,
             gender: gender?.value,
             dob: moment(dob).format('YYYY-MM-DD'),
-            is_edit: 0,
+            is_edit: '0',
           }, onSuccess, onError, onFail);
         }
       } else if (activeTab === 1) {
-        const addresses = stepLocationRef.current?.getAddressData() || [];
-        const addressPayload = addresses.map(address => ({
-          name: address.name || '',
-          street: address.street,
-          city: address.city,
-          state: address.state,
-          pincode: address.pinCode,
-          area_locality: address.area_locality || '',
-          google_location: address.google_location || '',
-          lat: address.lat || '',
-          long: address.long || '',
-        }));
+        const addressPayload = (stepLocationRef.current?.getAddressData() || [])
+          .map(normalizeAddress)
+          .filter(hasCompleteAddress);
+
+        if (!addressPayload.length) {
+          setIsLoading(false);
+          SimpleToast.show('Please complete the address before continuing.', SimpleToast.SHORT);
+          return;
+        }
+
+        savedAddressDataRef.current = addressPayload;
+        setAddressCount(addressPayload.length);
         POST_WITH_TOKEN(PROFILE_UPDATE, {
           addresses: addressPayload,
-          is_edit: 0,
+          is_edit: '0',
         }, onSuccess, onError, onFail);
       } else if (activeTab === 2) {
         const householdDataArray = stepHouseholdRef.current?.getHouseholdData() || [];
-        const addressData = stepLocationRef.current?.getAddressData() || [];
+        const addressPayload = (
+          savedAddressDataRef.current ||
+          stepLocationRef.current?.getAddressData() ||
+          []
+        )
+          .map(normalizeAddress)
+          .filter(hasCompleteAddress);
 
-        if (householdDataArray.length === 1) {
-          const h = householdDataArray[0];
-          POST_WITH_TOKEN(PROFILE_UPDATE, {
-            user_role_id: userTypes,
-            residence_type: h.residence_type || '',
-            number_of_rooms: h.number_of_rooms || '',
-            languages_spoken: h.languages_spoken || [],
-            adults_count: h.adults_count || '',
-            children_count: h.children_count || '',
-            elderly_count: h.elderly_count || '',
-            special_requirements: h.special_requirements || '',
-            pet_details: (h.pet_details || []).map(pet => ({
-              pet_type: pet.pet_type,
-              pet_count: pet.pet_count,
-            })),
-            is_edit: 0,
-          }, onSuccess, onError, onFail);
-        } else {
-          const addressesWithHousehold = householdDataArray.map((h, index) => {
-            const addr = addressData[index] || {};
-            return {
-              name: addr.name || '',
-              street: addr.street || '',
-              city: addr.city || '',
-              state: addr.state || '',
-              pincode: addr.pinCode || '',
-              area_locality: addr.area_locality || '',
-              google_location: addr.google_location || '',
-              lat: addr.lat || '',
-              long: addr.long || '',
-              household: {
-                residence_type: h.residence_type || null,
-                number_of_rooms: h.number_of_rooms ? parseInt(h.number_of_rooms) : null,
-                languages_spoken: h.languages_spoken || [],
-                adults_count: h.adults_count ? parseInt(h.adults_count) : null,
-                children_count: h.children_count ? parseInt(h.children_count) : null,
-                elderly_count: h.elderly_count ? parseInt(h.elderly_count) : null,
-                special_requirements: h.special_requirements || null,
-              },
-              pets: (h.pet_details || []).map(pet => ({
-                pet_type: pet.pet_type,
-                pet_count: pet.pet_count ? parseInt(pet.pet_count) : null,
-              })),
-            };
-          });
-          POST_WITH_TOKEN(PROFILE_UPDATE, {
-            addresses: addressesWithHousehold,
-            is_edit: 0,
-          }, onSuccess, onError, onFail);
+        if (!addressPayload.length) {
+          setIsLoading(false);
+          SimpleToast.show('Please save your address first.', SimpleToast.SHORT);
+          setActiveTab(1);
+          return;
         }
+
+        const addressesWithHousehold = addressPayload.map((address, index) => {
+          const household = householdDataArray[index] || householdDataArray[0] || {};
+          return {
+            ...address,
+            household: normalizeHousehold(household),
+            pets: normalizePets(household),
+          };
+        });
+
+        POST_WITH_TOKEN(PROFILE_UPDATE, {
+          addresses: addressesWithHousehold,
+          is_edit: '0',
+        }, onSuccess, onError, onFail);
       }
+    } catch (err) {
+      console.error('[Step1] SendStepsApi CRASHED:', err?.message, err?.stack);
+      setIsLoading(false);
+      SimpleToast.show('Something went wrong. Please try again.', SimpleToast.SHORT);
+    }
   };
 
   const renderContent = () => {
