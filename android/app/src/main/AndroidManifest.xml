@@ -16,6 +16,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <application
         android:name=".MainApplication"
@@ -26,6 +31,10 @@
         android:theme="@style/AppTheme"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCt8jw_uRbRfr9_8CBRdauiHY8rWCjV6WU" />
 
         <activity
             android:name=".MainActivity"
@@ -39,9 +48,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <meta-data
-                android:name="com.google.android.geo.API_KEY"
-                android:value="AIzaSyCt8jw_uRbRfr9_8CBRdauiHY8rWCjV6WU"/>
         </activity>
     </application>
 </manifest>

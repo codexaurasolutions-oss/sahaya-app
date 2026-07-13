@@ -154,11 +154,15 @@ const AiCopilot = ({navigation}) => {
     }
   };
 
-  const onSpeechError = () => {
+  const onSpeechError = event => {
     setVoiceLoading(false);
     setIsListening(false);
+    const errorCode = String(event?.error?.code || '');
+    const permissionError = errorCode === '9' || errorCode === 'permission';
     appendAssistantMessage(
-      'I could not hear that clearly. Please try the mic again or type your question.',
+      permissionError
+        ? 'Microphone permission is off. Please allow it in app settings and try again.'
+        : 'I could not hear that clearly. Please try the mic again or type your question.',
     );
   };
 
@@ -200,13 +204,34 @@ const AiCopilot = ({navigation}) => {
         return;
       }
 
+      const isAvailable = await Voice.isAvailable();
+      if (!isAvailable) {
+        appendAssistantMessage(
+          'Voice recognition is not available on this phone. Please enable or install the Google speech service.',
+        );
+        return;
+      }
+
+      if (Platform.OS === 'android' && Voice.getSpeechRecognitionServices) {
+        const services = await Voice.getSpeechRecognitionServices();
+        if (!services?.length) {
+          appendAssistantMessage(
+            'No speech recognition service was found. Please enable the Google speech service and try again.',
+          );
+          return;
+        }
+      }
+
       setVoiceLoading(true);
       setIsListening(true);
       await Voice.start(voiceLocale);
+      setVoiceLoading(false);
     } catch (error) {
       setVoiceLoading(false);
       setIsListening(false);
-      appendAssistantMessage('Voice input could not start. Please try again.');
+      appendAssistantMessage(
+        'Voice input could not start. Please check microphone permission and the phone speech service, then try again.',
+      );
     }
   };
 

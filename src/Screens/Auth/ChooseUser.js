@@ -9,7 +9,7 @@ import Button from '../../Component/Button';
 import { useDispatch } from 'react-redux';
 import { userType } from '../../Redux/action';
 import LocalizedStrings from '../../Constants/localization';
-import { POST_WITH_TOKEN } from '../../Backend/Backend';
+import { POST_JSON_WITH_TOKEN } from '../../Backend/Backend';
 import { PROFILE_UPDATE } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 
@@ -30,7 +30,7 @@ const ChooseUser = ({ navigation }) => {
     setIsLoading(true);
     Dispatch(userType(roleId));
 
-    POST_WITH_TOKEN(
+    POST_JSON_WITH_TOKEN(
       PROFILE_UPDATE,
       { user_role_id: roleId, is_edit: '0' },
       () => {

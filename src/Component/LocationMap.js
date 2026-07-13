@@ -60,6 +60,7 @@ const LocationMap = ({
   const [region, setRegion] = useState(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [permissionMessage, setPermissionMessage] = useState('');
   const didAutoLocateRef = useRef(false);
 
@@ -85,6 +86,7 @@ const LocationMap = ({
     setLoading(true);
 
     const hasPermission = await requestLocationPermission();
+    setHasLocationPermission(hasPermission);
     if (!hasPermission) {
       setLoading(false);
       setRegion(prev => prev || DEFAULT_REGION);
@@ -149,7 +151,7 @@ const LocationMap = ({
         region={region}
         onRegionChangeComplete={setRegion}
         onPress={event => handleCoordinateChange(event.nativeEvent.coordinate)}
-        showsUserLocation={true}
+        showsUserLocation={hasLocationPermission}
         showsMyLocationButton={false}>
         {selectedCoordinate ? (
           <Marker

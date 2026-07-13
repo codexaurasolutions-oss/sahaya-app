@@ -49,6 +49,105 @@ const _normalizeErrorResponse = (payload, fallbackMessage = 'Server error. Pleas
   };
 };
 
+const _postJsonRequest = async (route, body, authenticated) => {
+  let lastError;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    try {
+      const token = authenticated ? store.getState().Token : null;
+      const response = await fetch(`${API}${route}`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(token ? {Authorization: `Bearer ${token}`} : {}),
+        },
+        body: JSON.stringify(body || {}),
+        signal: controller.signal,
+      });
+      const responseText = await response.text();
+      clearTimeout(timeoutId);
+      let data = null;
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          data = {message: responseText};
+        }
+      }
+
+      return {ok: response.ok, data, status: response.status};
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error;
+
+      if (error?.name === 'AbortError' || attempt === 1) {
+        break;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 350));
+    }
+  }
+
+  throw lastError;
+};
+
+const _runJsonPost = async (
+  route,
+  body,
+  authenticated,
+  onSuccess,
+  onError,
+  onFail,
+) => {
+  let result;
+  try {
+    result = await _postJsonRequest(route, body, authenticated);
+  } catch (error) {
+    const isTimeout = error?.name === 'AbortError';
+    onFail({
+      data: null,
+      msg: isTimeout
+        ? 'Server is taking too long. Please try again.'
+        : 'Could not connect to the server. Please try again.',
+      message: error?.message,
+      status: isTimeout ? 'timeout' : 'connection',
+    });
+    return;
+  }
+
+  if (result.ok) {
+    onSuccess(result.data);
+    return;
+  }
+
+  onError(
+    _normalizeErrorResponse(
+      result.data,
+      `Server returned error ${result.status}. Please try again.`,
+    ),
+  );
+};
+
+export const POST_JSON = async (
+  route,
+  body = {},
+  onSuccess = () => {},
+  onError = () => {},
+  onFail = () => {},
+) => _runJsonPost(route, body, false, onSuccess, onError, onFail);
+
+export const POST_JSON_WITH_TOKEN = async (
+  route,
+  body = {},
+  onSuccess = () => {},
+  onError = () => {},
+  onFail = () => {},
+) => _runJsonPost(route, body, true, onSuccess, onError, onFail);
+
 const _hasFileUpload = (body) => {
   if (!body || !(body instanceof FormData)) return false;
   try {

@@ -9,7 +9,7 @@ import Button from '../../Component/Button';
 import { OtpInput } from 'react-native-otp-entry';
 import { useDispatch } from 'react-redux';
 import { isAuth, Token, userDetails, userType } from '../../Redux/action';
-import { POST, GET_WITH_TOKEN } from './../../Backend/Backend';
+import { POST_JSON, GET_WITH_TOKEN } from './../../Backend/Backend';
 import { OTP_LOGIN, RESEND_OTP, SUBSCRIPTION_USER_CURRENT, PROFILE } from './../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
@@ -101,7 +101,7 @@ const Otp = ({ navigation, route }) => {
 
   const postOtpRequest = (routeName, payload) => {
     return new Promise((resolve, reject) => {
-      POST(
+      POST_JSON(
         routeName,
         payload,
         resolve,
@@ -286,15 +286,16 @@ const Otp = ({ navigation, route }) => {
         setIsLoading(false);
         const serverOtp = updateOtpFromResponse(errorData, true);
         const cachedOtp = !serverOtp &&
-          requestError?.kind !== 'connection' &&
           !isExpiredOtp
           ? revealCachedTestOtp()
           : '';
         setOtpError(
-          serverOtp || cachedOtp
+          requestError?.kind === 'connection' && cachedOtp
+            ? 'OTP could not be confirmed. Enter the Test OTP below and tap Verify again.'
+            : serverOtp || cachedOtp
             ? 'Invalid OTP. Please enter the Test OTP shown below.'
             : requestError?.kind === 'connection'
-            ? 'Verification is taking longer than expected. Please tap Verify again.'
+            ? 'Could not confirm the OTP yet. Please use the Test OTP below and tap Verify again.'
             : errorMessage,
         );
         return;
