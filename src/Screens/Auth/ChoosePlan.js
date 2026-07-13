@@ -14,31 +14,83 @@ import { Font } from '../../Constants/Font';
 import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
-import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_CREATE_ORDER, SUBSCRIPTION_USER_VERIFY, SUBSCRIPTION_USER_SUBSCRIBE } from '../../Backend/api_routes';
-import { useSelector, useDispatch } from 'react-redux';
+import { SUBSCRIPTIONS_BY_ROLE, SUBSCRIPTIONS, SUBSCRIBE_PLAN, SUBSCRIPTION_USER_VERIFY, SUBSCRIPTION_USER_SUBSCRIBE } from '../../Backend/api_routes';
+import { useSelector } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 import { initiatePayment } from '../../Services/RazorpayService';
-import { isAuth } from '../../Redux/action';
 
 const ChoosePlan = ({ navigation, route }) => {
   const userDetail = useSelector(store => store?.userDetails);
   const userTypeFromRoute = route?.params?.userType;
   const userTypeFromStore = useSelector(store => store?.userType);
-  const currentUserType = userTypeFromRoute || userTypeFromStore;
+  const normalizeRoleId = value => {
+    const normalized = String(value ?? '').toLowerCase();
+    if (normalized === '2' || normalized === 'staff') return 2;
+    if (
+      normalized === '3' ||
+      normalized === 'house' ||
+      normalized === 'householder' ||
+      normalized === 'house_owner'
+    ) {
+      return 3;
+    }
+    return 3;
+  };
+  const currentUserType = normalizeRoleId(
+    userTypeFromRoute || userDetail?.user_role_id || userTypeFromStore,
+  );
   const autoFreeOnMount = route?.params?.autoFreeOnMount === true;
   const autoSubscribedRef = useRef(false);
 
-  const Dispatch = useDispatch();
-
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
 
   useEffect(() => {
     fetchSubscriptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  const requestWithRetry = async (requester, attempts = 2) => {
+    let lastError;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await requester();
+      } catch (error) {
+        lastError = error;
+        if (attempt < attempts) {
+          await wait(700);
+        }
+      }
+    }
+    throw lastError;
+  };
+
+  const getWithTokenRequest = routeName =>
+    new Promise((resolve, reject) => {
+      GET_WITH_TOKEN(
+        routeName,
+        resolve,
+        error => reject({ kind: 'api', error }),
+        fail => reject({ kind: 'network', error: fail }),
+      );
+    });
+
+  const postWithTokenRequest = (routeName, payload) =>
+    new Promise((resolve, reject) => {
+      POST_WITH_TOKEN(
+        routeName,
+        payload,
+        resolve,
+        error => reject({ kind: 'api', error }),
+        fail => reject({ kind: 'network', error: fail }),
+      );
+    });
 
   // Auto-subscribe new staff users (role 2) to the free plan right after signup,
   // so they skip the membership screen on first entry. When the free plan expires,
@@ -57,71 +109,13 @@ const ChoosePlan = ({ navigation, route }) => {
     );
 
     if (freePlan) {
-      console.log('[ChoosePlan] Auto-activating free plan for staff, id:', freePlan.id);
-      POST_WITH_TOKEN(
-        SUBSCRIPTION_USER_SUBSCRIBE,
-        { subscriptionId: freePlan.id, paymentId: null },
-        s => {
-          console.log('[ChoosePlan] Auto free-plan success:', JSON.stringify(s));
-          navigation.navigate('ApplyReferral', { isFirstTime: true });
-        },
-        e => {
-          console.log('[ChoosePlan] Auto free-plan error:', JSON.stringify(e));
-          SimpleToast.show(
-            e?.data?.message || 'Failed to activate free plan. Please select a plan.',
-            SimpleToast.LONG,
-          );
-          autoSubscribedRef.current = false;
-        },
-        () => {
-          console.log('[ChoosePlan] Auto free-plan network fail');
-          SimpleToast.show('Network error while activating free plan.', SimpleToast.SHORT);
-          autoSubscribedRef.current = false;
-        },
-      );
+      subscribeToPlan(freePlan, true);
       return;
     }
     SimpleToast.show('No free plan available for staff. Please select a plan.', SimpleToast.LONG);
     autoSubscribedRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscriptions, loading, currentUserType, autoFreeOnMount]);
-
-  const fetchAllSubscriptions = (roleId) => {
-    GET_WITH_TOKEN(
-      SUBSCRIPTIONS,
-      success => {
-        setLoading(false);
-        const subscriptionData = success?.data;
-        if (subscriptionData && Array.isArray(subscriptionData)) {
-          // Filter plans by role_id to avoid showing wrong plans
-          const filtered = subscriptionData.filter(plan => {
-            const planRole = plan?.role_id || plan?.user_role_id;
-            // Show plan if it matches the user's role, or if plan has no role restriction
-            return !planRole || String(planRole) === String(roleId);
-          });
-          console.log('[ChoosePlan] All plans:', subscriptionData.length, '| Filtered for role', roleId, ':', filtered.length);
-          setSubscriptions(filtered.length > 0 ? filtered : subscriptionData);
-        } else {
-          setSubscriptions([]);
-        }
-      },
-      error => {
-        setLoading(false);
-        SimpleToast.show(
-          'Failed to fetch subscriptions',
-          SimpleToast.SHORT,
-        );
-        setSubscriptions([]);
-      },
-      fail => {
-        setLoading(false);
-        SimpleToast.show(
-          'Network error. Please try again.',
-          SimpleToast.SHORT,
-        );
-        setSubscriptions([]);
-      },
-    );
-  };
 
   const filterByRole = (plans, roleId) => {
     if (!plans || !Array.isArray(plans)) return [];
@@ -130,43 +124,46 @@ const ChoosePlan = ({ navigation, route }) => {
       // Keep plan if it matches user's role, or if plan has no role set
       return !planRole || String(planRole) === String(roleId);
     });
-    console.log('[ChoosePlan] filterByRole - total:', plans.length, 'filtered:', filtered.length, 'for role:', roleId);
     return filtered.length > 0 ? filtered : plans;
   };
 
-  const fetchSubscriptions = () => {
+  const readPlans = response => (Array.isArray(response?.data) ? response.data : []);
+
+  const fetchSubscriptions = async () => {
     setLoading(true);
+    setFetchError('');
     const roleId = currentUserType;
-    console.log('[ChoosePlan] Fetching subscriptions for role_id:', roleId);
-    const payload = { role_id: roleId };
-    POST_WITH_TOKEN(
-      SUBSCRIPTIONS_BY_ROLE,
-      payload,
-      success => {
-        console.log('[ChoosePlan] SUBSCRIPTIONS_BY_ROLE response:', JSON.stringify(success));
-        const subscriptionData = success?.data;
-        if (subscriptionData && Array.isArray(subscriptionData) && subscriptionData.length > 0) {
-          setLoading(false);
-          setSubscriptions(filterByRole(subscriptionData, roleId));
-        } else {
-          // No role-specific subscriptions found, fetch all and filter by role
-          fetchAllSubscriptions(roleId);
-        }
-      },
-      error => {
-        console.log('[ChoosePlan] SUBSCRIPTIONS_BY_ROLE error:', JSON.stringify(error));
-        // Fallback to all subscriptions filtered by role
-        fetchAllSubscriptions(roleId);
-      },
-      fail => {
-        setLoading(false);
-        SimpleToast.show(
-          'Network error. Please try again.',
-          SimpleToast.SHORT,
+
+    try {
+      let plans = [];
+
+      try {
+        const roleResponse = await requestWithRetry(
+          () => postWithTokenRequest(SUBSCRIPTIONS_BY_ROLE, { role_id: roleId }),
+          2,
         );
-        setSubscriptions([]);
-      },
-    );
+        plans = filterByRole(readPlans(roleResponse), roleId);
+      } catch (roleError) {
+        plans = [];
+      }
+
+      if (!plans.length) {
+        const allResponse = await requestWithRetry(
+          () => getWithTokenRequest(SUBSCRIPTIONS),
+          2,
+        );
+        plans = filterByRole(readPlans(allResponse), roleId);
+      }
+
+      setSubscriptions(plans);
+      setFetchError(plans.length ? '' : 'No subscriptions available');
+    } catch (error) {
+      setSubscriptions([]);
+      setFetchError('Could not load plans. Please tap Retry.');
+      SimpleToast.show('Could not load plans. Please try again.', SimpleToast.SHORT);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatPrice = price => {
@@ -186,14 +183,14 @@ const ChoosePlan = ({ navigation, route }) => {
   const proceedToApp = () => {
     // After plan selection, check if profile is complete
     // If not, go to EditProfile first, then ApplyReferral, then Dashboard
-    const userRole = currentUserType;
-
     // For new signups, always go to ApplyReferral first to collect referral data
     // ApplyReferral will then dispatch isAuth(true), and StaffStacks will handle next steps
     navigation.navigate('ApplyReferral', { isFirstTime: true });
   };
 
   const handleSelectPlan = async subscription => {
+    if (paymentLoading) return;
+
     const isFree = !subscription.price || subscription.price === '0' || subscription.price === '0.00';
     if (isFree) {
       subscribeToPlan(subscription);
@@ -349,59 +346,67 @@ const ChoosePlan = ({ navigation, route }) => {
     );
   };
 
-  const subscribeToPlan = (subscription) => {
+  const subscribeToPlan = async (subscription, isAuto = false) => {
+    if (paymentLoading) return;
+
     setPaymentLoading(true);
     setSelectedPlanId(subscription.id);
 
-    console.log('[ChoosePlan] Subscribing to free plan, subscription_id:', subscription.id);
-
-    // Use the same endpoint that works in MemberShip.js
-    POST_WITH_TOKEN(
-      SUBSCRIPTION_USER_SUBSCRIBE,
-      { subscriptionId: subscription.id, paymentId: null },
-      success => {
-        console.log('[ChoosePlan] Subscribe success:', JSON.stringify(success));
-        setPaymentLoading(false);
-        setSelectedPlanId(null);
-        SimpleToast.show(success?.message || 'Subscription activated successfully!', SimpleToast.LONG);
-        proceedToApp();
-      },
-      error => {
-        console.log('[ChoosePlan] Subscribe error, trying fallback:', JSON.stringify(error));
-        // Fallback to SUBSCRIBE_PLAN endpoint
-        POST_WITH_TOKEN(
-          SUBSCRIBE_PLAN,
+    try {
+      const success = await requestWithRetry(
+        () => postWithTokenRequest(
+          SUBSCRIPTION_USER_SUBSCRIBE,
           {
-            subscription_id: subscription.id,
-            payment_id: null,
-            payment_status: 'free',
-            amount: '0',
+            subscriptionId: subscription.id,
+            paymentId: null,
+            role_id: currentUserType,
           },
-          success => {
-            setPaymentLoading(false);
-            setSelectedPlanId(null);
-            SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
-            proceedToApp();
-          },
-          error2 => {
-            console.log('[ChoosePlan] Fallback also failed:', JSON.stringify(error2));
-            setPaymentLoading(false);
-            setSelectedPlanId(null);
-            SimpleToast.show('Failed to activate subscription.', SimpleToast.SHORT);
-          },
-          fail => {
-            setPaymentLoading(false);
-            setSelectedPlanId(null);
-            SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
-          },
+        ),
+        2,
+      );
+
+      setPaymentLoading(false);
+      setSelectedPlanId(null);
+      SimpleToast.show(
+        success?.message || 'Subscription activated successfully!',
+        SimpleToast.LONG,
+      );
+      proceedToApp();
+    } catch (primaryError) {
+      try {
+        await requestWithRetry(
+          () => postWithTokenRequest(
+            SUBSCRIBE_PLAN,
+            {
+              subscription_id: subscription.id,
+              payment_id: null,
+              payment_status: 'free',
+              amount: '0',
+              role_id: currentUserType,
+            },
+          ),
+          1,
         );
-      },
-      fail => {
+
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
-      },
-    );
+        SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
+        proceedToApp();
+      } catch (fallbackError) {
+        setPaymentLoading(false);
+        setSelectedPlanId(null);
+        if (isAuto) {
+          autoSubscribedRef.current = false;
+        }
+        const message =
+          fallbackError?.error?.data?.message ||
+          fallbackError?.error?.message ||
+          primaryError?.error?.data?.message ||
+          primaryError?.error?.message ||
+          'Could not activate subscription. Please try again.';
+        SimpleToast.show(message, SimpleToast.SHORT);
+      }
+    }
   };
 
   return (
@@ -422,8 +427,15 @@ const ChoosePlan = ({ navigation, route }) => {
       ) : subscriptions.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Typography type={Font.Poppins_Medium} style={styles.emptyText}>
-            {'No subscriptions available'}
+            {fetchError || 'No subscriptions available'}
           </Typography>
+          {fetchError && fetchError !== 'No subscriptions available' ? (
+            <Button
+              title="Retry"
+              main_style={styles.retryButton}
+              onPress={fetchSubscriptions}
+            />
+          ) : null}
         </View>
       ) : (
         <ScrollView
@@ -498,6 +510,7 @@ const ChoosePlan = ({ navigation, route }) => {
                     }
                     main_style={styles.upgradeBtn}
                     onPress={() => handleSelectPlan(subscription)}
+                    disabled={paymentLoading}
                     loader={
                       paymentLoading && selectedPlanId === subscription.id
                     }
@@ -535,6 +548,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  retryButton: {
+    width: 140,
+    marginTop: 16,
   },
   premiumCard: {
     backgroundColor: '#EBEBEA',

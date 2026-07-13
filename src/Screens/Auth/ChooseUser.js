@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import React, { useState } from 'react';
 import CommanView from '../../Component/CommanView';
 import Header from '../../Component/Header';
@@ -6,102 +6,52 @@ import { Font } from '../../Constants/Font';
 import { ImageConstant } from '../../Constants/ImageConstant';
 import Typography from '../../Component/UI/Typography';
 import Button from '../../Component/Button';
-import { useDispatch, useSelector } from 'react-redux';
-import { isAuth, userType } from '../../Redux/action';
+import { useDispatch } from 'react-redux';
+import { userType } from '../../Redux/action';
 import LocalizedStrings from '../../Constants/localization';
-import { POST_WITH_TOKEN, GET_WITH_TOKEN } from '../../Backend/Backend';
-import { PROFILE_UPDATE, SUBSCRIPTIONS, SUBSCRIPTION_USER_SUBSCRIBE } from '../../Backend/api_routes';
+import { POST_WITH_TOKEN } from '../../Backend/Backend';
+import { PROFILE_UPDATE } from '../../Backend/api_routes';
+import SimpleToast from 'react-native-simple-toast';
 
 const ChooseUser = ({ navigation }) => {
-  const userTypes = useSelector(store => store?.userType);
   const [user, setUser] = useState(3);
   const [isLoading, setIsLoading] = useState(false);
   const Dispatch = useDispatch();
 
-  // During signup flow always show ChoosePlan so user can pick a plan
-  // and then see the referral code screen (ApplyReferral) afterwards.
-  // Staff (role 2) get autoFreeOnMount=true so they are auto-subscribed
-  // to the free plan without needing to manually tap "Select Plan".
-  const checkSubscriptionAndProceed = (roleId) => {
-    if (String(roleId) === '2') {
-      // For Staff, auto-subscribe to free plan and skip ChoosePlan screen
-      setIsLoading(true);
-
-      // First fetch subscriptions to find the free one for staff
-      GET_WITH_TOKEN(
-        SUBSCRIPTIONS,
-        success => {
-          const subscriptionData = success?.data;
-          if (subscriptionData && Array.isArray(subscriptionData)) {
-            // Find free plan for staff (role 2)
-            const freePlan = subscriptionData.find(plan => {
-              const planRole = plan?.role_id || plan?.user_role_id;
-              const isFree = !plan?.price || plan.price === '0' || plan.price === '0.00';
-              return isFree && String(planRole) === '2';
-            });
-
-            if (freePlan) {
-              // Auto-subscribe to the free plan
-              POST_WITH_TOKEN(
-                SUBSCRIPTION_USER_SUBSCRIBE,
-                { subscriptionId: freePlan.id, paymentId: null },
-                subSuccess => {
-                  setIsLoading(false);
-                  navigation.navigate('ApplyReferral', { isFirstTime: true });
-                },
-                subError => {
-                  setIsLoading(false);
-                  navigation.navigate('ChoosePlan', {
-                    userType: roleId,
-                    autoFreeOnMount: false,
-                  });
-                }
-              );
-            } else {
-              setIsLoading(false);
-              navigation.navigate('ChoosePlan', {
-                userType: roleId,
-                autoFreeOnMount: false,
-              });
-            }
-          } else {
-            setIsLoading(false);
-            navigation.navigate('ChoosePlan', {
-              userType: roleId,
-              autoFreeOnMount: false,
-            });
-          }
-        },
-        error => {
-          setIsLoading(false);
-          navigation.navigate('ChoosePlan', {
-            userType: roleId,
-            autoFreeOnMount: false,
-          });
-        }
-      );
-      return;
-    }
-
-    // For non-staff roles, go to ChoosePlan
+  const goToPlanScreen = roleId => {
     navigation.navigate('ChoosePlan', {
       userType: roleId,
-      autoFreeOnMount: false,
+      autoFreeOnMount: String(roleId) === '2',
     });
   };
 
-  const SendStepsApi = (type) => {
+  const saveRoleAndProceed = roleId => {
+    if (isLoading) return;
+    setIsLoading(true);
+    Dispatch(userType(roleId));
+
     POST_WITH_TOKEN(
       PROFILE_UPDATE,
-      { user_role_id: type, is_edit: 0 },
-      sucess => {
-        console.log('SendStepsApi---sucess====', sucess);
+      { user_role_id: roleId, is_edit: '0' },
+      () => {
+        setIsLoading(false);
+        goToPlanScreen(roleId);
       },
       errorResponse => {
-        console.log('errorResponse===', errorResponse);
+        setIsLoading(false);
+        SimpleToast.show(
+          errorResponse?.data?.message ||
+          errorResponse?.message ||
+          'Could not save role. Please try again.',
+          SimpleToast.SHORT,
+        );
       },
       fail => {
-        console.log('fail====', fail);
+        setIsLoading(false);
+        SimpleToast.show(
+          fail?.msg || fail?.message || 'Network error. Please try again.',
+          SimpleToast.SHORT,
+        );
       },
     );
   };
@@ -130,17 +80,17 @@ const ChooseUser = ({ navigation }) => {
         <TouchableOpacity
           style={[
             styles.button,
-            user == 3 ? styles.filledButton : styles?.outlinedButton,
+            user === 3 ? styles.filledButton : styles?.outlinedButton,
           ]}
           onPress={() => {
-            SendStepsApi(3);
-            setUser(3), Dispatch(userType(3));
+            setUser(3);
+            Dispatch(userType(3));
           }}
         >
           <Typography
             type={Font?.Poppins_Medium}
             size={16}
-            color={user == 3 ? '#fff' : '#D98579'}
+            color={user === 3 ? '#fff' : '#D98579'}
           >
             {LocalizedStrings.ChooseUser?.house_owner || 'House Owner'}
           </Typography>
@@ -150,17 +100,17 @@ const ChooseUser = ({ navigation }) => {
         <TouchableOpacity
           style={[
             styles.button,
-            user == 2 ? styles.filledButton : styles?.outlinedButton,
+            user === 2 ? styles.filledButton : styles?.outlinedButton,
           ]}
           onPress={() => {
-            SendStepsApi(2);
-            setUser(2), Dispatch(userType(2));
+            setUser(2);
+            Dispatch(userType(2));
           }}
         >
           <Typography
             type={Font?.Poppins_Medium}
             size={16}
-            color={user == 2 ? '#fff' : '#D98579'}
+            color={user === 2 ? '#fff' : '#D98579'}
           >
             {LocalizedStrings.ChooseUser?.staff || 'Staff'}
           </Typography>
@@ -178,8 +128,7 @@ const ChooseUser = ({ navigation }) => {
         <Button
           title={LocalizedStrings.ChooseUser?.continue || 'Continue'}
           onPress={() => {
-            Dispatch(userType(user));
-            checkSubscriptionAndProceed(user);
+            saveRoleAndProceed(user);
           }}
           main_style={{ marginTop: 20, width: '80%' }}
           disabled={isLoading}
