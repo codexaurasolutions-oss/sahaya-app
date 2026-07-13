@@ -20,7 +20,10 @@ const Otp = ({ navigation, route }) => {
   const [resendTimer, setResendTimer] = useState(30); // 30 sec timer
   const [isLoading, setIsLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
-  const [visibleOtp, setVisibleOtp] = useState(testOtp ? String(testOtp) : '');
+  const [latestTestOtp, setLatestTestOtp] = useState(
+    testOtp ? String(testOtp).replace(/\D/g, '').slice(0, 6) : '',
+  );
+  const [visibleOtp, setVisibleOtp] = useState('');
   const [currentUserId, setCurrentUserId] = useState(user_id);
   const otpRef = useRef('');
   const dispatch = useDispatch();
@@ -77,12 +80,23 @@ const Otp = ({ navigation, route }) => {
     );
   };
 
-  const updateOtpFromResponse = response => {
+  const updateOtpFromResponse = (response, shouldReveal = false) => {
     const nextOtp = readOtpFromResponse(response);
     if (nextOtp) {
-      setVisibleOtp(nextOtp);
+      setLatestTestOtp(nextOtp);
+      if (shouldReveal) {
+        setVisibleOtp(nextOtp);
+      }
     }
     return nextOtp;
+  };
+
+  const revealCachedTestOtp = () => {
+    if (latestTestOtp) {
+      setVisibleOtp(latestTestOtp);
+      return latestTestOtp;
+    }
+    return '';
   };
 
   const postOtpRequest = (routeName, payload) => {
@@ -244,13 +258,19 @@ const Otp = ({ navigation, route }) => {
 
         setIsLoading(false);
         const errorData = requestError?.error || requestError;
-        const serverOtp = updateOtpFromResponse(errorData);
+        const errorMessage = readErrorMessage(errorData);
+        const serverOtp = updateOtpFromResponse(errorData, true);
+        const cachedOtp = !serverOtp &&
+          requestError?.kind !== 'connection' &&
+          !/expired/i.test(errorMessage)
+          ? revealCachedTestOtp()
+          : '';
         setOtpError(
-          serverOtp
-            ? 'OTP refreshed. Please enter the Test OTP shown below.'
+          serverOtp || cachedOtp
+            ? 'Invalid OTP. Please enter the Test OTP shown below.'
             : requestError?.kind === 'connection'
             ? 'Verification is taking longer than expected. Please tap Verify again.'
-            : readErrorMessage(errorData),
+            : errorMessage,
         );
         return;
       }
