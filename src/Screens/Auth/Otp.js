@@ -27,7 +27,6 @@ const Otp = ({ navigation, route }) => {
   const [currentUserId, setCurrentUserId] = useState(user_id);
   const otpRef = useRef('');
   const dispatch = useDispatch();
-  const MAX_VERIFY_ATTEMPTS = 2;
 
   useEffect(() => {
     let timer;
@@ -244,62 +243,50 @@ const Otp = ({ navigation, route }) => {
   };
 
   const submitOtpVerification = async payload => {
-    for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt += 1) {
-      try {
-        const responseData = await postOtpRequest(OTP_LOGIN, payload);
-        completeOtpLogin(responseData);
-        return;
-      } catch (requestError) {
-        const isLastAttempt = attempt === MAX_VERIFY_ATTEMPTS;
+    try {
+      const responseData = await postOtpRequest(OTP_LOGIN, payload);
+      completeOtpLogin(responseData);
+    } catch (requestError) {
+      const errorData = requestError?.error || requestError;
+      const errorMessage = readErrorMessage(errorData);
+      const isExpiredOtp = /expired/i.test(errorMessage);
 
-        if (requestError?.kind === 'connection' && !isLastAttempt) {
-          continue;
+      if (isExpiredOtp && requestError?.kind !== 'connection') {
+        try {
+          const {otp: refreshedOtp} = await requestFreshOtp(true);
+          setOtpError(
+            refreshedOtp
+              ? 'OTP expired. New Test OTP generated below.'
+              : 'OTP expired. Please tap Resend to get a new OTP.',
+          );
+        } catch (resendError) {
+          const resendErrorData = resendError?.error || resendError;
+          const resendOtp = updateOtpFromResponse(resendErrorData, true);
+          setResendTimer(0);
+          setOtpError(
+            resendOtp
+              ? 'OTP expired. Please enter the Test OTP shown below.'
+              : 'OTP expired. Please tap Resend once to get a new OTP.',
+          );
+        } finally {
+          setIsLoading(false);
         }
-
-        const errorData = requestError?.error || requestError;
-        const errorMessage = readErrorMessage(errorData);
-        const isExpiredOtp = /expired/i.test(errorMessage);
-
-        if (isExpiredOtp && requestError?.kind !== 'connection') {
-          try {
-            const { otp: refreshedOtp } = await requestFreshOtp(true);
-            setOtpError(
-              refreshedOtp
-                ? 'OTP expired. New Test OTP generated below.'
-                : 'OTP expired. Please tap Resend to get a new OTP.',
-            );
-          } catch (resendError) {
-            const resendErrorData = resendError?.error || resendError;
-            const resendOtp = updateOtpFromResponse(resendErrorData, true);
-            setResendTimer(0);
-            setOtpError(
-              resendOtp
-                ? 'OTP expired. Please enter the Test OTP shown below.'
-                : 'OTP expired. Please tap Resend once to get a new OTP.',
-            );
-          } finally {
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        setIsLoading(false);
-        const serverOtp = updateOtpFromResponse(errorData, true);
-        const cachedOtp = !serverOtp &&
-          !isExpiredOtp
-          ? revealCachedTestOtp()
-          : '';
-        setOtpError(
-          requestError?.kind === 'connection' && cachedOtp
-            ? 'OTP could not be confirmed. Enter the Test OTP below and tap Verify again.'
-            : serverOtp || cachedOtp
-            ? 'Invalid OTP. Please enter the Test OTP shown below.'
-            : requestError?.kind === 'connection'
-            ? 'Could not confirm the OTP yet. Please use the Test OTP below and tap Verify again.'
-            : errorMessage,
-        );
         return;
       }
+
+      setIsLoading(false);
+      const serverOtp = updateOtpFromResponse(errorData, true);
+      const cachedOtp =
+        !serverOtp && !isExpiredOtp ? revealCachedTestOtp() : '';
+      setOtpError(
+        requestError?.kind === 'connection' && cachedOtp
+          ? 'OTP could not be confirmed. Enter the Test OTP below and tap Verify again.'
+          : serverOtp || cachedOtp
+          ? 'Invalid OTP. Please enter the Test OTP shown below.'
+          : requestError?.kind === 'connection'
+          ? 'Could not confirm the OTP yet. Please use the Test OTP below and tap Verify again.'
+          : errorMessage,
+      );
     }
   };
 

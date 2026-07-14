@@ -29,7 +29,6 @@ export const AddUser = 'admin/members/store';
 export const ListUser = 'admin/members/list';
 export const DeleteUser = 'admin/delete-user';
 export const JobApplicationList = 'admin/jobs';
-export const DeleteJob = 'admin/jobs/delete';
 export const ApplicantsList = 'admin/jobs';
 export const ApplicantsStatus = 'admin/applications';
 export const Joblist_Admin = 'admin/auth-jobs';

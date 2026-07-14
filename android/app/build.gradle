@@ -118,6 +118,7 @@ dependencies {
     // Razorpay - included via react-native-razorpay npm package
 
     implementation("com.facebook.react:react-android")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

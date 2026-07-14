@@ -174,12 +174,16 @@ const PostNewJob = ({ navigation, route }) => {
   });
 
   useEffect(() => {
-    JobList();
+    if (editId) {
+      JobList(editId);
+    }
   }, [editId]);
 
-  const JobList = () => {
+  const JobList = jobId => {
+    if (!jobId) return;
+
     GET_WITH_TOKEN(
-      `${ListJob}/${editId}`,
+      `${ListJob}/${jobId}`,
       success => {
         setJobData(success?.data);
       },

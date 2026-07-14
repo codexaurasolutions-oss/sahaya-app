@@ -7,17 +7,16 @@ import {
   Alert,
 } from 'react-native';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import Button from '../../../Component/Button';
 import Typography from '../../../Component/UI/Typography';
 import { Font } from '../../../Constants/Font';
-import { DELETE_WITH_TOKEN, GET_WITH_TOKEN, POST_WITH_TOKEN } from '../../../Backend/Backend';
+import { DELETE_WITH_TOKEN, GET_WITH_TOKEN } from '../../../Backend/Backend';
 import {
   AddJob,
-  DeleteJob,
   Joblist_Admin,
   ListJob,
   SUBSCRIPTION_USER_CURRENT,
@@ -33,16 +32,10 @@ const MyJobPosting = ({ navigation, route }) => {
   const isFocused = useIsFocused();
   const data = useSelector(state => state?.userDetails);
   const [isPremium, setIsPremium] = useState(false);
+  const [deletingJobId, setDeletingJobId] = useState(null);
   const showBackButton = route?.params?.showBackButton ?? navigation.canGoBack();
   
-  useEffect(() => {
-    if (isFocused) {
-      JobList();
-      checkSubscription();
-    }
-  }, [isFocused]);
-
-  const checkSubscription = () => {
+  const checkSubscription = useCallback(() => {
     GET_WITH_TOKEN(
       SUBSCRIPTION_USER_CURRENT,
       res => {
@@ -73,7 +66,7 @@ const MyJobPosting = ({ navigation, route }) => {
         setIsPremium(false);
       }
     );
-  };
+  }, []);
 
   const showUpgradeAlert = () => {
     Alert.alert(
@@ -90,11 +83,11 @@ const MyJobPosting = ({ navigation, route }) => {
     );
   };
 
-  const JobList = () => {
-    const route = data?.user_role_id ? Joblist_Admin : ListJob;
-    console.log('Fetching jobs from:', route);
+  const JobList = useCallback(() => {
+    const jobsRoute = data?.user_role_id ? Joblist_Admin : ListJob;
+    console.log('Fetching jobs from:', jobsRoute);
     GET_WITH_TOKEN(
-      route,
+      jobsRoute,
       success => {
         console.log('Jobs response:', JSON.stringify(success));
         // Handle paginated response: success.data.data or success.data (array)
@@ -105,7 +98,7 @@ const MyJobPosting = ({ navigation, route }) => {
       error => {
         console.log('Jobs error:', JSON.stringify(error));
         // Fallback: if admin endpoint fails, try the general jobs endpoint
-        if (route === Joblist_Admin) {
+        if (jobsRoute === Joblist_Admin) {
           console.log('Falling back to general jobs endpoint');
           GET_WITH_TOKEN(
             ListJob,
@@ -131,62 +124,55 @@ const MyJobPosting = ({ navigation, route }) => {
         setJobData([]);
       },
     );
-  };
+  }, [data?.user_role_id]);
 
   const deleteJob = itemId => {
     if (!itemId) {
       SimpleToast.show('Invalid job id', SimpleToast.SHORT);
       return;
     }
+    if (deletingJobId) return;
 
-    // Primary: existing backend route used by the app.
-    POST_WITH_TOKEN(
-      `${DeleteJob}/${itemId}`,
+    setDeletingJobId(itemId);
+    DELETE_WITH_TOKEN(
+      `${AddJob}/${itemId}`,
       {},
       success => {
+        setDeletingJobId(null);
+        setJobData(current => current.filter(job => job?.id !== itemId));
         SimpleToast.show(
           success?.message || 'Job deleted successfully',
           SimpleToast.SHORT,
         );
-        JobList();
       },
       error => {
-        // Fallback: RESTful admin delete endpoint.
-        DELETE_WITH_TOKEN(
-          `${AddJob}/${itemId}`,
-          {},
-          fallbackSuccess => {
-            SimpleToast.show(
-              fallbackSuccess?.message || 'Job deleted successfully',
-              SimpleToast.SHORT,
-            );
-            JobList();
-          },
-          fallbackError => {
-            const msg =
-              fallbackError?.data?.message ||
-              fallbackError?.message ||
-              error?.data?.message ||
-              error?.message ||
-              'Failed to delete job';
-            SimpleToast.show(msg, SimpleToast.SHORT);
-          },
-          () => {
-            SimpleToast.show('Network error while deleting job', SimpleToast.SHORT);
-          },
-        );
+        setDeletingJobId(null);
+        const msg =
+          error?.data?.message ||
+          error?.message ||
+          'Failed to delete job';
+        SimpleToast.show(msg, SimpleToast.SHORT);
       },
       () => {
+        setDeletingJobId(null);
         SimpleToast.show('Network error while deleting job', SimpleToast.SHORT);
       },
     );
   };
+
+  useEffect(() => {
+    if (isFocused) {
+      JobList();
+      checkSubscription();
+    }
+  }, [JobList, checkSubscription, isFocused]);
 
   const renderJob = ({ item }) => (
     <View style={styles.card}>
       <View style={styles.row}>
         <Typography style={styles.title}>{item.title}</Typography>
         <TouchableOpacity
+          disabled={deletingJobId === item?.id}
           onPress={() => {
             Alert.alert(
               'Delete Job',

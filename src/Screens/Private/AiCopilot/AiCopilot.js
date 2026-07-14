@@ -63,6 +63,7 @@ const AiCopilot = ({navigation}) => {
   const loadingRef = useRef(false);
   const speechResultsRef = useRef(null);
   const speechErrorRef = useRef(null);
+  const voiceBusyRef = useRef(false);
 
   useEffect(() => {
     const greeting = isOwner
@@ -145,6 +146,7 @@ const AiCopilot = ({navigation}) => {
 
   const onSpeechResults = event => {
     const transcript = event.value?.[0]?.trim() || '';
+    voiceBusyRef.current = false;
     setVoiceLoading(false);
     setIsListening(false);
 
@@ -155,6 +157,7 @@ const AiCopilot = ({navigation}) => {
   };
 
   const onSpeechError = event => {
+    voiceBusyRef.current = false;
     setVoiceLoading(false);
     setIsListening(false);
     const errorCode = String(event?.error?.code || '');
@@ -174,7 +177,10 @@ const AiCopilot = ({navigation}) => {
     Voice.onSpeechError = event => speechErrorRef.current?.(event);
 
     return () => {
-      Voice.destroy().then(() => Voice.removeAllListeners());
+      voiceBusyRef.current = false;
+      Voice.destroy()
+        .catch(() => {})
+        .finally(() => Voice.removeAllListeners());
     };
   }, []);
 
@@ -197,24 +203,40 @@ const AiCopilot = ({navigation}) => {
   };
 
   const startVoice = async () => {
+    if (voiceBusyRef.current || loadingRef.current) return;
+    voiceBusyRef.current = true;
+
     try {
       const hasPermission = await requestVoicePermission();
       if (!hasPermission) {
+        voiceBusyRef.current = false;
         appendAssistantMessage('Microphone permission is needed for voice input.');
         return;
       }
 
-      const isAvailable = await Voice.isAvailable();
+      let isAvailable = true;
+      try {
+        isAvailable = Boolean(await Voice.isAvailable());
+      } catch (availabilityError) {
+        isAvailable = true;
+      }
       if (!isAvailable) {
+        voiceBusyRef.current = false;
         appendAssistantMessage(
           'Voice recognition is not available on this phone. Please enable or install the Google speech service.',
         );
         return;
       }
 
+      let services = [];
       if (Platform.OS === 'android' && Voice.getSpeechRecognitionServices) {
-        const services = await Voice.getSpeechRecognitionServices();
+        try {
+          services = (await Voice.getSpeechRecognitionServices()) || [];
+        } catch (serviceError) {
+          services = [];
+        }
         if (!services?.length) {
+          voiceBusyRef.current = false;
           appendAssistantMessage(
             'No speech recognition service was found. Please enable the Google speech service and try again.',
           );
@@ -224,9 +246,28 @@ const AiCopilot = ({navigation}) => {
 
       setVoiceLoading(true);
       setIsListening(true);
-      await Voice.start(voiceLocale);
+
+      const recognitionOptions = {
+        REQUEST_PERMISSIONS_AUTO: false,
+        EXTRA_MAX_RESULTS: 1,
+        EXTRA_PARTIAL_RESULTS: false,
+      };
+
+      try {
+        await Voice.start(voiceLocale, recognitionOptions);
+      } catch (primaryError) {
+        await Voice.destroy().catch(() => {});
+        const hasGoogleRecognizer = services.some(service =>
+          String(service).toLowerCase().includes('google'),
+        );
+        await Voice.start('en-IN', {
+          ...recognitionOptions,
+          ...(hasGoogleRecognizer ? {RECOGNIZER_ENGINE: 'GOOGLE'} : {}),
+        });
+      }
       setVoiceLoading(false);
     } catch (error) {
+      voiceBusyRef.current = false;
       setVoiceLoading(false);
       setIsListening(false);
       appendAssistantMessage(
@@ -240,6 +281,7 @@ const AiCopilot = ({navigation}) => {
       await Voice.stop();
     } catch (error) {
     } finally {
+      voiceBusyRef.current = false;
       setVoiceLoading(false);
       setIsListening(false);
     }
@@ -324,7 +366,7 @@ const AiCopilot = ({navigation}) => {
           <TouchableOpacity
             style={[styles.voiceBtn, isListening && styles.voiceBtnActive]}
             onPress={isListening ? stopVoice : startVoice}
-            disabled={loading}
+            disabled={loading || voiceLoading}
             activeOpacity={0.8}>
             {voiceLoading ? (
               <ActivityIndicator size="small" color="#fff" />

@@ -32,6 +32,14 @@ const parseCoordinate = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const isValidCoordinate = (latitude, longitude) =>
+  latitude !== null &&
+  longitude !== null &&
+  latitude >= -90 &&
+  latitude <= 90 &&
+  longitude >= -180 &&
+  longitude <= 180;
+
 const requestLocationPermission = async () => {
   if (Platform.OS !== 'android') {
     return true;
@@ -68,13 +76,15 @@ const LocationMap = ({
     const latitude = parseCoordinate(lat);
     const longitude = parseCoordinate(long);
 
-    if (latitude !== null && longitude !== null) {
+    if (isValidCoordinate(latitude, longitude)) {
       setRegion(buildRegion(latitude, longitude));
       setSelectedCoordinate({latitude, longitude});
     }
   }, [lat, long]);
 
   const updateSelectedLocation = useCallback((latitude, longitude) => {
+    if (!isValidCoordinate(latitude, longitude)) return;
+
     const nextRegion = buildRegion(latitude, longitude);
     setRegion(nextRegion);
     setSelectedCoordinate({latitude, longitude});
@@ -85,7 +95,18 @@ const LocationMap = ({
     setPermissionMessage('');
     setLoading(true);
 
-    const hasPermission = await requestLocationPermission();
+    let hasPermission = false;
+    try {
+      hasPermission = await requestLocationPermission();
+    } catch (permissionError) {
+      setLoading(false);
+      setRegion(prev => prev || DEFAULT_REGION);
+      setPermissionMessage(
+        'Could not request location permission. Search above or tap the map to drop the pin.',
+      );
+      return;
+    }
+
     setHasLocationPermission(hasPermission);
     if (!hasPermission) {
       setLoading(false);
@@ -114,8 +135,10 @@ const LocationMap = ({
   }, [updateSelectedLocation]);
 
   useEffect(() => {
-    const hasInitialCoordinate =
-      parseCoordinate(lat) !== null && parseCoordinate(long) !== null;
+    const hasInitialCoordinate = isValidCoordinate(
+      parseCoordinate(lat),
+      parseCoordinate(long),
+    );
 
     if (autoLocate && !hasInitialCoordinate && !didAutoLocateRef.current) {
       didAutoLocateRef.current = true;

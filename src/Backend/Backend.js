@@ -50,49 +50,35 @@ const _normalizeErrorResponse = (payload, fallbackMessage = 'Server error. Pleas
 };
 
 const _postJsonRequest = async (route, body, authenticated) => {
-  let lastError;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-    try {
-      const token = authenticated ? store.getState().Token : null;
-      const response = await fetch(`${API}${route}`, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          ...(token ? {Authorization: `Bearer ${token}`} : {}),
-        },
-        body: JSON.stringify(body || {}),
-        signal: controller.signal,
-      });
-      const responseText = await response.text();
-      clearTimeout(timeoutId);
-      let data = null;
-      if (responseText) {
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          data = {message: responseText};
-        }
+  try {
+    const token = authenticated ? store.getState().Token : null;
+    const response = await fetch(`${API}${route}`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(token ? {Authorization: `Bearer ${token}`} : {}),
+      },
+      body: JSON.stringify(body || {}),
+      signal: controller.signal,
+    });
+    const responseText = await response.text();
+    let data = null;
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        data = {message: responseText};
       }
-
-      return {ok: response.ok, data, status: response.status};
-    } catch (error) {
-      clearTimeout(timeoutId);
-      lastError = error;
-
-      if (error?.name === 'AbortError' || attempt === 1) {
-        break;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 350));
     }
-  }
 
-  throw lastError;
+    return {ok: response.ok, data, status: response.status};
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
 const _runJsonPost = async (
@@ -175,6 +161,74 @@ const _formDataToJsonObject = (body) => {
   return obj;
 };
 
+const _fetchWithTimeout = async ({
+  route,
+  method,
+  headers,
+  body,
+  timeout = 30000,
+}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(`${API}${route}`, {
+      method,
+      headers,
+      body,
+      signal: controller.signal,
+    });
+    const responseText = await response.text();
+    let data = null;
+
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        data = {message: responseText};
+      }
+    }
+
+    return {ok: response.ok, status: response.status, data};
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const _reportFetchFailure = (error, onFail, label) => {
+  console.error(`${label}:`, error?.name, error?.message);
+  if (error?.name === 'AbortError') {
+    onFail({
+      data: null,
+      msg: 'Server is taking too long. Please try again.',
+      status: 'timeout',
+    });
+    return;
+  }
+
+  onFail(error);
+};
+
+const _reportAxiosFailure = (error, onError, onFail, label) => {
+  console.error(`${label}:`, error?.code, error?.message);
+  if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+    onFail({
+      data: null,
+      msg: 'Server is taking too long. Please try again.',
+      status: 'timeout',
+    });
+  } else if (
+    error?.code === 'NETWORK_ERROR' ||
+    error?.code === 'ERR_NETWORK' ||
+    error?.message === 'Network Error' ||
+    !error?.response
+  ) {
+    onFail(error);
+  } else {
+    onError(_normalizeErrorResponse(error?.response?.data || error));
+  }
+};
+
 export const POST_FORM_DATA = async (
   route,
   body,
@@ -191,67 +245,38 @@ export const POST_FORM_DATA = async (
     !(body instanceof FormData) &&
     !Array.isArray(body);
 
-  if ((body instanceof FormData && !_hasFileUpload(body)) || isPlainObject) {
-    const jsonData = isPlainObject ? body : _formDataToJsonObject(body);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API}${route}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(jsonData),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      const data = await response.json().catch(() => null);
-      if (response.ok) {
-        onSuccess(data);
-      } else {
-        onError(_normalizeErrorResponse(data, 'Server error. Please try again.'));
-      }
-    } catch (err) {
-      clearTimeout(timeoutId);
-      console.error('POST_FORM_DATA JSON Error:', err?.name, err?.message);
-      if (err?.name === 'AbortError') {
-        onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-      } else {
-        onFail(err);
-      }
-    }
-    return;
-  }
+  const sendAsJson =
+    (body instanceof FormData && !_hasFileUpload(body)) || isPlainObject;
+  const requestBody = sendAsJson
+    ? JSON.stringify(isPlainObject ? body : _formDataToJsonObject(body))
+    : body;
+  let result;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await fetch(`${API}${route}`, {
+    result = await _fetchWithTimeout({
+      route,
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
+        ...(sendAsJson ? {'Content-Type': 'application/json'} : {}),
       },
-      body: body,
-      signal: controller.signal,
+      body: requestBody,
     });
-    clearTimeout(timeoutId);
-    const data = await response.json().catch(() => null);
-    if (response.ok) {
-      onSuccess(data);
-    } else {
-      onError(_normalizeErrorResponse(data, 'Server error. Please try again.'));
-    }
   } catch (err) {
-    clearTimeout(timeoutId);
-    console.error('POST_FORM_DATA Fetch Error:', err?.name, err?.message);
-    if (err?.name === 'AbortError') {
-      onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-    } else {
-      onFail(err);
-    }
+    _reportFetchFailure(err, onFail, 'POST_FORM_DATA request failed');
+    return;
+  }
+
+  if (result.ok) {
+    onSuccess(result.data);
+  } else {
+    onError(
+      _normalizeErrorResponse(
+        result.data,
+        `Server returned error ${result.status}. Please try again.`,
+      ),
+    );
   }
 };
 
@@ -264,6 +289,7 @@ export const POST = async (
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
 ) => {
+  let response;
   try {
     const isFormData = body instanceof FormData;
     const headers = {
@@ -272,7 +298,7 @@ export const POST = async (
     if (!isFormData) {
       headers['Content-Type'] = 'application/json';
     }
-    await axios({
+    response = await axios({
       method: 'post',
       url: `${API}${route}`,
       data: isFormData ? body : JSON.stringify(body),
@@ -281,34 +307,25 @@ export const POST = async (
       validateStatus: function (status) {
         return status >= 200 && status <= 503;
       },
-    })
-      .then(res => {
-        if (res?.status == 200 || res?.status == 201) {
-          if (!!res?.data) {
-            onSuccess(res?.data);
-          } else {
-            console.log('POST Error - no data in response');
-            onError(_normalizeErrorResponse(res?.data));
-          }
-        } else {
-          console.log('POST Error - status:', res?.status, res?.data);
-          onError(_normalizeErrorResponse(res?.data, 'Server error. Please try again.'));
-        }
-      })
-      .catch(err => {
-        console.error('POST Catch:', err?.code, err?.message);
-        if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-          onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-        } else if (err?.code === 'NETWORK_ERROR' || err?.message === 'Network Error' || !err?.response) {
-          onFail(err);
-        } else {
-          onError(_normalizeErrorResponse(err?.response?.data || err));
-        }
-      });
+    });
   } catch (error) {
-    console.error('POST Try-Catch:', error);
-    onFail({ data: null, msg: 'Network Error', status: 'error' });
-    return { data: null, msg: 'Network Error', status: 'error' };
+    _reportAxiosFailure(error, onError, onFail, 'POST request failed');
+    return;
+  }
+
+  if (response?.status === 200 || response?.status === 201) {
+    if (response?.data !== undefined && response?.data !== null) {
+      onSuccess(response.data);
+    } else {
+      onError(_normalizeErrorResponse(response?.data));
+    }
+  } else {
+    onError(
+      _normalizeErrorResponse(
+        response?.data,
+        `Server returned error ${response?.status}. Please try again.`,
+      ),
+    );
   }
 };
 
@@ -321,8 +338,9 @@ export const GET = async (
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
 ) => {
+  let response;
   try {
-    await axios({
+    response = await axios({
       method: 'get',
       url: `${API}${route}`,
       timeout: 30000,
@@ -330,35 +348,22 @@ export const GET = async (
         Accept: 'application/json',
       },
       ...errorHandling,
-    })
-      .then(res => {
-        if (res?.status == 200) {
-          onSuccess(res?.data);
-        } else {
-          if (res.status in statusMessage) {
-            onError({
-              data: null,
-              message: statusMessage[res.status],
-              status: false,
-            });
-          } else {
-            onError(_normalizeErrorResponse(res));
-          }
-        }
-      })
-      .catch(err => {
-        console.error('GET Catch:', err?.code, err?.message);
-        if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-          onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-        } else if (err?.code === 'NETWORK_ERROR' || err?.message === 'Network Error' || !err?.response) {
-          onFail(err);
-        } else {
-          onError(err?.response?.data || err);
-        }
-      });
+    });
   } catch (error) {
-    onFail({ data: null, msg: 'Network Error', status: 'error' });
-    return { data: null, msg: 'Network Error', status: 'error' };
+    _reportAxiosFailure(error, onError, onFail, 'GET request failed');
+    return;
+  }
+
+  if (response?.status === 200) {
+    onSuccess(response.data);
+  } else if (response?.status in statusMessage) {
+    onError({
+      data: null,
+      message: statusMessage[response.status],
+      status: false,
+    });
+  } else {
+    onError(_normalizeErrorResponse(response?.data || response));
   }
 };
 
@@ -371,8 +376,9 @@ export const POST_WITH_TOKEN = async (
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
 ) => {
+  let response;
   try {
-    await axios({
+    response = await axios({
       method: 'post',
       url: `${API}${route}`,
       data: body,
@@ -383,30 +389,19 @@ export const POST_WITH_TOKEN = async (
         Accept: 'application/json',
       },
       ...errorHandling,
-    })
-      .then(res => {
-        if (res?.status == 200 || res?.status == 201) {
-          onSuccess(res?.data);
-        } else {
-          if (res?.status == 401) {
-            SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
-          }
-          onError(_normalizeErrorResponse(res));
-        }
-      })
-      .catch(err => {
-        console.error('POST_WITH_TOKEN Catch:', err?.code, err?.message);
-        if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-          onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-        } else if (err?.code === 'NETWORK_ERROR' || err?.message === 'Network Error' || !err?.response) {
-          onFail(err);
-        } else {
-          onError(_normalizeErrorResponse(err?.response?.data || err));
-        }
-      });
+    });
   } catch (error) {
-    onFail({ data: null, msg: 'Network Error', status: 'error' });
-    return { data: null, msg: 'Network Error', status: 'error' };
+    _reportAxiosFailure(error, onError, onFail, 'POST_WITH_TOKEN request failed');
+    return;
+  }
+
+  if (response?.status === 200 || response?.status === 201) {
+    onSuccess(response.data);
+  } else {
+    if (response?.status === 401) {
+      SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
+    }
+    onError(_normalizeErrorResponse(response?.data || response));
   }
 };
 
@@ -420,9 +415,9 @@ export const GET_WITH_TOKEN = async (
   headers = {},
   status = () => { },
 ) => {
-  console.log('USER TOKEN', store.getState().Token);
+  let response;
   try {
-    await axios({
+    response = await axios({
       method: 'get',
       url: `${API}${route}`,
       timeout: 30000,
@@ -431,35 +426,19 @@ export const GET_WITH_TOKEN = async (
         ...headers,
       },
       ...errorHandling,
-    })
-      .then(res => {
-        if (res?.status == 200) {
-          onSuccess(res?.data);
-          return res?.data;
-        } else {
-          if (res?.status == 401) {
-          }
-          onError(_normalizeErrorResponse(res));
-          return res;
-        }
-      })
-      .catch(err => {
-        console.error('GET_WITH_TOKEN Catch:', err?.code, err?.message);
-        if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-          onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-        } else if (err?.code === 'NETWORK_ERROR' || err?.message === 'Network Error' || !err?.response) {
-          onFail(err);
-        } else {
-          onError(_normalizeErrorResponse(err?.response?.data || err));
-        }
-        return err;
-      });
-    return;
+    });
   } catch (error) {
-    console.log(error);
-    onFail({ data: null, msg: 'Network Error', status: 'error', error });
-    return { data: null, msg: 'Network Error', status: 'error' };
+    _reportAxiosFailure(error, onError, onFail, 'GET_WITH_TOKEN request failed');
+    return;
   }
+
+  if (response?.status === 200) {
+    onSuccess(response.data);
+    return response.data;
+  }
+
+  onError(_normalizeErrorResponse(response?.data || response));
+  return response;
 };
 
 export const DELETE_WITH_TOKEN = async (
@@ -472,8 +451,9 @@ export const DELETE_WITH_TOKEN = async (
   },
   headers = {},
 ) => {
+  let response;
   try {
-    await axios({
+    response = await axios({
       method: 'delete',
       url: `${API}${route}`,
       data: body,
@@ -483,30 +463,19 @@ export const DELETE_WITH_TOKEN = async (
         ...headers,
       },
       ...errorHandling,
-    })
-      .then(res => {
-        if (res?.status == 200) {
-          onSuccess(res?.data);
-        } else {
-          if (res?.status == 401) {
-            SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
-          }
-          onError(_normalizeErrorResponse(res));
-        }
-      })
-      .catch(err => {
-        console.error('DELETE_WITH_TOKEN Catch:', err?.code, err?.message);
-        if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-          onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-        } else if (err?.code === 'NETWORK_ERROR' || err?.message === 'Network Error' || !err?.response) {
-          onFail(err);
-        } else {
-          onError(_normalizeErrorResponse(err?.response?.data || err));
-        }
-      });
+    });
   } catch (error) {
-    onFail({ data: null, msg: 'Network Error', status: 'error', error });
-    return { data: null, msg: 'Network Error', status: 'error' };
+    _reportAxiosFailure(error, onError, onFail, 'DELETE_WITH_TOKEN request failed');
+    return;
+  }
+
+  if (response?.status === 200 || response?.status === 204) {
+    onSuccess(response.data);
+  } else {
+    if (response?.status === 401) {
+      SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
+    }
+    onError(_normalizeErrorResponse(response?.data || response));
   }
 };
 
@@ -520,68 +489,43 @@ export const PUT_FORM_DATA = async (
   },
 ) => {
   const token = store.getState().Token;
+  const isPlainObject =
+    body &&
+    typeof body === 'object' &&
+    !(body instanceof FormData) &&
+    !Array.isArray(body);
+  const sendAsJson =
+    (body instanceof FormData && !_hasFileUpload(body)) || isPlainObject;
+  const requestBody = sendAsJson
+    ? JSON.stringify(isPlainObject ? body : _formDataToJsonObject(body))
+    : body;
+  let result;
 
-  if (body instanceof FormData && !_hasFileUpload(body)) {
-    const jsonData = _formDataToJsonObject(body);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(`${API}${route}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(jsonData),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      const data = await response.json().catch(() => null);
-      if (response.ok) {
-        onSuccess(data);
-      } else {
-        onError(_normalizeErrorResponse(data, 'Server error. Please try again.'));
-      }
-    } catch (err) {
-      clearTimeout(timeoutId);
-      console.error('PUT_FORM_DATA JSON Error:', err?.name, err?.message);
-      if (err?.name === 'AbortError') {
-        onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-      } else {
-        onFail(err);
-      }
-    }
-    return;
-  }
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
   try {
-    const response = await fetch(`${API}${route}`, {
+    result = await _fetchWithTimeout({
+      route,
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
+        ...(sendAsJson ? {'Content-Type': 'application/json'} : {}),
       },
-      body: body,
-      signal: controller.signal,
+      body: requestBody,
     });
-    clearTimeout(timeoutId);
-    const data = await response.json().catch(() => null);
-    if (response.ok) {
-      onSuccess(data);
-    } else {
-      onError(_normalizeErrorResponse(data, 'Server error. Please try again.'));
-    }
   } catch (err) {
-    clearTimeout(timeoutId);
-    console.error('PUT_FORM_DATA Fetch Error:', err?.name, err?.message);
-    if (err?.name === 'AbortError') {
-      onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-    } else {
-      onFail(err);
-    }
+    _reportFetchFailure(err, onFail, 'PUT_FORM_DATA request failed');
+    return;
+  }
+
+  if (result.ok) {
+    onSuccess(result.data);
+  } else {
+    onError(
+      _normalizeErrorResponse(
+        result.data,
+        `Server returned error ${result.status}. Please try again.`,
+      ),
+    );
   }
 };
 
@@ -594,8 +538,9 @@ export const PUT_WITH_TOKEN = async (
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
 ) => {
+  let response;
   try {
-    await axios({
+    response = await axios({
       method: 'put',
       url: `${API}${route}`,
       data: body,
@@ -605,30 +550,19 @@ export const PUT_WITH_TOKEN = async (
         'Content-Type': 'application/json',
       },
       ...errorHandling,
-    })
-      .then(res => {
-        if (res?.status == 200) {
-          onSuccess(res?.data);
-        } else {
-          if (res?.status == 401) {
-            SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
-          }
-          onError(_normalizeErrorResponse(res));
-        }
-      })
-      .catch(err => {
-        console.error('PUT_WITH_TOKEN Catch:', err?.code, err?.message);
-        if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
-          onFail({ data: null, msg: 'Server is taking too long. Please try again.', status: 'timeout' });
-        } else if (err?.code === 'NETWORK_ERROR' || err?.message === 'Network Error' || !err?.response) {
-          onFail(err);
-        } else {
-          onError(_normalizeErrorResponse(err?.response?.data || err));
-        }
-      });
+    });
   } catch (error) {
-    onFail({ data: null, msg: 'Network Error', status: 'error' });
-    return { data: null, msg: 'Network Error', status: 'error' };
+    _reportAxiosFailure(error, onError, onFail, 'PUT_WITH_TOKEN request failed');
+    return;
+  }
+
+  if (response?.status === 200) {
+    onSuccess(response.data);
+  } else {
+    if (response?.status === 401) {
+      SimpleToast.show('Session expired. Please log in again.', SimpleToast.LONG);
+    }
+    onError(_normalizeErrorResponse(response?.data || response));
   }
 };
 
