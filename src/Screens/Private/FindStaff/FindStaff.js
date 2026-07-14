@@ -59,17 +59,6 @@ const SALARY_OPTIONS = [
   { label: 'Above ₹50,000', value: '50000+' },
 ];
 
-const normalizeStaffSearchQuery = (query = '') =>
-  String(query)
-    .toLowerCase()
-    .replace(/\bhouse\s+keeper\b/g, 'housekeeper')
-    .replace(/\bhouse\s+keeping\b/g, 'housekeeping')
-    .replace(/\bbaby\s+sitter\b/g, 'babysitter')
-    .replace(/\bdog\s+walking\b/g, 'dog walker')
-    .replace(/\bpet\s+care\b/g, 'pet caretaker')
-    .replace(/\s+/g, ' ')
-    .trim();
-
 const parseCoordinateValue = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
@@ -118,44 +107,11 @@ const FindStaff = ({ navigation, route }) => {
   const [filterStayType, setFilterStayType] = useState(null);
 
   useEffect(() => {
-    // If chatbot provided preloaded results, use them directly
-    const preloadedResults = route?.params?.preloadedResults;
-    if (preloadedResults && Array.isArray(preloadedResults) && preloadedResults.length > 0) {
-      const mapped = preloadedResults.map((item) => {
-        const workInfo = item?.user_work_info || {};
-        return {
-          id: item?.id,
-          name: `${item?.first_name || ''} ${item?.last_name || ''}`.trim() || item?.name || 'Unknown',
-          role: Array.isArray(workInfo?.primary_role) ? workInfo.primary_role.join(', ') : (workInfo?.primary_role || ''),
-          tags: Array.isArray(workInfo?.skills) ? workInfo.skills : [],
-          location: item?.addresses?.[0]?.city || item?.location || item?.city || item?.address?.city || item?.current_address?.city || item?.region || '',
-          preferredLocation: item?.preferred_work_location || item?.user_work_info?.preferred_work_location || item?.work_info?.preferred_work_location || '',
-          pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || '',
-          experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
-          verified: item?.is_verified || false,
-          policeVerified: !!(item?.kycInformation?.police_verification_path || item?.kyc_information?.police_verification_path || item?.kycInformation?.police_clearance_certificate_path || item?.kyc_information?.police_clearance_certificate_path || item?.kycInformation?.verification_certificate || item?.kyc_information?.verification_certificate || item?.verification_certificate || item?.police_verified === true),
-          gender: item?.gender || '',
-          age: getAge(item?.dob),
-          salaryNum: Number(workInfo?.salary) || 0,
-          salary: formatSalary(workInfo?.salary),
-          image: getCandidateImage(item),
-          stayType: workInfo?.stay_type || item?.stay_type || '',
-          isJobSeeking: (item?.is_job_seeking === true || item?.is_job_seeking === 1 || item?.is_available === true || item?.is_available === 1),
-          distanceKm: parseCoordinateValue(item?._distance_km ?? item?.distance_km ?? item?.distanceKm),
-          _similarity: item?._similarity || 0,
-          raw: item,
-        };
-      }).filter(c => c.isJobSeeking);
-      setAllCandidates(mapped);
-      setCandidates(mapped);
-      setIsLoading(false);
-      fetchRoleOptions();
-      checkSubscription();
-      return;
-    }
     fetchCandidates();
     fetchRoleOptions();
     checkSubscription();
+    // Search parameters are fixed for this result-screen instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -272,9 +228,17 @@ const FindStaff = ({ navigation, route }) => {
     setIsLoading(true);
     setErrorMessage('');
 
-    const normalizedQuery = normalizeStaffSearchQuery(description);
+    const normalizedQuery = String(description).toLowerCase();
     const isNearbyQuery = normalizedQuery.includes('near me') || normalizedQuery.includes('nearby');
     const requestPayload = { query: description, query_text: description };
+
+    if (userCity) {
+      requestPayload.user_city = userCity;
+    }
+
+    if (userState) {
+      requestPayload.user_state = userState;
+    }
 
     if (searchCoordinates) {
       requestPayload.lat = searchCoordinates.lat;
@@ -334,68 +298,9 @@ const FindStaff = ({ navigation, route }) => {
           };
         }).filter(c => c.isJobSeeking);
 
-        const descLower = normalizeStaffSearchQuery(description);
-
-        // Extract role keywords from query
-        const roleKeywords = extractRoleFromQuery(descLower);
-        // Extract location keywords from query
-        const locationKeywords = extractLocationFromQuery(descLower);
-
-        let finalList = mapped;
-
-        // Strict role filter — if role mentioned, only show matching staff
-        if (roleKeywords.length > 0) {
-          const roleFiltered = mapped.filter(c => {
-            const role = (c.role || '').toLowerCase().trim();
-            if (!role) return false; // Don't match empty roles
-            return roleKeywords.some(kw => 
-              role.includes(kw.toLowerCase()) || 
-              kw.toLowerCase().includes(role.split('/')[0].trim())
-            );
-          });
-          finalList = roleFiltered;
-        }
-
-        // Filter out completely empty/junk profiles (no role and no location)
-        finalList = finalList.filter(c => c.role || c.location);
-
-        // Location filter on top of role filter
-        // Only apply location filter when user explicitly said "near me" or gave a real city name
-        if (descLower.includes('near me') || descLower.includes('nearby')) {
-          // Explicit "near me" → filter by user's current city/state
-          if (searchCoordinates) {
-            const distanceFiltered = finalList.filter(c => c.distanceKm !== null && c.distanceKm !== undefined);
-            if (distanceFiltered.length > 0) {
-              finalList = distanceFiltered;
-            }
-          } else {
-            // Explicit "near me" fallback to user's current city/state
-            const locFiltered = finalList.filter(c => {
-              const loc = (c.location || '').toLowerCase();
-              const prefLoc = (c.preferredLocation || '').toLowerCase();
-              const staffState = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
-              const cityMatch = userCity && (loc.includes(userCity.toLowerCase()) || prefLoc.includes(userCity.toLowerCase()));
-              const stateMatch = userState && (staffState.includes(userState.toLowerCase()) || loc.includes(userState.toLowerCase()));
-              return cityMatch || stateMatch;
-            });
-            finalList = locFiltered;
-          }
-        } else if (locationKeywords.length > 0) {
-          // Only filter if remaining keywords look like real city names (not skill/cuisine words)
-          // Check if any keyword actually matches a staff location — if none do, skip filter
-          const locFiltered = finalList.filter(c => {
-            const loc = (c.location || '').toLowerCase();
-            const prefLoc = (c.preferredLocation || '').toLowerCase();
-            const staffState = (c.raw?.addresses?.[0]?.state || '').toLowerCase();
-            return locationKeywords.some(kw => loc.includes(kw) || prefLoc.includes(kw) || staffState.includes(kw));
-          });
-          // If location filter killed ALL results, show role-matched results without location filter
-          // This handles cases where keywords were not real cities
-          if (locFiltered.length > 0) {
-            finalList = locFiltered;
-          }
-        }
-        // If no location keywords and no "near me" → skip location filter, show all role-matched results
+        // Role and location matching is already applied by the backend. Keeping
+        // one source of truth prevents correct candidates from being removed twice.
+        const finalList = mapped.filter(c => c.role || c.location);
 
         setAllCandidates(finalList);
         setCandidates(finalList);
@@ -422,87 +327,6 @@ const FindStaff = ({ navigation, route }) => {
       },
     );
   };
-
-  // Extract location keywords from natural language query
-  const extractLocationFromQuery = (query) => {
-    query = normalizeStaffSearchQuery(query);
-    const stopWords = ['find', 'me', 'a', 'an', 'the', 'in', 'at', 'near', 'from', 'for', 'with', 'nice', 'good', 'best', 'staff', 'worker', 'helper', 'city', 'area', 'looking', 'experience', 'experienced', 'male', 'female', 'show', 'dikhao', 'chahiye', 'near me', 'nearby'];
-    const roleWords = ['cook', 'chef', 'driver', 'maid', 'cleaner', 'nanny', 'babysitter', 'housekeeper', 'housekeeping', 'gardener', 'security', 'guard', 'nurse', 'caretaker', 'tutor', 'teacher', 'driving', 'plumber', 'electrician', 'carpenter', 'painter', 'sweeper', 'laundry', 'walker', 'attendant', 'dog', 'pet'];
-    const skillWords = [
-      'central',
-      'indian', 'chinese', 'continental', 'mughlai', 'bengali', 'punjabi', 'gujarati', 'rajasthani', 'kerala', 'tamil', 'telugu', 'kannada', 'malayalam', 'marathi', 'goan', 'hyderabadi', 'awadhi', 'kashmiri', 'odia', 'assamese', 'sindhi',
-      'veg', 'non-veg', 'vegetarian', 'non-vegetarian', 'vegan',
-      'thai', 'italian', 'mexican', 'japanese', 'korean', 'french', 'american', 'mediterranean',
-      'cuisine', 'food', 'biryani', 'tandoori', 'curry', 'dal', 'roti',
-      'senior', 'junior', 'professional', 'certified', 'experienced',
-      'cleaning', 'deep', 'washing', 'ironing', 'pressing',
-      'newborn', 'infant', 'toddler', 'pet',
-      'license', 'licensed', 'first', 'aid', 'cpr',
-      'hindi', 'english', 'telugu', 'tamil', 'kannada', 'malayalam', 'marathi', 'bengali', 'gujarati', 'urdu', 'spanish',
-      'polite', 'reliable', 'trusted', 'verified', 'urgent',
-    ];
-    // Common Indian multi-word city names — preserve as single tokens
-    const multiWordCities = [
-      'new delhi', 'old delhi', 'south delhi', 'north delhi', 'east delhi', 'west delhi',
-      'south mumbai', 'north mumbai', 'east mumbai', 'west mumbai',
-      'mount abu', 'raipur city', 'new rajendra nagar',
-      'greater noida', 'central delhi', 'south west delhi', 'north east delhi',
-      'hong kong', 'new york',
-    ];
-    // Replace multi-word cities with single token before splitting
-    let processedQuery = query;
-    const cityPlaceholders = {};
-    multiWordCities.forEach((city, i) => {
-      if (processedQuery.includes(city)) {
-        const placeholder = `__CITY_${i}__`;
-        cityPlaceholders[placeholder] = city;
-        processedQuery = processedQuery.replace(city, placeholder);
-      }
-    });
-    const words = processedQuery.replace('near me', '').replace('nearby', '').split(/\s+/).filter(w => {
-      if (w.length <= 2) return false;
-      // Restore multi-word city tokens
-      if (cityPlaceholders[w]) return true;
-      return !stopWords.includes(w) && !roleWords.includes(w) && !skillWords.includes(w);
-    }).map(w => cityPlaceholders[w] || w);
-    return words;
-  };
-
-  // Extract role keywords from natural language query
-  const extractRoleFromQuery = (query) => {
-    query = normalizeStaffSearchQuery(query);
-    const roleMap = {
-      'driver': ['driver', 'driving', 'chauffeur'],
-      'cook': ['cook', 'chef', 'cooking', 'baker'],
-      'chef': ['chef', 'cook', 'cooking', 'baker'],
-      'maid': ['maid', 'house cleaner', 'housecleaner', 'cleaner', 'cleaning'],
-      'nanny': ['nanny', 'babysitter', 'baby sitter', 'childcare'],
-      'housekeeper': ['housekeeper', 'housekeeping', 'house keeper'],
-      'gardener': ['gardener', 'gardening'],
-      'security': ['security', 'guard', 'watchman'],
-      'nurse': ['nurse', 'nursing', 'caretaker'],
-      'tutor': ['tutor', 'teacher', 'teaching'],
-      'plumber': ['plumber', 'plumbing'],
-      'electrician': ['electrician', 'electrical'],
-      'carpenter': ['carpenter', 'carpentry'],
-      'painter': ['painter', 'painting'],
-      'sweeper': ['sweeper', 'sweeping'],
-      'laundry': ['laundry', 'washing', 'ironing'],
-      'dog walker': ['dog walker', 'pet walker', 'dog walking'],
-      'physiotherapist': ['physiotherapist', 'physiotherapy'],
-      'attendant': ['attendant', 'helper', 'assistant'],
-      'pet caretaker': ['pet caretaker', 'pet care', 'animal care'],
-    };
-    const found = [];
-    Object.entries(roleMap).forEach(([role, keywords]) => {
-      if (keywords.some(kw => query.includes(kw))) {
-        found.push(role);
-        keywords.forEach(kw => found.push(kw));
-      }
-    });
-    return [...new Set(found)];
-  };
-
 
   const regionOptions = React.useMemo(() => {
     const regions = new Set();

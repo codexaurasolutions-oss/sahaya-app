@@ -64,6 +64,8 @@ const AIJobResults = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchJobs();
+    // Search parameters are fixed for this result-screen instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatCompensation = (job) => {
@@ -86,11 +88,14 @@ const AIJobResults = ({ navigation, route }) => {
     setErrorMessage('');
     setStatusMessage('');
 
-    console.log('AIJobResults - API Request:', { url: JobGetAIData, body: { query: description } });
-
     POST_WITH_TOKEN(
       JobGetAIData,
-      { query: description },
+      {
+        query: description,
+        query_text: description,
+        user_city: userCity,
+        user_state: userState,
+      },
       (response) => {
         console.log('AIJobResults - API Response:', JSON.stringify(response));
         if (response?.success === false) {
@@ -120,23 +125,7 @@ const AIJobResults = ({ navigation, route }) => {
           raw: item,
         }));
 
-        let finalList = mapped;
-        const descLower = description.toLowerCase();
-
-        // Location filtering logic
-        if (descLower.includes('near me') || descLower.includes('nearby') || description === '') {
-           const locFiltered = mapped.filter(j => {
-              const loc = (j.location || '').toLowerCase();
-              const city = (j.city || '').toLowerCase();
-              const state = (j.state || '').toLowerCase();
-              
-              const cityMatch = userCity && (loc.includes(userCity.toLowerCase()) || city.includes(userCity.toLowerCase()));
-              const stateMatch = userState && (loc.includes(userState.toLowerCase()) || state.includes(userState.toLowerCase()));
-              
-              return cityMatch || stateMatch;
-           });
-           finalList = locFiltered;
-        }
+        const finalList = mapped;
 
         const backendMessage = response?.message || '';
         setStatusMessage(
@@ -244,7 +233,7 @@ const AIJobResults = ({ navigation, route }) => {
   return (
     <CommanView>
       <HeaderForUser
-        title={'AI Job Results'}
+        title={'Matching Jobs'}
         source_arrow={ImageConstant?.BackArrow}
         onPressLeftIcon={() => navigation.goBack()}
         source_logo={ImageConstant?.notification}

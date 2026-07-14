@@ -48,6 +48,7 @@ const Input = ({
   firstStyle,
   showImage2,
   prefixText,
+  rightAccessory,
 }) => {
   const [show, setShow] = useState(false);
   const [countryCode, setCountryCode] = useState({
@@ -158,6 +159,7 @@ const Input = ({
             placeholderTextColor={placeholderTextColor}
             onFocus={handleFocus}
           />
+          {rightAccessory}
           {showImage2 && (
             <Image
               source={source}

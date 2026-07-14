@@ -446,12 +446,6 @@ const Dashboard = ({ navigation }) => {
 
       {/* Add New Staff & Find Staff (Sticky Bottom) */}
       <View style={{ paddingTop: 15, paddingBottom: 80, paddingHorizontal: 10, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderColor: '#eee' }}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('AiCopilot')}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF5F3', borderWidth: 1, borderColor: '#D98579', borderRadius: 10, paddingVertical: 12, marginBottom: 12 }}>
-          <Typography type={Font.Poppins_SemiBold} style={{ fontSize: 13, marginRight: 8, color: '#D98579' }}>AI</Typography>
-          <Typography type={Font.Poppins_SemiBold} style={{ color: '#D98579', fontSize: 14 }}>Chat with Sahayya AI</Typography>
-        </TouchableOpacity>
         <Button
           onPress={() => navigation.navigate('AllStaff')}
           title={LocalizedStrings.Dashboard?.find_staf || 'Find Staff'}

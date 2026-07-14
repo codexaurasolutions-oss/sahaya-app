@@ -8,9 +8,25 @@ import { Font } from '../../../Constants/Font';
 import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
+import SimpleToast from 'react-native-simple-toast';
+import VoiceSearchButton from '../../../Component/VoiceSearchButton';
+import useVoiceSearch from '../../../Utils/useVoiceSearch';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
+
+  const runStaffSearch = query => {
+    const searchText = typeof query === 'string' ? query.trim() : Describe.trim();
+    navigation.navigate('FindStaff', {description: searchText});
+  };
+
+  const voiceSearch = useVoiceSearch({
+    onError: message => SimpleToast.show(message, SimpleToast.LONG),
+    onResult: transcript => {
+      setDescribe(transcript);
+      runStaffSearch(transcript);
+    },
+  });
 
   const suggestions = [
     "Professional Housekeeper exp.",
@@ -56,6 +72,14 @@ const AllStaff = ({navigation}) => {
               value={Describe}
               onChange={(text) => setDescribe(text)}
               style_inputContainer={{ height: 120, alignItems: 'flex-start', paddingTop: 10, paddingRight: 10 }}
+              rightAccessory={
+                <VoiceSearchButton
+                  isListening={voiceSearch.isListening}
+                  isLoading={voiceSearch.isLoading}
+                  onPress={voiceSearch.startVoice}
+                  onStop={voiceSearch.stopVoice}
+                />
+              }
             />
           </View>
 
@@ -77,34 +101,11 @@ const AllStaff = ({navigation}) => {
             ))}
           </View>
 
-          {/* AI Chat Button */}
-          <TouchableOpacity
-            style={styles.chatButton}
-            onPress={() =>
-              navigation.push('AiCopilot', {
-                mode: 'staffSearch',
-                draft: Describe.trim(),
-              })
-            }
-          >
-            <View style={styles.chatButtonInner}>
-              <View style={styles.chatAvatar}>
-                <Text style={styles.chatAvatarText}>AI</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.chatBtnTitle}>Chat with Sahayya AI</Text>
-                <Text style={styles.chatBtnSubtitle}>
-                  {LocalizedStrings.FindStaffAI.Welcome_Desc}
-                </Text>
-              </View>
-              <Text style={styles.chatBtnArrow}>{'>'}</Text>
-            </View>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.buttonContainer}>
           <Button
-            onPress={() => navigation.navigate("FindStaff", { description: Describe })}
+            onPress={runStaffSearch}
             linerColor={['#D98579', '#C4706A']}
             title={LocalizedStrings.FindStaffAI.Find_Staff}
             main_style={{ width: '100%' }}
@@ -172,50 +173,6 @@ const styles = StyleSheet.create({
   },
   suggestionTextActive: {
     color: '#D98579',
-  },
-  chatButton: {
-    marginTop: 20,
-    marginHorizontal: 4,
-    backgroundColor: '#F0FAF9',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#B8E6E0',
-    overflow: 'hidden',
-  },
-  chatButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-  },
-  chatAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#029991',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  chatAvatarText: {
-    color: '#FFF',
-    fontFamily: Font.Poppins_Bold,
-    fontSize: 14,
-  },
-  chatBtnTitle: {
-    fontFamily: Font.Poppins_SemiBold,
-    fontSize: 14,
-    color: '#1a1a1a',
-  },
-  chatBtnSubtitle: {
-    fontFamily: Font.Poppins_Regular,
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  chatBtnArrow: {
-    fontSize: 24,
-    color: '#029991',
-    fontFamily: Font.Poppins_Bold,
   },
   buttonContainer: {
     paddingBottom: 15,

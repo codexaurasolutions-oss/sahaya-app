@@ -27,7 +27,6 @@ import AppUpdate from '../Screens/Private/MoreScreens/AppUpdate';
 import ReferAndEarn from '../Screens/Private/MoreScreens/ReferAndEarn';
 import StaffWallet from '../Screens/Staff/StaffWallet';
 import BankAccounts from '../Screens/Staff/BankAccounts';
-import AiCopilot from '../Screens/Private/AiCopilot/AiCopilot';
 import { useDispatch, useSelector } from 'react-redux';
 import Aadhaar from '../Screens/Auth/Aadhaar';
 import AadharOtp from '../Screens/Private/Staff/AadharOtp';
@@ -187,11 +186,6 @@ const RootStack = () => {
         name="AIJobResults"
         component={AIJobResults}
         options={{ ...commonOptions }}
-      />
-      <Stack.Screen
-        name="AiCopilot"
-        component={AiCopilot}
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AppUpdate"

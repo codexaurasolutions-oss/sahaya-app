@@ -423,19 +423,12 @@ const StaffDashboard = ({ navigation }) => {
 
 
       <View style={{ marginTop: 20, marginBottom: 100 }}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('AiCopilot')}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF5F3', borderWidth: 1, borderColor: '#D98579', borderRadius: 10, paddingVertical: 12, marginBottom: 12 }}>
-          <Typography type={Font.Poppins_SemiBold} style={{ color: '#D98579', fontSize: 14 }}>
-            AI Chat with Sahayya AI
-          </Typography>
-        </TouchableOpacity>
         <Button
           onPress={() => {
             navigation.navigate('AIJobSearch');
           }}
           linerColor={['#D98579', '#C4706A']}
-          title={LocalizedStrings.staffSection?.StaffDashboard?.ai_search_jobs || 'AI Search Jobs'}
+          title={'Find Jobs'}
           main_style={{ width: '100%' }}
         />
       </View>

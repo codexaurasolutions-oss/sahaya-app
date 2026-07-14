@@ -10,6 +10,8 @@ import Button from '../../Component/Button';
 import SimpleToast from 'react-native-simple-toast';
 import { GET_WITH_TOKEN } from '../../Backend/Backend';
 import { SUBSCRIPTION_USER_CURRENT } from '../../Backend/api_routes';
+import VoiceSearchButton from '../../Component/VoiceSearchButton';
+import useVoiceSearch from '../../Utils/useVoiceSearch';
 
 const AIJobSearch = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
@@ -17,8 +19,9 @@ const AIJobSearch = ({navigation}) => {
 
   // AI job search requires an active membership. Staff start on a free plan at
   // signup; once that is exhausted, they must pick a membership to continue.
-  const handleFindJobs = () => {
+  const handleFindJobs = query => {
     if (checking) return;
+    const searchText = typeof query === 'string' ? query.trim() : Describe.trim();
     setChecking(true);
     GET_WITH_TOKEN(
       SUBSCRIPTION_USER_CURRENT,
@@ -29,7 +32,7 @@ const AIJobSearch = ({navigation}) => {
           subscription &&
           (Array.isArray(subscription) ? subscription.length > 0 : true);
         if (hasActiveSubscription) {
-          navigation.navigate('AIJobResults', { description: Describe });
+          navigation.navigate('AIJobResults', {description: searchText});
         } else {
           SimpleToast.show(
             'Your free plan is over. Please purchase a membership to use AI job search.',
@@ -52,6 +55,15 @@ const AIJobSearch = ({navigation}) => {
       },
     );
   };
+
+  const voiceSearch = useVoiceSearch({
+    disabled: checking,
+    onError: message => SimpleToast.show(message, SimpleToast.LONG),
+    onResult: transcript => {
+      setDescribe(transcript);
+      handleFindJobs(transcript);
+    },
+  });
   const suggestions = [
     "Housekeeper job near me",
     "Driver job with good salary",
@@ -62,7 +74,7 @@ const AIJobSearch = ({navigation}) => {
   return (
     <CommanView>
       <HeaderForUser
-        title={'AI Job Matching'}
+        title={'Find Jobs'}
         source_arrow={ImageConstant?.BackArrow}
         onPressLeftIcon={() => navigation.goBack()}
         style_title={{ fontSize: 18 }}
@@ -94,6 +106,15 @@ const AIJobSearch = ({navigation}) => {
             value={Describe}
             onChange={(text) => setDescribe(text)}
             style_inputContainer={{ height: 120, alignItems: 'flex-start', paddingTop: 10 }}
+            rightAccessory={
+              <VoiceSearchButton
+                disabled={checking}
+                isListening={voiceSearch.isListening}
+                isLoading={voiceSearch.isLoading}
+                onPress={voiceSearch.startVoice}
+                onStop={voiceSearch.stopVoice}
+              />
+            }
           />
 
           <View style={styles.suggestionContainer}>
