@@ -21,6 +21,7 @@ import {POST_WITH_TOKEN} from '../../../Backend/Backend';
 import {AI_COPILOT_CHAT} from '../../../Backend/api_routes';
 import {Font} from '../../../Constants/Font';
 import {ImageConstant} from '../../../Constants/ImageConstant';
+import LocalizedStrings from '../../../Constants/localization';
 
 const VOICE_LOCALE_MAP = {
   en: 'en-IN',
@@ -30,7 +31,13 @@ const VOICE_LOCALE_MAP = {
   kn: 'kn-IN',
   ml: 'ml-IN',
   mr: 'mr-IN',
+  gu: 'gu-IN',
   bn: 'bn-IN',
+  pa: 'pa-IN',
+  or: 'or-IN',
+  as: 'as-IN',
+  ur: 'ur-IN',
+  ne: 'ne-NP',
 };
 
 const OWNER_SUGGESTIONS = [
@@ -47,16 +54,23 @@ const STAFF_SUGGESTIONS = [
   'How many credits do I have?',
 ];
 
-const AiCopilot = ({navigation}) => {
+const AiCopilot = ({navigation, route}) => {
   const userDetail = useSelector(store => store?.userDetails);
   const isOwner = Number(userDetail?.user_role_id) === 3;
+  const isStaffSearchMode = isOwner && route?.params?.mode === 'staffSearch';
+  const initialDraft =
+    typeof route?.params?.draft === 'string'
+      ? route.params.draft.trim().slice(0, 500)
+      : '';
 
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialDraft);
   const [loading, setLoading] = useState(false);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [voiceLocale, setVoiceLocale] = useState('en-IN');
+  const [voiceLocale, setVoiceLocale] = useState(
+    VOICE_LOCALE_MAP[LocalizedStrings.getLanguage?.()] || 'en-IN',
+  );
 
   const scrollRef = useRef(null);
   const messagesRef = useRef([]);
@@ -66,12 +80,28 @@ const AiCopilot = ({navigation}) => {
   const voiceBusyRef = useRef(false);
 
   useEffect(() => {
-    const greeting = isOwner
-      ? "Hi! I'm Sahayya AI. I can help you find staff, check attendance, salary details, or membership info. How can I help?"
-      : "Hi! I'm Sahayya AI. I can help you find jobs, check application status, salary info, or credits. How can I help?";
+    let greeting;
+
+    if (isStaffSearchMode) {
+      const staffSearchCopy = LocalizedStrings.FindStaffAI || {};
+      const staffFiltersCopy = LocalizedStrings.FindStaff || {};
+      greeting = `${
+        staffSearchCopy.Welcome_Desc || 'Tell me what type of staff you need.'
+      } ${
+        staffSearchCopy.Describe_Requirements || 'Please describe your requirements'
+      }: ${staffFiltersCopy.Job_Role || 'role'}, ${
+        staffFiltersCopy.Region || 'location'
+      }, ${staffFiltersCopy.Experience || 'experience'}.`;
+    } else if (isOwner) {
+      greeting =
+        "Hi! I'm Sahayya AI. I can help you find staff, check attendance, salary details, or membership info. How can I help?";
+    } else {
+      greeting =
+        "Hi! I'm Sahayya AI. I can help you find jobs, check application status, salary info, or credits. How can I help?";
+    }
 
     setMessages([{role: 'assistant', content: greeting}]);
-  }, [isOwner]);
+  }, [isOwner, isStaffSearchMode]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -124,7 +154,11 @@ const AiCopilot = ({navigation}) => {
 
     POST_WITH_TOKEN(
       AI_COPILOT_CHAT,
-      {message: msgText, history},
+      {
+        message: msgText,
+        history,
+        ...(isStaffSearchMode ? {context: 'staff_search'} : {}),
+      },
       success => {
         appendAssistantMessage(
           success?.reply || "I couldn't process that. Please try again.",
@@ -292,7 +326,22 @@ const AiCopilot = ({navigation}) => {
     );
   };
 
-  const suggestions = isOwner ? OWNER_SUGGESTIONS : STAFF_SUGGESTIONS;
+  const staffSearchExamples = LocalizedStrings.FindStaffAI?.Placeholder_Examples || {};
+  let suggestions = isOwner ? OWNER_SUGGESTIONS : STAFF_SUGGESTIONS;
+  if (isStaffSearchMode) {
+    suggestions = [
+      staffSearchExamples.Example1,
+      staffSearchExamples.Example3,
+      staffSearchExamples.Example4,
+      staffSearchExamples.Example5,
+    ].filter(Boolean);
+  }
+  const inputPlaceholder = isStaffSearchMode
+    ? LocalizedStrings.FindStaffAI?.Describe_Requirements ||
+      'Describe the staff requirements'
+    : isOwner
+      ? 'Ask about staff, attendance, salary...'
+      : 'Ask about jobs, salary, credits...';
   const showSuggestions = messages.length <= 1 && !loading;
 
   return (
@@ -357,11 +406,7 @@ const AiCopilot = ({navigation}) => {
 
           <TextInput
             style={styles.textInput}
-            placeholder={
-              isOwner
-                ? 'Ask about staff, attendance, salary...'
-                : 'Ask about jobs, salary, credits...'
-            }
+            placeholder={inputPlaceholder}
             placeholderTextColor="#999"
             value={input}
             onChangeText={setInput}

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import React, { useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
@@ -8,11 +8,9 @@ import { Font } from '../../../Constants/Font';
 import Input from '../../../Component/Input';
 import Button from '../../../Component/Button';
 import LocalizedStrings from '../../../Constants/localization';
-import ChatBot from '../../../Component/ChatBot';
 
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
-  const [chatVisible, setChatVisible] = useState(false);
 
   const suggestions = [
     "Professional Housekeeper exp.",
@@ -21,18 +19,6 @@ const AllStaff = ({navigation}) => {
     "Dog walker near me",
     "Chef with North Indian & South Indian Cuisine",
   ];
-
-  // When chatbot returns search results, navigate to FindStaff with results
-  const handleChatResults = (results, filters) => {
-    setChatVisible(false);
-    // Build a description from filters for FindStaff
-    const parts = [];
-    if (filters?.role) parts.push(filters.role);
-    if (filters?.location) parts.push('in ' + filters.location);
-    if (filters?.skills) parts.push(filters.skills.join(', '));
-    const description = parts.join(' ') || Describe || '';
-    navigation.navigate("FindStaff", { description, preloadedResults: results });
-  };
 
   return (
     <CommanView>
@@ -94,7 +80,12 @@ const AllStaff = ({navigation}) => {
           {/* AI Chat Button */}
           <TouchableOpacity
             style={styles.chatButton}
-            onPress={() => setChatVisible(true)}
+            onPress={() =>
+              navigation.push('AiCopilot', {
+                mode: 'staffSearch',
+                draft: Describe.trim(),
+              })
+            }
           >
             <View style={styles.chatButtonInner}>
               <View style={styles.chatAvatar}>
@@ -102,9 +93,11 @@ const AllStaff = ({navigation}) => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.chatBtnTitle}>Chat with Sahayya AI</Text>
-                <Text style={styles.chatBtnSubtitle}>Tell me what you need — I'll find the best staff for you</Text>
+                <Text style={styles.chatBtnSubtitle}>
+                  {LocalizedStrings.FindStaffAI.Welcome_Desc}
+                </Text>
               </View>
-              <Text style={styles.chatBtnArrow}>›</Text>
+              <Text style={styles.chatBtnArrow}>{'>'}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -127,12 +120,6 @@ const AllStaff = ({navigation}) => {
         </View>
       </View>
 
-      {/* Chatbot Overlay */}
-      <ChatBot
-        visible={chatVisible}
-        onClose={() => setChatVisible(false)}
-        onSearchResults={handleChatResults}
-      />
     </CommanView>
   );
 };
