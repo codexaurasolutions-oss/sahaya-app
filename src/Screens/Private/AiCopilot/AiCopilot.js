@@ -228,22 +228,6 @@ const AiCopilot = ({navigation}) => {
         return;
       }
 
-      let services = [];
-      if (Platform.OS === 'android' && Voice.getSpeechRecognitionServices) {
-        try {
-          services = (await Voice.getSpeechRecognitionServices()) || [];
-        } catch (serviceError) {
-          services = [];
-        }
-        if (!services?.length) {
-          voiceBusyRef.current = false;
-          appendAssistantMessage(
-            'No speech recognition service was found. Please enable the Google speech service and try again.',
-          );
-          return;
-        }
-      }
-
       setVoiceLoading(true);
       setIsListening(true);
 
@@ -257,12 +241,8 @@ const AiCopilot = ({navigation}) => {
         await Voice.start(voiceLocale, recognitionOptions);
       } catch (primaryError) {
         await Voice.destroy().catch(() => {});
-        const hasGoogleRecognizer = services.some(service =>
-          String(service).toLowerCase().includes('google'),
-        );
         await Voice.start('en-IN', {
           ...recognitionOptions,
-          ...(hasGoogleRecognizer ? {RECOGNIZER_ENGINE: 'GOOGLE'} : {}),
         });
       }
       setVoiceLoading(false);
