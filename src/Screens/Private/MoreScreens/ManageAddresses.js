@@ -21,7 +21,7 @@ import { PROFILE, PROFILE_UPDATE } from '../../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { userDetails } from '../../../Redux/action';
-import GooglePlacesInput from '../../../Component/GooglePlacesInput';
+import MapLocationPicker from '../../../Component/MapLocationPicker';
 
 const RESIDENCE_TYPES = [
   { label: 'Apartment', value: 'apartment' },
@@ -145,6 +145,25 @@ const ManageAddresses = ({ navigation }) => {
     setAddresses(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const applyMapLocation = (index, location) => {
+    setAddresses(prev => {
+      const updated = [...prev];
+      const current = updated[index];
+      updated[index] = {
+        ...current,
+        google_location: location?.google_location || '',
+        lat: location?.lat ? String(location.lat) : '',
+        long: location?.long ? String(location.long) : '',
+        street: location?.street || current.street,
+        area_locality: location?.area_locality || current.area_locality,
+        city: location?.city || current.city,
+        state: location?.state || current.state,
+        pincode: location?.pincode || current.pincode,
+      };
       return updated;
     });
   };
@@ -330,31 +349,16 @@ const ManageAddresses = ({ navigation }) => {
                   onChange={val => updateAddress(addrIndex, 'area_locality', val)}
                 />
 
-                <View style={{ zIndex: 100 - addrIndex }}>
-                  <GooglePlacesInput
-                    title="Search Google Location (Mandatory)"
-                    placeholder="Search for your location on Google Maps..."
-                    onPlaceSelected={(location) => {
-                      updateAddress(addrIndex, 'google_location', location?.google_location || "");
-                      updateAddress(addrIndex, 'lat', location?.lat || "");
-                      updateAddress(addrIndex, 'long', location?.long || "");
-                      
-                      if (location?.hasExtractedData) {
-                        if (!address.street && location.street) updateAddress(addrIndex, 'street', location.street);
-                        if (!address.city && location.city) updateAddress(addrIndex, 'city', location.city);
-                        if (!address.state && location.state) updateAddress(addrIndex, 'state', location.state);
-                        if (!address.pincode && location.pincode) updateAddress(addrIndex, 'pincode', location.pincode);
-                      }
-                    }}
-                  />
-                </View>
-
-                {address.google_location ? (
-                  <View style={{ marginBottom: 15 }}>
-                    <Typography size={12} color="green">Location Selected âœ“</Typography>
-                    <Typography size={11} color="gray">{address.google_location}</Typography>
-                  </View>
-                ) : null}
+                <MapLocationPicker
+                  title="Google Location (Mandatory)"
+                  location={address}
+                  selectedLabel={[
+                    address.area_locality,
+                    address.city,
+                    address.state,
+                  ].filter(Boolean).join(', ')}
+                  onConfirm={location => applyMapLocation(addrIndex, location)}
+                />
 
                 <View style={styles.row}>
                   <View style={{ flex: 1, marginRight: 10 }}>

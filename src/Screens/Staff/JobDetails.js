@@ -6,6 +6,7 @@ import {
   Image,
   ActivityIndicator,
   Modal,
+  TextInput,
   TouchableOpacity,
 } from 'react-native';
 import CommanView from '../../Component/CommanView';
@@ -47,7 +48,8 @@ const JobDetails = ({ navigation, route }) => {
   const [limitInfo, setLimitInfo] = useState(null);
   const [payingLimit, setPayingLimit] = useState(false);
   const [checkingLimit, setCheckingLimit] = useState(false);
-  const [creditsToBuy, setCreditsToBuy] = useState(10);
+  const [creditsToBuy, setCreditsToBuy] = useState('10');
+  const creditsToPurchase = Number.parseInt(creditsToBuy, 10) || 0;
 
   const fetchJobDetails = useCallback(() => {
     setLoading(true);
@@ -179,7 +181,7 @@ const JobDetails = ({ navigation, route }) => {
 
   const handlePurchaseLimit = () => {
     if (payingLimit) return;
-    if (!creditsToBuy || parseInt(creditsToBuy, 10) < 1) {
+    if (creditsToPurchase < 1 || creditsToPurchase > 10000) {
       SimpleToast.show('Please enter valid credits to purchase', SimpleToast.SHORT);
       return;
     }
@@ -187,7 +189,7 @@ const JobDetails = ({ navigation, route }) => {
 
     POST_WITH_TOKEN(
       JOB_LIMIT_CREATE_ORDER,
-      { credits_to_purchase: parseInt(creditsToBuy, 10) },
+      { credits_to_purchase: creditsToPurchase },
       async success => {
         if (success?.status === 'success') {
           const order = success?.data;
@@ -214,12 +216,12 @@ const JobDetails = ({ navigation, route }) => {
                   razorpay_order_id: paymentResult.orderId,
                   razorpay_payment_id: paymentResult.paymentId,
                   razorpay_signature: paymentResult.signature,
-                  credits_to_purchase: parseInt(creditsToBuy, 10),
+                  credits_to_purchase: creditsToPurchase,
                 },
                 verifySuccess => {
                   setPayingLimit(false);
                   if (verifySuccess?.status === 'success') {
-                    SimpleToast.show(`${creditsToBuy} credits purchased successfully!`, SimpleToast.LONG);
+                    SimpleToast.show(`${creditsToPurchase} credits purchased successfully!`, SimpleToast.LONG);
                     setLimitExceededModalVisible(false);
                     setShowApplyModal(true);
                   } else {
@@ -678,30 +680,43 @@ const JobDetails = ({ navigation, route }) => {
                 <Typography type={Font.Poppins_Regular} style={styles.creditLabel}>
                   Credits to purchase:
                 </Typography>
-                <Input
-                  value={String(creditsToBuy)}
-                  onChange={setCreditsToBuy}
-                  keyboardType="numeric"
+                <TextInput
+                  value={creditsToBuy}
+                  onChangeText={value =>
+                    setCreditsToBuy(value.replace(/[^0-9]/g, '').slice(0, 5))
+                  }
+                  keyboardType="number-pad"
+                  maxLength={5}
                   style={styles.creditInput}
+                  selectTextOnFocus
+                  accessibilityLabel="Credits to purchase"
                 />
               </View>
 
               <Typography type={Font.Poppins_Regular} style={styles.creditTotal}>
-                Total: ₹{parseInt(creditsToBuy, 10) * (limitInfo?.credit_purchase_price || 10)}
+                Total: ₹{creditsToPurchase * (limitInfo?.credit_purchase_price || 10)}
               </Typography>
             </View>
 
             <View style={styles.limitBtnContainer}>
               <TouchableOpacity
-                style={[styles.limitPayBtn, payingLimit && styles.disabledBtn]}
-                disabled={payingLimit}
+                style={[
+                  styles.limitPayBtn,
+                  (payingLimit || creditsToPurchase < 1 || creditsToPurchase > 10000) &&
+                    styles.disabledBtn,
+                ]}
+                disabled={
+                  payingLimit ||
+                  creditsToPurchase < 1 ||
+                  creditsToPurchase > 10000
+                }
                 onPress={handlePurchaseLimit}
               >
                 {payingLimit ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Typography type={Font.Poppins_SemiBold} style={styles.limitPayText}>
-                    Purchase {creditsToBuy} Credits
+                    Purchase {creditsToPurchase} Credits
                   </Typography>
                 )}
               </TouchableOpacity>
@@ -1014,15 +1029,18 @@ const styles = StyleSheet.create({
     color: '#555',
   },
   creditInput: {
-    width: 60,
-    height: 36,
+    width: 84,
+    height: 44,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     textAlign: 'center',
-    fontSize: 15,
-    color: '#333',
-    paddingHorizontal: 4,
+    fontSize: 16,
+    fontFamily: Font.Poppins_Medium,
+    color: '#171A1F',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 0,
   },
   creditTotal: {
     fontSize: 15,

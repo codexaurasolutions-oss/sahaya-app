@@ -34,6 +34,7 @@ import Date_Picker from '../../../Component/Date_Picker';
 import moment from 'moment';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { isPlaceholderImage } from '../../../Utils/ImageUtils';
+import { useIsFocused } from '@react-navigation/native';
 
 const terminationReasons = [
   { label: 'No longer required', value: 'no_longer_required' },
@@ -80,6 +81,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const paramData = route?.params?.item || {};
   const fromFindStaffAI = route?.params?.fromFindStaffAI || false;
   const isReadOnlyPreview = !!fromFindStaffAI;
+  const isFocused = useIsFocused();
   const [data, setData] = useState(paramData);
   const [modalMode, setModalMode] = useState(null);
   const [reason, setReason] = useState(null);
@@ -183,7 +185,8 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   const [newUpi, setNewUpi] = useState('');
   const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [isBlacklist, setIsBlacklist] = useState(false);
-  const [contactViewLocked, setContactViewLocked] = useState(false);
+  const [contactViewLocked, setContactViewLocked] = useState(isReadOnlyPreview);
+  const [contactViewLoading, setContactViewLoading] = useState(isReadOnlyPreview);
 
   const showUpgradeAlert = () => {
     Alert.alert(
@@ -201,12 +204,17 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    if (paramData?.id) {
+    if (isFocused && paramData?.id) {
+      if (isReadOnlyPreview) {
+        setContactViewLocked(true);
+        setContactViewLoading(true);
+      }
       GET_WITH_TOKEN(
-        `${StaffAvailableDetail}/${paramData.id}`,
+        `${StaffAvailableDetail}/${paramData.id}?refresh=${Date.now()}`,
         success => {
           console.log('StaffAvailableDetail response:', JSON.stringify(success));
           setContactViewLocked(!!success?.contact_view_locked);
+          setContactViewLoading(false);
           // Handle nested response structures: data.data, data.staff, data.user, or data directly
           const raw = success?.data !== undefined ? success?.data : success;
           const fetched = (raw?.data && typeof raw.data === 'object' && !Array.isArray(raw.data))
@@ -220,15 +228,25 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             setData(prev => ({ ...prev, ...fetched }));
           }
         },
-        () => {},
-        () => {},
+        () => {
+          setContactViewLocked(isReadOnlyPreview);
+          setContactViewLoading(false);
+        },
+        () => {
+          setContactViewLocked(isReadOnlyPreview);
+          setContactViewLoading(false);
+        },
+        {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
       );
     }
     
     if (route?.params?.autoOpenTerminate) {
       setTimeout(() => setModalMode('terminate'), 500);
     }
-  }, [paramData?.id]);
+  }, [isFocused, isReadOnlyPreview, paramData?.id, route?.params?.autoOpenTerminate]);
 
   const profileImageUrl = getResolvedProfileImage(data);
   const fullName = `${data?.first_name || ''} ${data?.last_name || ''}`.trim() || data?.name || 'User';
@@ -711,27 +729,26 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
           )}
 
           {!fromFindStaffAI && (
-            <>
-              <View style={styles.flexRow}>
-                <Image source={ImageConstant.mail} style={styles.icon} />
-                <Typography style={styles.info}>{data?.email || 'Not Available'}</Typography>
-              </View>
-
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() => handleCall(data?.phone_number)}
-                >
-                  <Image source={ImageConstant.phone} style={styles.icon} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() => openWhatsApp(data?.phone_number)}
-                >
-                  <Image source={ImageConstant.WhatsApp} style={styles.icon} />
-                </TouchableOpacity>
-              </View>
-            </>
+            <View style={styles.flexRow}>
+              <Image source={ImageConstant.mail} style={styles.icon} />
+              <Typography style={styles.info}>{data?.email || 'Not Available'}</Typography>
+            </View>
+          )}
+          {(!fromFindStaffAI || (!contactViewLoading && !contactViewLocked)) && (
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => handleCall(data?.phone_number)}
+              >
+                <Image source={ImageConstant.phone} style={styles.icon} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => openWhatsApp(data?.phone_number)}
+              >
+                <Image source={ImageConstant.WhatsApp} style={styles.icon} />
+              </TouchableOpacity>
+            </View>
           )}
           {!fromFindStaffAI && (
             <Button

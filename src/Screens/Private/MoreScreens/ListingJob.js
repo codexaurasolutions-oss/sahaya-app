@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   Linking,
   Modal,
+  Alert,
 } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import CommanView from '../../../Component/CommanView';
 import HeaderForUser from '../../../Component/HeaderForUser';
 import Typography from '../../../Component/UI/Typography';
@@ -123,13 +124,7 @@ export default function ListingJob({ navigation, route }) {
     Linking.openURL(url);
   };
 
-  useEffect(() => {
-    if (isFocused) {
-      JobList();
-    }
-  }, [isFocused]);
-
-  const JobList = () => {
+  const JobList = useCallback(() => {
     console.log('[JobList] Fetching applications for job ID:', id);
     console.log('[JobList] API URL:', `${ApplicantsList}/${id}/applications`);
     GET_WITH_TOKEN(
@@ -147,7 +142,13 @@ export default function ListingJob({ navigation, route }) {
         console.log('[JobList] Network fail:', JSON.stringify(fail));
       },
     );
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (isFocused) {
+      JobList();
+    }
+  }, [isFocused, JobList]);
 
   // API call for approve/reject
   const handelapplication = (status, jobID, item) => {
@@ -339,12 +340,9 @@ export default function ListingJob({ navigation, route }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Show action buttons if:
-                  1. Application is pending (not yet approved/rejected), OR
-                  2. Application was accepted but staff is no longer active (quit/terminated)
-              */}
+              {/* Show action buttons for pending or accepted (always allow reject) */}
               {(item?.application_status == 'pending' || 
-                (item?.application_status == 'accepted' && item?.user?.is_staff_added == 0)) && (
+                item?.application_status == 'accepted') && (
                 <View style={styles.buttonRow}>
                   <TouchableOpacity
                     style={[
@@ -355,7 +353,20 @@ export default function ListingJob({ navigation, route }) {
                         borderColor: '#D98579',
                       },
                     ]}
-                    onPress={() => handelapplication('rejected', item?.id, item)}
+                    onPress={() => {
+                      if (item?.application_status == 'accepted') {
+                        Alert.alert(
+                          'Reject Staff',
+                          'This staff member is currently active. Rejecting will remove them from your staff and stop their salary. Are you sure?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Reject', style: 'destructive', onPress: () => handelapplication('rejected', item?.id, item) },
+                          ],
+                        );
+                      } else {
+                        handelapplication('rejected', item?.id, item);
+                      }
+                    }}
                   >
                     <Image
                       source={ImageConstant.X}

@@ -78,7 +78,6 @@ const StaffPaymentHistory = ({ navigation }) => {
               const d = res?.data;
               const ed = Array.isArray(d) && d.length > 0 ? d[0] : (d && !Array.isArray(d) ? d : null);
               if (ed) {
-                // Add monthly salary record
                 const amount = ed.total_payable_amount || ed.net_salary || ed.base_salary || 0;
                 if (amount > 0) {
                   allRecords.push({
@@ -90,7 +89,20 @@ const StaffPaymentHistory = ({ navigation }) => {
                     date: ed.payment_date || ed.paid_on || `${month}-01`,
                     paid_by: ed.employer || ed.employer_name || 'Employer',
                     payment_mode: ed.payment_mode || 'cash',
-                    raw: ed,
+                    raw: {
+                      ...ed,
+                      net_salary: ed.total_payable_amount || ed.net_salary || 0,
+                      amount: ed.total_payable_amount || ed.net_salary || 0,
+                      status: ed.payment_status || ed.status || 'Pending',
+                      staff_name: ed.staff_name || ed.employer || 'Staff',
+                      salary_period: month,
+                      created_at: ed.payment_date || ed.paid_on || `${month}-01`,
+                      monthly_salary: ed.salary_summary?.current_monthly_salary || 0,
+                      worked_days: ed.attendance_summary?.present_days || 0,
+                      total_days: ed.attendance_summary?.total_working_days || 0,
+                      salary_breakdown: ed.earnings_breakdown || {},
+                      advance_payment: ed.deductions?.advance_repayment?.amount || 0,
+                    },
                   });
                 }
                 // Add payment history entries
@@ -194,10 +206,26 @@ const StaffPaymentHistory = ({ navigation }) => {
         </View>
         <TouchableOpacity
           style={styles.receiptBtn}
-          onPress={() => setReceiptPayment(item?.raw || item)}
+          onPress={() => {
+            const receiptData = {
+              ...item.raw,
+              net_salary: item.raw?.net_salary || item.raw?.amount || item.amount || 0,
+              amount: item.raw?.amount || item.raw?.net_salary || item.amount || 0,
+              status: item.raw?.status || item.status || 'Paid',
+              staff_name: item.raw?.staff_name || userDetail?.name || 'Staff',
+              salary_period: item.raw?.salary_period || item.month || '',
+              created_at: item.raw?.created_at || item.date || new Date().toISOString(),
+              monthly_salary: item.raw?.monthly_salary || 0,
+              worked_days: item.raw?.worked_days || 0,
+              total_days: item.raw?.total_days || 0,
+              salary_breakdown: item.raw?.salary_breakdown || {},
+              advance_payment: item.raw?.advance_payment || 0,
+            };
+            setReceiptPayment(receiptData);
+          }}
         >
           <Image source={ImageConstant?.fileText} style={styles.receiptIcon} />
-          <Typography size={10} color="#D98579">Receipt</Typography>
+          <Typography size={11} color="#D98579" type={Font?.Poppins_Medium}>View Slip</Typography>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>

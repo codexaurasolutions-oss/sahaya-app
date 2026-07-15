@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Image,
@@ -19,6 +19,12 @@ import { useSelector } from 'react-redux';
 import SimpleToast from 'react-native-simple-toast';
 import LocalizedStrings from '../../Constants/localization';
 import { initiatePayment } from '../../Services/RazorpayService';
+import {
+  getSubscriptionPlanId,
+  hasActivePaidSubscription,
+  isFreeSubscriptionPlan,
+} from '../../Utils/subscription';
+import { notifySubscriptionUpdated } from '../../Utils/subscriptionEvents';
 
 const HouseholdManager = ({ navigation }) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -26,26 +32,72 @@ const HouseholdManager = ({ navigation }) => {
 
   const [subscriptions, setSubscriptions] = useState([]);
   const [currentPlan, setCurrentPlan] = useState(null);
+  const [currentPlanLoading, setCurrentPlanLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const currentPlanRequestId = useRef(0);
+
+  const handleActivatedPlan = (subscription, response) => {
+    const activatedSubscription =
+      response?.subscription ||
+      response?.data?.subscription ||
+      response?.data ||
+      null;
+    const immediatePlan = activatedSubscription || {
+      status: 'active',
+      amount: subscription?.price || 0,
+      payment_status: Number(subscription?.price || 0) > 0 ? 'paid' : 'free',
+      subscription,
+    };
+
+    setCurrentPlan(immediatePlan);
+    notifySubscriptionUpdated({
+      subscription: immediatePlan,
+      plan: subscription,
+      is_active: true,
+    });
+    fetchCurrentPlan({preserveOnError: true});
+  };
 
   useEffect(() => {
     fetchCurrentPlan();
     fetchSubscriptions();
+    // Membership data is loaded once whenever this screen is mounted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchCurrentPlan = () => {
+  const fetchCurrentPlan = ({preserveOnError = false} = {}) => {
+    const requestId = ++currentPlanRequestId.current;
     GET_WITH_TOKEN(
-      SUBSCRIPTION_USER_CURRENT,
+      `${SUBSCRIPTION_USER_CURRENT}?refresh=${Date.now()}`,
       success => {
+        if (requestId !== currentPlanRequestId.current) return;
+        setCurrentPlanLoading(false);
         const plan = success?.subscription || success?.data;
+        setCurrentPlan(plan || null);
         if (plan) {
-          setCurrentPlan(plan);
+          notifySubscriptionUpdated({
+            subscription: plan,
+            plan: plan?.subscription,
+            is_active: true,
+          });
         }
       },
-      error => {},
-      fail => {},
+      error => {
+        if (requestId !== currentPlanRequestId.current) return;
+        setCurrentPlanLoading(false);
+        if (!preserveOnError) setCurrentPlan(null);
+      },
+      fail => {
+        if (requestId !== currentPlanRequestId.current) return;
+        setCurrentPlanLoading(false);
+        if (!preserveOnError) setCurrentPlan(null);
+      },
+      {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
     );
   };
 
@@ -192,7 +244,7 @@ const HouseholdManager = ({ navigation }) => {
           success?.message || 'Subscription activated successfully!',
           SimpleToast.LONG,
         );
-        fetchCurrentPlan();
+        handleActivatedPlan(subscription, success);
       },
       error => {
         console.log('[HouseholdManager] Activate error:', JSON.stringify(error));
@@ -227,7 +279,7 @@ const HouseholdManager = ({ navigation }) => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
         SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
-        fetchCurrentPlan();
+        handleActivatedPlan(subscription, success);
       },
       (error) => {
         console.log('[HouseholdManager] Verify error, falling back:', JSON.stringify(error));
@@ -257,19 +309,19 @@ const HouseholdManager = ({ navigation }) => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
         SimpleToast.show('Subscription activated successfully!', SimpleToast.LONG);
-        fetchCurrentPlan();
+        handleActivatedPlan(subscription, success);
       },
       error => {
         console.log('[HouseholdManager] SUBSCRIBE_PLAN error:', JSON.stringify(error));
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Payment received! Please restart app to see your plan.', SimpleToast.LONG);
+        SimpleToast.show('Payment received. Refreshing your membership...', SimpleToast.LONG);
         fetchCurrentPlan();
       },
       fail => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
-        SimpleToast.show('Payment received! Please restart app to see your plan.', SimpleToast.LONG);
+        SimpleToast.show('Payment received. Refreshing your membership...', SimpleToast.LONG);
         fetchCurrentPlan();
       }
     );
@@ -286,7 +338,7 @@ const HouseholdManager = ({ navigation }) => {
         setPaymentLoading(false);
         setSelectedPlanId(null);
         SimpleToast.show(success?.message || 'Subscription activated successfully!', SimpleToast.LONG);
-        fetchCurrentPlan();
+        handleActivatedPlan(subscription, success);
       },
       error => {
         setPaymentLoading(false);
@@ -302,6 +354,12 @@ const HouseholdManager = ({ navigation }) => {
     );
   };
 
+  const hasPaidPlan = hasActivePaidSubscription(currentPlan);
+  const visibleSubscriptions = subscriptions.filter(
+    subscription => !(hasPaidPlan && isFreeSubscriptionPlan(subscription)),
+  );
+  const currentPlanId = getSubscriptionPlanId(currentPlan);
+
   return (
     <CommanView>
       <HeaderForUser
@@ -313,7 +371,7 @@ const HouseholdManager = ({ navigation }) => {
         style_title={styles.headerTitle}
       />
 
-      {loading ? (
+      {loading || currentPlanLoading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#D98579" />
         </View>
@@ -385,10 +443,10 @@ const HouseholdManager = ({ navigation }) => {
           )}
 
           <Typography type={Font.Poppins_Bold} style={styles.sectionTitle}>
-            {subscriptions.length > 0 ? 'Available Plans' : ''}
+            {visibleSubscriptions.length > 0 ? 'Available Plans' : ''}
           </Typography>
 
-          {subscriptions.map((subscription, index) => {
+          {visibleSubscriptions.map((subscription, index) => {
             const extra = subscription?.extra;
             let featureArray = [];
             if (Array.isArray(extra)) {
@@ -452,7 +510,7 @@ const HouseholdManager = ({ navigation }) => {
                 )}
 
                 <View style={styles.planButtons}>
-                  {currentPlan?.subscription_id === subscription.id || currentPlan?.id === subscription.id ? (
+                  {String(currentPlanId) === String(subscription.id) ? (
                     <View style={[styles.upgradeBtn, { backgroundColor: '#4CAF50', paddingVertical: 12, borderRadius: 8, alignItems: 'center' }]}>
                       <Typography type={Font.Poppins_Bold} style={{ color: 'white', fontSize: 16 }}>
                         Active Plan

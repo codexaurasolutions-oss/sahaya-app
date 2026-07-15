@@ -349,8 +349,8 @@ const HouseholdProfile = ({ navigation, route }) => {
     // Address from profile — each address now has household_information + pet_details
     if (profileData?.addresses && profileData.addresses.length > 0) {
       const formattedAddresses = profileData.addresses.map(addr => {
-        const hh = addr?.household_information || {};
-        const rawPets = addr?.pet_details || [];
+        const hh = addr?.householdInformation || addr?.household_information || {};
+        const rawPets = addr?.petDetails || addr?.pet_details || [];
         const pets = rawPets.length > 0
           ? rawPets.map(p => ({ pet_type: p?.pet_type || '', count: p?.pet_count ? String(p.pet_count) : '' }))
           : [{ pet_type: '', count: '' }];
@@ -470,9 +470,12 @@ const HouseholdProfile = ({ navigation, route }) => {
         PROFILE,
         success => {
           if (success?.data) {
-            console.log('success?.data-----000--99-', success?.data);
-            dispatch(userDetails(success?.data?.added_by_user || success?.data));
-            loadProfileData(success?.data?.added_by_user || success?.data);
+            const profileData = success?.data;
+            const isStaff = profileData?.user_role_id === 2 || profileData?.user_role_id === '2';
+            const ownerData = isStaff ? (profileData?.added_by_user || profileData) : profileData;
+            console.log('[HouseholdProfile] Loading profile, isStaff:', isStaff, 'hasAddresses:', ownerData?.addresses?.length);
+            dispatch(userDetails(profileData));
+            loadProfileData(ownerData);
           }
         },
         error => {
@@ -942,6 +945,7 @@ const HouseholdProfile = ({ navigation, route }) => {
                 <GooglePlacesInput
                   title="Search Google Location (Mandatory)"
                   placeholder="Search for your location on Google Maps..."
+                  showMap={true}
                   onPlaceSelected={(location) => {
                     updateAddress(index, 'google_location', location?.google_location || '');
                     updateAddress(index, 'lat', location?.lat || '');

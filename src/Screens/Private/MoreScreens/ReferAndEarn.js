@@ -23,6 +23,13 @@ import SimpleToast from 'react-native-simple-toast';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import EmptyView from '../../../Component/UI/EmptyView';
 
+const formatRewardValue = value => {
+  const numericValue = Number(value || 0);
+  return Number.isInteger(numericValue)
+    ? String(numericValue)
+    : numericValue.toFixed(2);
+};
+
 const ReferAndEarn = ({ navigation }) => {
   const [referralData, setReferralData] = useState(null);
   const [history, setHistory] = useState([]);
@@ -73,7 +80,7 @@ const ReferAndEarn = ({ navigation }) => {
     const code = referralData?.referral_code || '';
     const isStaff = referralData?.is_staff;
     const message = isStaff
-      ? `Hey! I'm using Sahayya to find household jobs. Use my referral code: *${code}* and earn credits for job applications!`
+      ? `Hey! I'm using Sahayya to find household jobs. Use my referral code: *${code}* and help me earn reward points for job credits!`
       : `Hey! I'm using Sahayya to manage household staff. It's super easy to find staff, manage payments, and more.\n\nDownload the Sahayya app and use my referral code: *${code}* to get started!`;
     try {
       await Share.share({ message, title: 'Refer Sahayya' });
@@ -90,15 +97,19 @@ const ReferAndEarn = ({ navigation }) => {
       success => {
         setCreditLoading(false);
         SimpleToast.show(
-          success?.message || 'Credit applied successfully!',
+          success?.message || 'Points redeemed successfully!',
           SimpleToast.SHORT,
         );
         fetchReferralCode();
+        fetchReferralHistory();
       },
       error => {
         setCreditLoading(false);
         SimpleToast.show(
-          error?.response?.data?.message || 'Failed to apply credit',
+          error?.response?.data?.message ||
+            error?.data?.message ||
+            error?.message ||
+            'Failed to redeem points',
           SimpleToast.SHORT,
         );
       },
@@ -108,6 +119,15 @@ const ReferAndEarn = ({ navigation }) => {
       },
     );
   };
+
+  const isStaff = Boolean(referralData?.is_staff);
+  const pointsBalance = Number(
+    referralData?.points_balance ?? referralData?.total_earnings ?? 0,
+  );
+  const redeemedCredits = Number(referralData?.redeemed_credits || 0);
+  const redeemableCredits = Number(referralData?.redeemable_credits || 0);
+  const pointsPerCredit = Number(referralData?.points_per_credit || 10);
+  const pointsPerReferral = Number(referralData?.points_per_referral || 0);
 
   const renderHistoryItem = ({ item }) => (
     <View style={styles.historyItem}>
@@ -119,13 +139,19 @@ const ReferAndEarn = ({ navigation }) => {
           {item?.created_at || item?.date || ''}
         </Typography>
       </View>
-      <Typography
-        type={Font?.Poppins_Medium}
-        size={14}
-        color={item?.status === 'completed' ? '#16A34A' : '#EFB034'}
-      >
-        {item?.status || 'Pending'}
-      </Typography>
+      <View style={styles.historyReward}>
+        {isStaff ? (
+          <Typography type={Font?.Poppins_SemiBold} size={13} color="#D98579">
+            +{formatRewardValue(item?.reward_amount)} points
+          </Typography>
+        ) : null}
+        <Typography
+          type={Font?.Poppins_Medium}
+          size={11}
+          color={item?.status === 'completed' ? '#16A34A' : '#EFB034'}>
+          {item?.status || 'Pending'}
+        </Typography>
+      </View>
     </View>
   );
 
@@ -181,10 +207,10 @@ const ReferAndEarn = ({ navigation }) => {
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Typography type={Font?.Poppins_SemiBold} size={20}>
-              {referralData?.is_staff ? '' : '\u20B9'}{referralData?.is_staff ? (referralData?.wallet_balance || 0) : (referralData?.total_earnings || '0.00')}
+              {isStaff ? formatRewardValue(pointsBalance) : `\u20B9${referralData?.total_earnings || '0.00'}`}
             </Typography>
             <Typography type={Font?.Poppins_Regular} size={12} color="#8C8D8B">
-              {referralData?.is_staff ? 'Credits' : 'Earnings'}
+              {isStaff ? 'Points' : 'Earnings'}
             </Typography>
           </View>
         </View>
@@ -197,47 +223,87 @@ const ReferAndEarn = ({ navigation }) => {
 
       {/* Earnings / Credit Card */}
       <View style={styles.earningsCard}>
-        <Typography type={Font?.Poppins_Medium} size={16}>
-          {referralData?.is_staff ? 'Your Credits' : 'Your Earnings'}
-        </Typography>
-        <View style={styles.earningsRow}>
-          <View style={{ flex: 1 }}>
-            <Typography type={Font?.Poppins_Regular} size={12} color="#8C8D8B">
-              {referralData?.is_staff ? 'Available Credits' : 'Available Credit'}
+        {isStaff ? (
+          <>
+            <Typography type={Font?.Poppins_Medium} size={16}>
+              Referral Rewards
             </Typography>
-            <Typography type={Font?.Poppins_SemiBold} size={24} color="#16A34A">
-              {referralData?.is_staff ? '' : '\u20B9'}{referralData?.is_staff ? (referralData?.wallet_balance || 0) : (referralData?.total_earnings || '0.00')}
-            </Typography>
-          </View>
-          {!referralData?.is_staff && (
+            <View style={styles.rewardBalances}>
+              <View style={styles.rewardBalanceItem}>
+                <Typography type={Font?.Poppins_Regular} size={11} color="#8C8D8B">
+                  Available Points
+                </Typography>
+                <Typography type={Font?.Poppins_SemiBold} size={24} color="#D98579">
+                  {formatRewardValue(pointsBalance)}
+                </Typography>
+              </View>
+              <View style={styles.rewardBalanceDivider} />
+              <View style={styles.rewardBalanceItem}>
+                <Typography type={Font?.Poppins_Regular} size={11} color="#8C8D8B">
+                  Redeemed Credits
+                </Typography>
+                <Typography type={Font?.Poppins_SemiBold} size={24} color="#16A34A">
+                  {formatRewardValue(redeemedCredits)}
+                </Typography>
+              </View>
+            </View>
+            <View style={styles.exchangeCard}>
+              <Typography type={Font?.Poppins_Medium} size={12} color="#7A4A43">
+                {formatRewardValue(pointsPerCredit)} points = 1 job credit
+              </Typography>
+              <Typography type={Font?.Poppins_Regular} size={11} color="#8C6C67">
+                Earn {formatRewardValue(pointsPerReferral)} points for every successful referral.
+              </Typography>
+            </View>
             <Button
-              title={creditLoading ? 'Applying...' : 'Redeem Credit'}
+              title={creditLoading ? 'Redeeming...' : 'Redeem Points'}
               onPress={handleCreditApply}
-              linerColor={['#379AE6', '#3737E6']}
-              main_style={{ width: 150 }}
-              disabled={creditLoading || parseFloat(referralData?.total_earnings || '0') <= 0}
+              main_style={styles.redeemButton}
+              disabled={creditLoading || redeemableCredits < 1}
               loader={creditLoading}
             />
-          )}
-        </View>
-        {referralData?.is_staff ? (
-          <Typography
-            type={Font?.Poppins_Regular}
-            size={12}
-            color="#8C8D8B"
-            style={{ marginTop: 8 }}>
-            Credits are used for job applications. Refer friends to earn more!
-          </Typography>
+            {redeemableCredits < 1 ? (
+              <Typography
+                type={Font?.Poppins_Regular}
+                size={11}
+                color="#8C8D8B"
+                style={styles.redeemHint}>
+                You need at least {formatRewardValue(pointsPerCredit)} points to redeem a credit.
+              </Typography>
+            ) : (
+              <Typography
+                type={Font?.Poppins_Regular}
+                size={11}
+                color="#8C8D8B"
+                style={styles.redeemHint}>
+                You can redeem {formatRewardValue(redeemableCredits)} credit{redeemableCredits === 1 ? '' : 's'} now.
+              </Typography>
+            )}
+          </>
         ) : (
-          parseFloat(referralData?.total_earnings || '0') <= 0 && (
-            <Typography
-              type={Font?.Poppins_Regular}
-              size={12}
-              color="#8C8D8B"
-              style={{ marginTop: 8 }}>
-              Refer friends to start earning credits!
+          <>
+            <Typography type={Font?.Poppins_Medium} size={16}>
+              Your Earnings
             </Typography>
-          )
+            <View style={styles.earningsRow}>
+              <View style={styles.ownerEarnings}>
+                <Typography type={Font?.Poppins_Regular} size={12} color="#8C8D8B">
+                  Available Credit
+                </Typography>
+                <Typography type={Font?.Poppins_SemiBold} size={24} color="#16A34A">
+                  {'\u20B9'}{referralData?.total_earnings || '0.00'}
+                </Typography>
+              </View>
+              <Button
+                title={creditLoading ? 'Applying...' : 'Redeem Credit'}
+                onPress={handleCreditApply}
+                linerColor={['#379AE6', '#3737E6']}
+                main_style={styles.ownerRedeemButton}
+                disabled={creditLoading || parseFloat(referralData?.total_earnings || '0') <= 0}
+                loader={creditLoading}
+              />
+            </View>
+          </>
         )}
       </View>
 
@@ -338,6 +404,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
+  rewardBalances: {
+    flexDirection: 'row',
+    marginTop: 14,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F0E5E3',
+  },
+  rewardBalanceItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  rewardBalanceDivider: {
+    width: 1,
+    backgroundColor: '#E9DEDC',
+  },
+  exchangeCard: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#FFF4F1',
+  },
+  redeemButton: {
+    width: '100%',
+    marginTop: 14,
+  },
+  redeemHint: {
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  ownerEarnings: {
+    flex: 1,
+  },
+  ownerRedeemButton: {
+    width: 150,
+  },
   historyItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -348,5 +450,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#EBEBEA',
+  },
+  historyReward: {
+    alignItems: 'flex-end',
   },
 });

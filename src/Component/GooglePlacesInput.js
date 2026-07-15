@@ -23,6 +23,7 @@ const GooglePlacesInput = ({
   selectedLat = '',
   selectedLong = '',
   autoLocate = true,
+  mapHeight = 180,
 }) => {
   const ref = useRef();
   const [selectedCoords, setSelectedCoords] = useState(null);
@@ -33,6 +34,8 @@ const GooglePlacesInput = ({
 
     if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
       setSelectedCoords({latitude, longitude});
+    } else {
+      setSelectedCoords(null);
     }
   }, [selectedLat, selectedLong]);
   
@@ -56,6 +59,7 @@ const GooglePlacesInput = ({
       let city = '';
       let state = '';
       let pincode = '';
+      let area_locality = '';
       
       // Parse address components
       addressComponents.forEach(component => {
@@ -85,6 +89,15 @@ const GooglePlacesInput = ({
         if (types.includes('postal_code')) {
           pincode = component.long_name;
         }
+
+        if (
+          !area_locality &&
+          (types.includes('sublocality_level_1') ||
+            types.includes('sublocality') ||
+            types.includes('neighborhood'))
+        ) {
+          area_locality = component.long_name;
+        }
       });
       
       // If street is empty, use formatted_address or description
@@ -102,6 +115,8 @@ const GooglePlacesInput = ({
         city,
         state,
         pincode,
+        area_locality,
+        formatted_address: details.formatted_address || data?.description || '',
         lat: String(lat),
         long: String(lng),
         google_location,
@@ -228,7 +243,7 @@ const GooglePlacesInput = ({
             lat={selectedCoords?.latitude || selectedLat}
             long={selectedCoords?.longitude || selectedLong}
             onMarkerDragEnd={handleMapDrag}
-            height={180}
+            height={mapHeight}
             autoLocate={autoLocate}
           />
         )}

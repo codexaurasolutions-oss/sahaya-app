@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSelector } from 'react-redux';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import Typography from '../../../Component/UI/Typography';
 import DropdownComponent from '../../../Component/DropdownComponent';
 import { Font } from '../../../Constants/Font';
@@ -22,6 +22,8 @@ import LocalizedStrings from '../../../Constants/localization';
 import { POST_WITH_TOKEN, GET_WITH_TOKEN, API } from '../../../Backend/Backend';
 import { StaffGetAIData, CATEGORY, SUBSCRIPTION_USER_CURRENT } from '../../../Backend/api_routes';
 import { isPlaceholderImage } from '../../../Utils/ImageUtils';
+import { hasActivePaidSubscription } from '../../../Utils/subscription';
+import { onSubscriptionUpdated } from '../../../Utils/subscriptionEvents';
 
 const EXPERIENCE_OPTIONS = [
   { label: '0-1 Years', value: '0-1' },
@@ -91,6 +93,7 @@ const FindStaff = ({ navigation, route }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [roleOptions, setRoleOptions] = useState([]);
   const [isPremium, setIsPremium] = useState(false);
+  const subscriptionRequestId = useRef(0);
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterExperience, setFilterExperience] = useState(null);
@@ -106,52 +109,64 @@ const FindStaff = ({ navigation, route }) => {
   const [filterSalary, setFilterSalary] = useState(null);
   const [filterStayType, setFilterStayType] = useState(null);
 
+  const checkSubscription = useCallback(({ preserveOnError = false } = {}) => {
+    const requestId = ++subscriptionRequestId.current;
+    GET_WITH_TOKEN(
+      `${SUBSCRIPTION_USER_CURRENT}?refresh=${Date.now()}`,
+      res => {
+        if (requestId !== subscriptionRequestId.current) return;
+        const subscription =
+          res?.subscription || res?.data?.subscription || res?.data;
+        const explicitlyInactive =
+          res?.is_active === false || res?.data?.is_active === false;
+
+        setIsPremium(
+          !explicitlyInactive && hasActivePaidSubscription(subscription),
+        );
+      },
+      () => {
+        if (requestId === subscriptionRequestId.current && !preserveOnError) {
+          setIsPremium(false);
+        }
+      },
+      () => {
+        if (requestId === subscriptionRequestId.current && !preserveOnError) {
+          setIsPremium(false);
+        }
+      },
+      {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+    );
+  }, []);
+
   useEffect(() => {
     fetchCandidates();
     fetchRoleOptions();
-    checkSubscription();
     // Search parameters are fixed for this result-screen instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (isFocused) {
-      checkSubscription();
+      checkSubscription({ preserveOnError: true });
     }
-  }, [isFocused]);
+  }, [checkSubscription, isFocused]);
 
-  const checkSubscription = () => {
-    GET_WITH_TOKEN(
-      SUBSCRIPTION_USER_CURRENT,
-      res => {
-        const sub = res?.subscription;
-        const active = res?.is_active;
+  useEffect(() => {
+    const listener = onSubscriptionUpdated(payload => {
+      const updatedSubscription = payload?.subscription || payload?.plan;
+      const updatedPlan = payload?.plan;
+      setIsPremium(
+        hasActivePaidSubscription(updatedSubscription) ||
+          hasActivePaidSubscription(updatedPlan),
+      );
+      checkSubscription({ preserveOnError: true });
+    });
 
-        const nestedPlan = sub?.subscription;
-        const planPrice = nestedPlan?.price ? parseFloat(nestedPlan.price) : 0;
-        const paidAmount = sub?.amount ? parseFloat(sub.amount) : 0;
-        const paymentStatus = String(sub?.payment_status || '').toLowerCase();
-        const subStatus = String(sub?.status || '').toLowerCase();
-
-        const hasActiveRecord = sub && (subStatus === 'active');
-        const hasPaidPrice = planPrice > 0;
-        const hasPaidAmount = paidAmount > 0;
-        const hasPaidPayment = paymentStatus === 'paid' || paymentStatus === 'completed';
-
-        if (active && hasActiveRecord && (hasPaidPrice || hasPaidAmount || hasPaidPayment)) {
-          setIsPremium(true);
-        } else {
-          setIsPremium(false);
-        }
-      },
-      () => {
-        setIsPremium(false);
-      },
-      () => {
-        setIsPremium(false);
-      }
-    );
-  };
+    return () => listener.remove();
+  }, [checkSubscription]);
 
   const showUpgradeAlert = () => {
     Alert.alert(

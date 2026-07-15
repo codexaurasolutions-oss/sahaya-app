@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -17,9 +17,17 @@ import { ImageConstant } from '../../Constants/ImageConstant';
 import { EarningSummary as EarningSummaryRoute, myWork, AttendanceStaff } from '../../Backend/api_routes';
 import { POST_FORM_DATA, GET_WITH_TOKEN } from '../../Backend/Backend';
 import PaymentReceipt from '../../Component/PaymentReceipt';
+import moment from 'moment';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1500;
+
+const getCurrentMonth = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
 
 const EarningSummary = ({ route }) => {
   const navigation = useNavigation();
@@ -46,14 +54,7 @@ const EarningSummary = ({ route }) => {
     return () => { mountedRef.current = false; };
   }, []);
 
-  const getCurrentMonth = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
-  };
-
-  const fetchAttendanceSummary = (staffId) => {
+  const fetchAttendanceSummary = useCallback((staffId) => {
     if (!staffId) return;
     const now = new Date();
     const month = now.getMonth() + 1;
@@ -84,9 +85,9 @@ const EarningSummary = ({ route }) => {
       },
       () => {},
     );
-  };
+  }, []);
 
-  const fetchAdvanceBalance = () => {
+  const fetchAdvanceBalance = useCallback(() => {
     GET_WITH_TOKEN(
       'my-advances',
       success => {
@@ -97,9 +98,9 @@ const EarningSummary = ({ route }) => {
       () => {},
       () => {},
     );
-  };
+  }, []);
 
-  const loadEarnings = (id) => {
+  const loadEarnings = useCallback((id) => {
     const month = getCurrentMonth();
     const hasValidJobId = id !== undefined && id !== null && id !== '' && id !== 'null' && id !== 'undefined' && Number(id) > 0;
     const url = hasValidJobId
@@ -157,13 +158,15 @@ const EarningSummary = ({ route }) => {
         setIsLoading(false);
       },
     );
-  };
+  }, []);
 
-  const fetchSummary = () => {
+  const fetchSummary = useCallback((resetRetries = true) => {
     setIsLoading(true);
     setErrorMessage('');
-    retryCountRef.current = 0;
-    retriedJobIdRef.current = false;
+    if (resetRetries) {
+      retryCountRef.current = 0;
+      retriedJobIdRef.current = false;
+    }
 
     if (jobID) {
       loadEarnings(jobID);
@@ -198,7 +201,7 @@ const EarningSummary = ({ route }) => {
           if ((error?.status === 429 || error?.data?.status === 429) && retryCountRef.current < MAX_RETRIES) {
             retryCountRef.current++;
             setTimeout(() => {
-              if (mountedRef.current) fetchSummary();
+              if (mountedRef.current) fetchSummary(false);
             }, RETRY_DELAY * retryCountRef.current);
             return;
           }
@@ -210,7 +213,7 @@ const EarningSummary = ({ route }) => {
         },
       );
     }
-  };
+  }, [jobID, loadEarnings]);
 
   useEffect(() => {
     if (isFocused) {
@@ -220,7 +223,7 @@ const EarningSummary = ({ route }) => {
       }
       fetchAdvanceBalance();
     }
-  }, [isFocused, jobID, userDetail?.id]);
+  }, [fetchAdvanceBalance, fetchAttendanceSummary, fetchSummary, isFocused, userDetail?.id]);
 
   const paymentHistory = summary2?.payment_history || [];
 
@@ -406,6 +409,32 @@ const EarningSummary = ({ route }) => {
             {formatCurrency(totalPayableAmount)}
           </Typography>
         </View>
+
+        {/* View Current Month Slip Button */}
+        {totalPayableAmount > 0 && (
+          <TouchableOpacity
+            style={{ backgroundColor: '#FFF5EE', borderWidth: 1, borderColor: '#D98579', borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 12 }}
+            onPress={() => {
+              setSelectedPayment({
+                ...summary2,
+                net_salary: totalPayableAmount,
+                amount: totalPayableAmount,
+                staff_name: staffName,
+                salary_period: moment().format('MMMM YYYY'),
+                created_at: summary2?.payment_date || new Date().toISOString(),
+                monthly_salary: monthlySalary,
+                worked_days: attendanceSummary.totalWorked,
+                total_days: attendanceSummary.daysInMonth,
+                salary_breakdown: summary2?.earnings_breakdown || {},
+                advance_payment: advanceRepayment,
+                status: summary2?.payment_status || 'Pending',
+              });
+              setShowReceipt(true);
+            }}
+          >
+            <Typography type={Font.Poppins_SemiBold} size={14} color="#D98579">View Monthly Salary Slip</Typography>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Payment History */}
@@ -424,10 +453,20 @@ const EarningSummary = ({ route }) => {
               onPress={() => {
                 setSelectedPayment({
                   ...entry,
+                  net_salary: entry?.amount || entry?.net_salary || 0,
+                  amount: entry?.amount || entry?.net_salary || 0,
                   staff_name: summary2?.staff_name || staffName,
-                  salary_period: entry?.month,
-                  monthly_salary: summary2?.salary_summary?.current_monthly_salary,
+                  salary_period: entry?.month || '',
+                  created_at: entry?.paid_on || entry?.date || entry?.created_at || new Date().toISOString(),
+                  monthly_salary: summary2?.salary_summary?.current_monthly_salary || 0,
                   attendance_summary: summary2?.attendance_summary,
+                  worked_days: summary2?.attendance_summary?.present_days,
+                  total_days: summary2?.attendance_summary?.total_working_days,
+                  salary_breakdown: summary2?.earnings_breakdown || {},
+                  advance_payment: summary2?.deductions?.advance_repayment?.amount || 0,
+                  payment_mode: entry?.payment_mode || 'cash',
+                  payment_id: entry?.payment_id || entry?.id,
+                  status: entry?.status || summary2?.payment_status || 'Paid',
                 });
                 setShowReceipt(true);
               }}

@@ -12,6 +12,7 @@ import { useSelector } from 'react-redux'
 import SimpleToast from 'react-native-simple-toast'
 import LocalizedStrings from '../../Constants/localization'
 import { initiatePayment } from '../../Services/RazorpayService'
+import { hasActivePaidSubscription, isFreeSubscriptionPlan } from '../../Utils/subscription'
 
 
 const MemberShip = ({ navigation }) => {
@@ -28,6 +29,8 @@ const MemberShip = ({ navigation }) => {
     useEffect(() => {
         fetchSubscriptions();
         fetchCurrentSubscription();
+        // Membership data is loaded once whenever this screen is mounted.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchCurrentSubscription = () => {
@@ -317,6 +320,11 @@ const MemberShip = ({ navigation }) => {
         );
     };
 
+    const hasPaidPlan = hasActivePaidSubscription(currentSub);
+    const visibleSubscriptions = subscriptions.filter(
+        subscription => !(hasPaidPlan && isFreeSubscriptionPlan(subscription)),
+    );
+
     return (
         <CommanView>
             <HeaderForUser
@@ -388,7 +396,7 @@ const MemberShip = ({ navigation }) => {
                 </View>
             )}
 
-            {loading ? (
+            {loading || currentSubLoading ? (
                 <View style={styles.loaderContainer}>
                     <ActivityIndicator size="large" color="#D98579" />
                 </View>
@@ -403,7 +411,7 @@ const MemberShip = ({ navigation }) => {
                     contentContainerStyle={styles.scrollContainer}
                     showsVerticalScrollIndicator={false}
                 >
-                    {subscriptions.map((subscription, index) => {
+                    {visibleSubscriptions.map((subscription, index) => {
                         const extra = subscription?.extra;
                         let featureArray = [];
                         if (Array.isArray(extra)) {

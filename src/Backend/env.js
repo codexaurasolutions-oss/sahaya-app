@@ -30,13 +30,12 @@ export const BASE_URL = PRODUCTION_API_URL;
 // Razorpay Payment API Base URL (for create-order, verify-payment, etc.)
 export const RAZORPAY_API_URL = 'https://sahayaa-backend-production.up.railway.app/api/';
 
-// Test Mode Keys
+// The public checkout key is safe to ship in the mobile app. The secret key
+// must remain on the backend and is never needed by the client.
 export const RAZORPAY_KEY_ID = 'rzp_test_Rcx3E3rF2dNmEc';
-export const RAZORPAY_KEY_SECRET = 'Ol9wAXzijPt1iifMrrCtG6Zz';
 
 // Production Keys (Replace for production deployment)
 // export const RAZORPAY_KEY_ID = 'rzp_live_XXXXXXXXXXXXXXX';
-// export const RAZORPAY_KEY_SECRET = 'XXXXXXXXXXXXXXXXXXXXXXXX';
 
 // ===========================================
 // GOOGLE MAPS
@@ -74,7 +73,6 @@ export default {
   BASE_URL,
   RAZORPAY_API_URL,
   RAZORPAY_KEY_ID,
-  RAZORPAY_KEY_SECRET,
   mapKey,
   GOOGLE_MAPS_API_KEY,
   MixPanelKey,

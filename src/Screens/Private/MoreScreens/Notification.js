@@ -126,8 +126,22 @@ const Notification = ({ navigation }) => {
       markAsRead(item.id);
     }
 
-    const typeStr = (item?.type || '').toLowerCase();
-    const messageStr = (item?.message || item?.title || item?.body || '').toLowerCase();
+    const typeStr = String(item?.type || item?.data?.type || '').toLowerCase();
+    const messageStr = String(
+      item?.message || item?.title || item?.body || '',
+    ).toLowerCase();
+
+    if (typeStr.includes('leave') || messageStr.includes('leave')) {
+      const leaveRequestId =
+        item?.leave_request_id ||
+        item?.application_id ||
+        item?.data?.leave_request_id ||
+        item?.data?.application_id ||
+        null;
+
+      navigation.navigate('Leave', {leaveRequestId});
+      return;
+    }
 
     if (typeStr === 'job_application' || messageStr.includes('has applied for the job')) {
       const jobId = getNotificationJobId(item);

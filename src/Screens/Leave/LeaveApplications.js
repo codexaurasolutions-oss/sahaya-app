@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   StyleSheet,
   View,
   ScrollView,
@@ -21,12 +22,16 @@ import {
 import SimpleToast from 'react-native-simple-toast';
 import { useIsFocused } from '@react-navigation/native';
 
-export default function LeaveApplicationsScreen({ navigation }) {
+export default function LeaveApplicationsScreen({ navigation, route }) {
   const [leaveList, setLeaveList] = useState([]);
+  const [processingRequest, setProcessingRequest] = useState(null);
   const isFocused = useIsFocused();
+  const selectedLeaveId = route?.params?.leaveRequestId;
 
   useEffect(() => {
-    fetchLeaveList();
+    if (isFocused) {
+      fetchLeaveList();
+    }
   }, [isFocused]);
 
   const fetchLeaveList = () => {
@@ -49,23 +54,32 @@ export default function LeaveApplicationsScreen({ navigation }) {
   };
 
   const manageLeaves = (type, id) => {
-    const route = type == 'Approve' ? LeaveApprove : LeaveRejectr;
+    if (processingRequest) return;
+
+    const requestRoute = type === 'Approve' ? LeaveApprove : LeaveRejectr;
+    setProcessingRequest({id, type});
     POST_WITH_TOKEN(
-      `${route}/${id}`,
+      `${requestRoute}/${id}`,
       {},
       success => {
-
+        setProcessingRequest(null);
         fetchLeaveList();
         SimpleToast.show(
-          success?.message || 'Quit job request submitted successfully!',
+          success?.message ||
+            `Leave request ${type === 'Approve' ? 'approved' : 'rejected'} successfully!`,
           SimpleToast.SHORT,
         );
       },
       error => {
-
+        setProcessingRequest(null);
+        SimpleToast.show(
+          error?.data?.message || error?.message || 'Could not update leave request.',
+          SimpleToast.SHORT,
+        );
       },
       fail => {
-
+        setProcessingRequest(null);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
     );
   };
@@ -121,7 +135,15 @@ export default function LeaveApplicationsScreen({ navigation }) {
           const status = item?.status || 'Pending';
 
           return (
-          <View key={item.id} style={styles.card}>
+          <View
+            key={item.id}
+            style={[
+              styles.card,
+              String(selectedLeaveId || '') === String(item.id)
+                ? styles.selectedCard
+                : null,
+            ]}
+          >
             <View style={styles.headerRow}>
               <View style={styles.avatar}>
                 <Typography
@@ -204,12 +226,18 @@ export default function LeaveApplicationsScreen({ navigation }) {
                     },
                   ]}
                   onPress={() => manageLeaves('Reject', item?.id)}
+                  disabled={processingRequest !== null}
                 >
-                  <Image
-                    source={ImageConstant.X}
-                    style={styles.icon}
-                    resizeMode="contain"
-                  />
+                  {processingRequest?.id === item?.id &&
+                  processingRequest?.type === 'Reject' ? (
+                    <ActivityIndicator size="small" color="#D98579" />
+                  ) : (
+                    <Image
+                      source={ImageConstant.X}
+                      style={styles.icon}
+                      resizeMode="contain"
+                    />
+                  )}
                   <Typography
                     type={Font.Poppins_Regular}
                     style={{ color: '#D98579', fontSize: 13, marginLeft: 4 }}
@@ -221,12 +249,18 @@ export default function LeaveApplicationsScreen({ navigation }) {
                 <TouchableOpacity
                   style={[styles.actionButton, { backgroundColor: '#D98579' }]}
                   onPress={() => manageLeaves('Approve', item?.id)}
+                  disabled={processingRequest !== null}
                 >
-                  <Image
-                    source={ImageConstant.correct}
-                    style={styles.icon}
-                    resizeMode="contain"
-                  />
+                  {processingRequest?.id === item?.id &&
+                  processingRequest?.type === 'Approve' ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Image
+                      source={ImageConstant.correct}
+                      style={styles.icon}
+                      resizeMode="contain"
+                    />
+                  )}
                   <Typography
                     type={Font.Poppins_Regular}
                     style={{ color: '#FFFFFF', fontSize: 13, marginLeft: 4 }}
@@ -252,6 +286,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 2,
     borderColor: '#F0F0F0',
+  },
+  selectedCard: {
+    borderColor: '#D98579',
+    backgroundColor: '#FFF8F6',
   },
   headerRow: {
     flexDirection: 'row',

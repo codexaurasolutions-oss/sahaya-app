@@ -247,6 +247,12 @@ const More = ({ navigation }) => {
           onPress={() => navigation.navigate('Notification')}
         />
         <Option
+          Images={ImageConstant?.Calendar || ImageConstant?.lines}
+          title="Leave Requests"
+          subtitle="Review and approve staff leave requests"
+          onPress={() => navigation.navigate('Leave', {leaveRequestId: null})}
+        />
+        <Option
           Images={ImageConstant?.staff}
           isBorder={true}
           title={LocalizedStrings.FamilyMembers.title || 'Family Members'}
