@@ -28,6 +28,7 @@ const StaffWallet = ({ navigation }) => {
   const [limitInfo, setLimitInfo] = useState(null);
   const [payingLimit, setPayingLimit] = useState(false);
   const [creditsToBuy, setCreditsToBuy] = useState('10');
+  const creditsToPurchase = Number.parseInt(creditsToBuy, 10) || 0;
 
   const fetchWalletStatus = useCallback(() => {
     setLoading(true);
@@ -59,7 +60,7 @@ const StaffWallet = ({ navigation }) => {
 
   const handlePurchaseCredits = () => {
     if (payingLimit) return;
-    if (!creditsToBuy || parseInt(creditsToBuy, 10) < 1) {
+    if (creditsToPurchase < 1 || creditsToPurchase > 10000) {
       SimpleToast.show('Please enter valid credits to purchase', SimpleToast.SHORT);
       return;
     }
@@ -67,7 +68,7 @@ const StaffWallet = ({ navigation }) => {
 
     POST_WITH_TOKEN(
       JOB_LIMIT_CREATE_ORDER,
-      { credits_to_purchase: parseInt(creditsToBuy, 10) },
+      { credits_to_purchase: creditsToPurchase },
       async success => {
         if (success?.status === 'success') {
           const order = success?.data;
@@ -94,7 +95,7 @@ const StaffWallet = ({ navigation }) => {
                   razorpay_order_id: paymentResult.orderId,
                   razorpay_payment_id: paymentResult.paymentId,
                   razorpay_signature: paymentResult.signature,
-                  credits_to_purchase: parseInt(creditsToBuy, 10),
+                  credits_to_purchase: creditsToPurchase,
                 },
                 verifySuccess => {
                   setPayingLimit(false);
@@ -132,7 +133,7 @@ const StaffWallet = ({ navigation }) => {
   };
 
   const pricePerCredit = limitInfo?.credit_purchase_price || 10;
-  const totalPrice = parseInt(creditsToBuy || 0, 10) * pricePerCredit;
+  const totalPrice = creditsToPurchase * pricePerCredit;
 
   return (
     <CommanView>
@@ -191,8 +192,11 @@ const StaffWallet = ({ navigation }) => {
                   <Input
                     title="Credits to purchase"
                     value={String(creditsToBuy)}
-                    onChange={setCreditsToBuy}
+                    onChange={value =>
+                      setCreditsToBuy(value.replace(/[^0-9]/g, '').slice(0, 5))
+                    }
                     keyboardType="numeric"
+                    maxLength={5}
                     style_input={styles.inputStyle}
                   />
                   

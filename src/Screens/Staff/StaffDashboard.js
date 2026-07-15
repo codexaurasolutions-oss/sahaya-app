@@ -174,7 +174,7 @@ const StaffDashboard = ({ navigation }) => {
     <CommanView>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, backgroundColor: '#FFFFFF' }}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('ReferAndEarn')}
+          onPress={() => navigation.navigate('StaffWallet')}
           style={{ flexDirection: 'row', alignItems: 'center' }}
         >
           <View style={{

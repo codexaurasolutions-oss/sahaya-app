@@ -166,6 +166,7 @@ export const StaffAvailabilityUpdate = 'staff/availability/update';
 export const StaffAvailabilityStatus = 'staff/availability/status';
 export const StaffAvailableList = 'staff/available-list';
 export const StaffGetAIData = 'admin/staff/get-ai-data';
+export const VOICE_TRANSCRIBE = 'voice/transcribe';
 export const JobGetAIData = 'admin/staff/get-job-data';
 export const StaffAvailableDetail = 'staff/available';
 export const HireMeOptIn = 'staff/hire-me/opt-in';

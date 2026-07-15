@@ -237,6 +237,7 @@ export const POST_FORM_DATA = async (
   onFail = () => {
     SimpleToast.show('Check Network, Try Again.', SimpleToast.SHORT);
   },
+  options = {},
 ) => {
   const token = store.getState().Token;
   const isPlainObject =
@@ -262,6 +263,7 @@ export const POST_FORM_DATA = async (
         ...(sendAsJson ? {'Content-Type': 'application/json'} : {}),
       },
       body: requestBody,
+      timeout: options.timeout || 30000,
     });
   } catch (err) {
     _reportFetchFailure(err, onFail, 'POST_FORM_DATA request failed');
