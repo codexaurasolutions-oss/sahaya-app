@@ -141,7 +141,6 @@ const EditProfile = ({ navigation, route }) => {
     { label: 'ਪੰਜਾਬੀ (Punjabi)', value: 'pa' },
     { label: 'ଓଡ଼ିଆ (Odia)', value: 'or' },
     { label: 'অসমীয়া (Assamese)', value: 'as' },
-    { label: 'اردو (Urdu)', value: 'ur' },
     { label: 'नेपाली (Nepali)', value: 'ne' },
   ];
 

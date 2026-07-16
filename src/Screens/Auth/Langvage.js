@@ -12,6 +12,7 @@ import Button from '../../Component/Button';
 import Typography from '../../Component/UI/Typography';
 import CommanView from '../../Component/CommanView';
 import LocalizedStrings from '../../Constants/localization';
+import { setLanguage as saveLanguage } from '../../Constants/AsyncStorage';
 
 const languages = [
   'English',
@@ -26,7 +27,6 @@ const languages = [
   'ਪੰਜਾਬੀ (Punjabi)',
   'ଓଡ଼ିଆ (Odia)',
   'অসমীয়া (Assamese)',
-  'اردو (Urdu)',
   'नेपाली (Nepali)',
 ];
 
@@ -39,7 +39,7 @@ const Language = ({ navigation }) => {
     LocalizedStrings.setLanguage('en');
   }, []);
 
-  const handleLanguageSelect = (language) => {
+  const handleLanguageSelect = async language => {
     setSelectedLang(language);
 
     // Set the language based on selection
@@ -55,9 +55,9 @@ const Language = ({ navigation }) => {
     else if (language.includes('ਪੰਜਾਬੀ')) langCode = 'pa';
     else if (language.includes('ଓଡ଼ିଆ')) langCode = 'or';
     else if (language.includes('অসমীয়া')) langCode = 'as';
-    else if (language.includes('اردو')) langCode = 'ur';
     else if (language.includes('नेपाली')) langCode = 'ne';
 
+    await saveLanguage(langCode);
     LocalizedStrings.setLanguage(langCode);
   };
 

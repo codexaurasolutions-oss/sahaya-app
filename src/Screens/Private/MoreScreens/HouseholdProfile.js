@@ -183,7 +183,6 @@ const HouseholdProfile = ({ navigation, route }) => {
     { label: 'Punjabi', value: 'pa' },
     { label: 'Odia', value: 'or' },
     { label: 'Assamese', value: 'as' },
-    { label: 'Urdu', value: 'ur' },
     { label: 'Nepali', value: 'ne' },
   ];
 

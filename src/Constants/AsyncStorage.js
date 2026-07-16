@@ -1,13 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const normalizeAppLanguage = lang => (lang === 'ur' ? 'hi' : lang);
+
 export const getLanguage = async () => {
   const language = await AsyncStorage.getItem('LANGUAGE');
+  const normalizedLanguage = normalizeAppLanguage(language);
 
-  return language;
+  if (language && language !== normalizedLanguage) {
+    await AsyncStorage.setItem('LANGUAGE', normalizedLanguage);
+  }
+
+  return normalizedLanguage;
 };
 
 export const setLanguage = async lang => {
-  return await AsyncStorage.setItem('LANGUAGE', lang)
+  return await AsyncStorage.setItem('LANGUAGE', normalizeAppLanguage(lang))
     .then(res => res)
     .catch(e => e);
 };
