@@ -19,7 +19,7 @@ const AIJobSearch = ({navigation}) => {
 
   // AI job search requires an active membership. Staff start on a free plan at
   // signup; once that is exhausted, they must pick a membership to continue.
-  const handleFindJobs = query => {
+  const handleFindJobs = (query, {fromVoice = false} = {}) => {
     if (checking) return;
     const searchText = typeof query === 'string' ? query.trim() : Describe.trim();
     setChecking(true);
@@ -32,7 +32,10 @@ const AIJobSearch = ({navigation}) => {
           subscription &&
           (Array.isArray(subscription) ? subscription.length > 0 : true);
         if (hasActiveSubscription) {
-          navigation.navigate('AIJobResults', {description: searchText});
+          navigation.navigate('AIJobResults', {
+            description: searchText,
+            voiceQuery: fromVoice,
+          });
         } else {
           SimpleToast.show(
             'Your free plan is over. Please purchase a membership to use AI job search.',
@@ -61,7 +64,7 @@ const AIJobSearch = ({navigation}) => {
     onError: message => SimpleToast.show(message, SimpleToast.LONG),
     onResult: transcript => {
       setDescribe(transcript);
-      handleFindJobs(transcript);
+      handleFindJobs(transcript, {fromVoice: true});
     },
   });
   const suggestions = [

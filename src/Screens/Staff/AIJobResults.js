@@ -18,6 +18,7 @@ import HeaderForUser from '../../Component/HeaderForUser';
 import CommanView from '../../Component/CommanView';
 import { POST_WITH_TOKEN } from '../../Backend/Backend';
 import { JobGetAIData } from '../../Backend/api_routes';
+import {speakSearchQuery} from '../../Utils/speechOutput';
 
 const COMPENSATION_TYPE_OPTIONS = [
   { label: 'Monthly', value: 'monthly' },
@@ -42,6 +43,7 @@ const SALARY_OPTIONS = [
 
 const AIJobResults = ({ navigation, route }) => {
   const description = route?.params?.description || '';
+  const voiceQuery = route?.params?.voiceQuery === true;
   const userDetails = useSelector(state => state?.userDetails);
   const userCity = userDetails?.addresses?.[0]?.city || userDetails?.city || '';
   const userState = userDetails?.addresses?.[0]?.state || userDetails?.state || '';
@@ -53,6 +55,7 @@ const AIJobResults = ({ navigation, route }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const voiceQuerySpoken = React.useRef(false);
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterLocation, setFilterLocation] = useState('');
@@ -107,6 +110,11 @@ const AIJobResults = ({ navigation, route }) => {
         }
         const data = response?.data || [];
         const list = Array.isArray(data) ? data : [];
+
+        if (voiceQuery && !voiceQuerySpoken.current && description.trim()) {
+          voiceQuerySpoken.current = true;
+          speakSearchQuery(description);
+        }
 
         const mapped = list.map((item) => ({
           id: item?.id,

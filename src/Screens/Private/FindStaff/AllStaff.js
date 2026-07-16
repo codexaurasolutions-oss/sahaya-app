@@ -15,16 +15,32 @@ import useVoiceSearch from '../../../Utils/useVoiceSearch';
 const AllStaff = ({navigation}) => {
   const [Describe, setDescribe] = useState('');
 
-  const runStaffSearch = query => {
+  const runStaffSearch = (
+    query,
+    {nearby = false, fromVoice = false} = {},
+  ) => {
     const searchText = typeof query === 'string' ? query.trim() : Describe.trim();
-    navigation.navigate('FindStaff', {description: searchText});
+
+    if (!searchText && !nearby) {
+      SimpleToast.show(
+        'Please describe the staff you need or use Staff Near Me.',
+        SimpleToast.SHORT,
+      );
+      return;
+    }
+
+    navigation.navigate('FindStaff', {
+      description: nearby ? 'staff near me' : searchText,
+      nearby,
+      voiceQuery: fromVoice,
+    });
   };
 
   const voiceSearch = useVoiceSearch({
     onError: message => SimpleToast.show(message, SimpleToast.LONG),
     onResult: transcript => {
       setDescribe(transcript);
-      runStaffSearch(transcript);
+      runStaffSearch(transcript, {fromVoice: true});
     },
   });
 
@@ -110,8 +126,8 @@ const AllStaff = ({navigation}) => {
             title={LocalizedStrings.FindStaffAI.Find_Staff}
             main_style={{ width: '100%' }}
           />
-          <TouchableOpacity 
-            onPress={() => navigation.navigate("FindStaff", { description: '' })}
+          <TouchableOpacity
+            onPress={() => runStaffSearch('staff near me', {nearby: true})}
             style={styles.secondaryBtn}
           >
             <Typography type={Font?.Poppins_Medium} size={14} color="#D98579">

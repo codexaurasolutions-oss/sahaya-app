@@ -24,6 +24,7 @@ import { StaffGetAIData, CATEGORY, SUBSCRIPTION_USER_CURRENT } from '../../../Ba
 import { isPlaceholderImage } from '../../../Utils/ImageUtils';
 import { hasActivePaidSubscription } from '../../../Utils/subscription';
 import { onSubscriptionUpdated } from '../../../Utils/subscriptionEvents';
+import {speakSearchQuery} from '../../../Utils/speechOutput';
 
 const EXPERIENCE_OPTIONS = [
   { label: '0-1 Years', value: '0-1' },
@@ -69,11 +70,26 @@ const parseCoordinateValue = (value) => {
 const FindStaff = ({ navigation, route }) => {
   const isFocused = useIsFocused();
   const description = route?.params?.description || '';
+  const nearbyOnly = route?.params?.nearby === true;
+  const voiceQuery = route?.params?.voiceQuery === true;
   const userDetails = useSelector(state => state?.userDetails);
-  const userCity = userDetails?.addresses?.[0]?.city || userDetails?.city || '';
-  const userState = userDetails?.addresses?.[0]?.state || userDetails?.state || '';
+  const primaryAddress = React.useMemo(() => {
+    const addresses = Array.isArray(userDetails?.addresses)
+      ? userDetails.addresses
+      : [];
+
+    return (
+      addresses.find(address => address?.is_primary === true || address?.is_primary === 1) ||
+      addresses[0] ||
+      {}
+    );
+  }, [userDetails]);
+  const userCity = primaryAddress?.city || userDetails?.city || userDetails?.current_city || '';
+  const rawUserState = primaryAddress?.state || userDetails?.state || userDetails?.current_state || '';
+  const userState = typeof rawUserState === 'string'
+    ? rawUserState
+    : rawUserState?.label || rawUserState?.name || '';
   const searchCoordinates = React.useMemo(() => {
-    const primaryAddress = userDetails?.addresses?.[0] || {};
     const lat = primaryAddress?.lat ?? primaryAddress?.latitude ?? userDetails?.lat ?? userDetails?.latitude;
     const long = primaryAddress?.long ?? primaryAddress?.longitude ?? userDetails?.long ?? userDetails?.longitude;
     const parsedLat = parseCoordinateValue(lat);
@@ -84,7 +100,7 @@ const FindStaff = ({ navigation, route }) => {
     }
 
     return { lat: parsedLat, long: parsedLong };
-  }, [userDetails]);
+  }, [primaryAddress, userDetails]);
   const [allCandidates, setAllCandidates] = useState([]);
   const [candidates, setCandidates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,6 +110,7 @@ const FindStaff = ({ navigation, route }) => {
   const [roleOptions, setRoleOptions] = useState([]);
   const [isPremium, setIsPremium] = useState(false);
   const subscriptionRequestId = useRef(0);
+  const voiceQuerySpoken = useRef(false);
 
   const [filterRole, setFilterRole] = useState(null);
   const [filterExperience, setFilterExperience] = useState(null);
@@ -244,7 +261,8 @@ const FindStaff = ({ navigation, route }) => {
     setErrorMessage('');
 
     const normalizedQuery = String(description).toLowerCase();
-    const isNearbyQuery = normalizedQuery.includes('near me') || normalizedQuery.includes('nearby');
+    const isNearbyQuery = nearbyOnly ||
+      /\b(?:near\s+me|nearby|around\s+me|close\s+to\s+me|mere\s+paas)\b|पास|దగ్గర|సమీప/iu.test(normalizedQuery);
     const requestPayload = { query: description, query_text: description };
 
     if (userCity) {
@@ -261,6 +279,7 @@ const FindStaff = ({ navigation, route }) => {
     }
 
     if (isNearbyQuery) {
+      requestPayload.nearby = true;
       requestPayload.radius_km = 50;
     }
 
@@ -277,6 +296,16 @@ const FindStaff = ({ navigation, route }) => {
         }
         const data = response?.data || [];
         const list = Array.isArray(data) ? data : [];
+
+        if (voiceQuery && !voiceQuerySpoken.current && description.trim()) {
+          voiceQuerySpoken.current = true;
+          speakSearchQuery(description);
+        }
+
+        if (isNearbyQuery && list.length === 0) {
+          const area = userCity || userState || 'your saved area';
+          setErrorMessage(`No available staff found near ${area}.`);
+        }
 
         const mapped = list.map((item) => {
           const workInfo = item?.user_work_info || {};

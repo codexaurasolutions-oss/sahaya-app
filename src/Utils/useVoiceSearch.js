@@ -8,6 +8,10 @@ import Sound, {
 } from 'react-native-nitro-sound';
 import {POST_FORM_DATA} from '../Backend/Backend';
 import {VOICE_TRANSCRIBE} from '../Backend/api_routes';
+import {
+  hasTrailingSilence,
+  isSpeechMetering,
+} from './voiceEndpointing';
 
 const MAX_RECORDING_MS = 12000;
 const AUDIO_SETTINGS = {
@@ -54,6 +58,8 @@ const useVoiceSearch = ({disabled = false, onError, onResult}) => {
   const busyRef = useRef(false);
   const mountedRef = useRef(true);
   const recordingRef = useRef(false);
+  const speechDetectedRef = useRef(false);
+  const lastSpeechAtRef = useRef(0);
   const finishRecordingRef = useRef(null);
   const onErrorRef = useRef(onError);
   const onResultRef = useRef(onResult);
@@ -70,8 +76,13 @@ const useVoiceSearch = ({disabled = false, onError, onResult}) => {
 
   const resetVoiceState = useCallback(() => {
     clearAutoStopTimer();
+    try {
+      Sound.removeRecordBackListener();
+    } catch (error) {}
     busyRef.current = false;
     recordingRef.current = false;
+    speechDetectedRef.current = false;
+    lastSpeechAtRef.current = 0;
 
     if (mountedRef.current) {
       setIsListening(false);
@@ -180,7 +191,32 @@ const useVoiceSearch = ({disabled = false, onError, onResult}) => {
         return;
       }
 
-      await Sound.startRecorder(undefined, AUDIO_SETTINGS, false);
+      speechDetectedRef.current = false;
+      lastSpeechAtRef.current = 0;
+      Sound.addRecordBackListener(recording => {
+        if (!recordingRef.current) {
+          return;
+        }
+
+        const metering = Number(recording?.currentMetering);
+        const now = Date.now();
+
+        if (isSpeechMetering(metering)) {
+          speechDetectedRef.current = true;
+          lastSpeechAtRef.current = now;
+          return;
+        }
+
+        if (hasTrailingSilence({
+          speechDetected: speechDetectedRef.current,
+          lastSpeechAt: lastSpeechAtRef.current,
+          now,
+        })) {
+          finishRecordingRef.current?.();
+        }
+      });
+
+      await Sound.startRecorder(undefined, AUDIO_SETTINGS, true);
       recordingRef.current = true;
 
       if (mountedRef.current) {
@@ -212,6 +248,10 @@ const useVoiceSearch = ({disabled = false, onError, onResult}) => {
         recordingRef.current = false;
         Sound.stopRecorder().catch(() => {});
       }
+
+      try {
+        Sound.removeRecordBackListener();
+      } catch (error) {}
     };
   }, [clearAutoStopTimer]);
 
