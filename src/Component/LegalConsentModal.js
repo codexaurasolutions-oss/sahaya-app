@@ -99,6 +99,11 @@ const LegalConsentModal = ({
             onScroll={handleScroll}
             scrollEventThrottle={16}
             bounces={false}
+            onContentSizeChange={(w, h) => {
+              if (h <= 400) {
+                setHasScrolledToBottom(true);
+              }
+            }}
           >
             {contentSections.map((section, idx) => (
               <View key={idx} style={styles.section}>
