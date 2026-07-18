@@ -209,6 +209,12 @@ export const BankAccountDelete = 'bank-accounts/delete';
 export const BankAccountSetDefault = 'bank-accounts/set';
 
 // ===========================================
+// LEGAL CONSENT
+// ===========================================
+export const LEGAL_CONSENT = 'legal-consent';
+export const LEGAL_CONSENT_BULK = 'legal-consent/bulk';
+
+// ===========================================
 // MULTI-LANGUAGE
 // ===========================================
 export const LanguageList = 'languages';

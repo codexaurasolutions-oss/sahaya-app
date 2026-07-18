@@ -11,8 +11,15 @@ import Button from '../../Component/Button';
 import LocalizedStrings from '../../Constants/localization';
 import { validators } from './../../Backend/Validator';
 import { isValidForm } from '../../Backend/Utility';
-import { LOGIN } from './../../Backend/api_routes';
+import { LOGIN, LEGAL_CONSENT_BULK } from './../../Backend/api_routes';
 import { POST } from '../../Backend/Backend';
+import LegalConsentModal from '../../Component/LegalConsentModal';
+import {
+  PRIVACY_POLICY_CONTENT,
+  PRIVACY_POLICY_CHECKBOXES,
+  DISCLAIMER_CONTENT,
+  DISCLAIMER_CHECKBOXES,
+} from '../../Constants/legalContents';
 
 const Login = ({ navigation }) => {
   const [mobile, setMobile] = useState('');
@@ -20,6 +27,9 @@ const Login = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
   const [termsError, setTermsError] = useState('');
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
 
   const [selectedCountry, setSelectedCountry] = useState({
     flag: '🇮🇳',
@@ -52,58 +62,80 @@ const Login = ({ navigation }) => {
     }
 
     if (isValidForm(error)) {
-      setIsLoading(true);
       var payload = {
         phone_number: mobile,
         country_code: selectedCountry.dial_code,
       };
-
-      POST(
-        LOGIN,
-        payload,
-        response => {
-          setIsLoading(false);
-          if (response?.status === true) {
-            navigation?.navigate('Otp', {
-              type: 'login',
-              mobile: mobile,
-              countryCode: selectedCountry.dial_code,
-              user_id: response?.user_id,
-              testOtp: response?.otp,
-            });
-          } else {
-            setMobileError(
-              response?.message ||
-                LocalizedStrings.Auth?.mobile_invalid ||
-                'Login failed. Please try again.',
-            );
-          }
-        },
-        error => {
-          setIsLoading(false);
-          if (error?.data?.message) {
-            setMobileError(error?.data?.message);
-          } else if (error?.message) {
-            setMobileError(error.message);
-          } else {
-            setMobileError(
-              LocalizedStrings.Auth?.mobile_invalid ||
-                'Something went wrong. Please try again.',
-            );
-          }
-        },
-        fail => {
-          console.log('Login Network Fail:', fail?.code, fail?.message);
-          setIsLoading(false);
-          const failMsg = fail?.msg || fail?.message || '';
-          if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
-            setMobileError('Server is busy. Please try again in a moment.');
-          } else {
-            setMobileError('Network error. Please check your connection.');
-          }
-        },
-      );
+      setPendingPayload(payload);
+      setShowPrivacyModal(true);
     }
+  };
+
+  const logConsentAndProceed = () => {
+    setShowDisclaimerModal(false);
+    POST(
+      LEGAL_CONSENT_BULK,
+      {
+        phone_number: selectedCountry.dial_code + mobile,
+        consents: [
+          { type: 'privacy_policy', consent_data: { accepted: true } },
+          { type: 'disclaimer', consent_data: { accepted: true } },
+        ],
+      },
+      () => proceedLogin(),
+      () => proceedLogin(),
+      () => proceedLogin(),
+    );
+  };
+
+  const proceedLogin = () => {
+    if (!pendingPayload) return;
+    setIsLoading(true);
+    POST(
+      LOGIN,
+      pendingPayload,
+      response => {
+        setIsLoading(false);
+        if (response?.status === true) {
+          navigation?.navigate('Otp', {
+            type: 'login',
+            mobile: mobile,
+            countryCode: selectedCountry.dial_code,
+            user_id: response?.user_id,
+            testOtp: response?.otp,
+          });
+        } else {
+          setMobileError(
+            response?.message ||
+              LocalizedStrings.Auth?.mobile_invalid ||
+              'Login failed. Please try again.',
+          );
+        }
+      },
+      error => {
+        setIsLoading(false);
+        if (error?.data?.message) {
+          setMobileError(error?.data?.message);
+        } else if (error?.message) {
+          setMobileError(error.message);
+        } else {
+          setMobileError(
+            LocalizedStrings.Auth?.mobile_invalid ||
+              'Something went wrong. Please try again.',
+          );
+        }
+      },
+      fail => {
+        console.log('Login Network Fail:', fail?.code, fail?.message);
+        setIsLoading(false);
+        const failMsg = fail?.msg || fail?.message || '';
+        if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
+          setMobileError('Server is busy. Please try again in a moment.');
+        } else {
+          setMobileError('Network error. Please check your connection.');
+        }
+      },
+    );
   };
 
   return (
@@ -213,6 +245,33 @@ const Login = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Privacy Policy Modal */}
+      <LegalConsentModal
+        visible={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+        onAccept={() => {
+          setShowPrivacyModal(false);
+          setShowDisclaimerModal(true);
+        }}
+        title="SAHAYYA PRIVACY POLICY"
+        contentSections={PRIVACY_POLICY_CONTENT}
+        checkboxes={PRIVACY_POLICY_CHECKBOXES}
+        acceptButtonText="Accept & Continue"
+      />
+
+      {/* Disclaimer Modal */}
+      <LegalConsentModal
+        visible={showDisclaimerModal}
+        onClose={() => setShowDisclaimerModal(false)}
+        onAccept={() => {
+          logConsentAndProceed();
+        }}
+        title="SAHAYYA DISCLAIMER & LIMITATION OF LIABILITY"
+        contentSections={DISCLAIMER_CONTENT}
+        checkboxes={DISCLAIMER_CHECKBOXES}
+        acceptButtonText="Accept & Login"
+      />
     </CommanView>
   );
 };

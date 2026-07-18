@@ -11,9 +11,16 @@ import Button from '../../Component/Button';
 import LocalizedStrings from '../../Constants/localization';
 import { validators } from './../../Backend/Validator';
 import { isValidForm } from '../../Backend/Utility';
-import { SIGINUP } from './../../Backend/api_routes';
+import { SIGINUP, LEGAL_CONSENT_BULK } from './../../Backend/api_routes';
 import { POST } from '../../Backend/Backend';
 import SimpleToast from 'react-native-simple-toast';
+import LegalConsentModal from '../../Component/LegalConsentModal';
+import {
+  PRIVACY_POLICY_CONTENT,
+  PRIVACY_POLICY_CHECKBOXES,
+  DISCLAIMER_CONTENT,
+  DISCLAIMER_CHECKBOXES,
+} from '../../Constants/legalContents';
 
 const SiginUp = ({ navigation }) => {
   const [mobile, setMobile] = useState('');
@@ -21,6 +28,9 @@ const SiginUp = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
   const [termsError, setTermsError] = useState('');
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
 
   const [selectedCountry, setSelectedCountry] = useState({
     flag: '🇮🇳',
@@ -56,72 +66,94 @@ const SiginUp = ({ navigation }) => {
     }
 
     if (isValidForm(error)) {
-      setIsLoading(true);
-
       var payload = {
         phone_number: mobile,
         country_code: selectedCountry.dial_code,
       };
+      setPendingPayload(payload);
+      setShowPrivacyModal(true);
+    }
+  };
 
-      console.log('Calling signup API with:', { phone: mobile, country: selectedCountry.dial_code });
-      POST(
-        SIGINUP,
-        payload,
-        response => {
-          console.log('Signup Success Response:', response);
-          setIsLoading(false);
-          navigation?.navigate('Otp', {
-            type: 'signup',
-            mobile: mobile,
-            countryCode: selectedCountry.dial_code,
-            user_id: response?.user_id,
-            testOtp: response?.otp,
-          });
-        },
-        error => {
-          console.log('Signup Error Response:', JSON.stringify(error, null, 2));
-          setIsLoading(false);
-          
-          if (error?.data?.errors?.phone_number) {
-            const errorMsg = Array.isArray(error.data.errors.phone_number) 
-              ? error.data.errors.phone_number[0] 
-              : error.data.errors.phone_number;
-            if (errorMsg.toLowerCase().includes('already') || errorMsg.toLowerCase().includes('taken')) {
-              SimpleToast.show('This number is already registered. Please login.', SimpleToast.LONG);
-              navigation.navigate('Login');
-              return;
-            }
-            setMobileError(errorMsg);
-          } else if (error?.data?.message) {
-            const msg = error.data.message;
-            if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('taken')) {
-              SimpleToast.show('This number is already registered. Please login.', SimpleToast.LONG);
-              navigation.navigate('Login');
-              return;
-            }
-            setMobileError(msg);
-          } else if (error?.message) {
-            setMobileError(error.message);
-          } else {
-            setMobileError('Something went wrong. Please try again.');
-          }
-        },
-        fail => {
-          console.log('Signup Network Fail:', fail?.code, fail?.message);
-          if (retryCount < 2) {
-            setTimeout(() => handleVerifyRequest(retryCount + 1), 2000);
+  const logConsentAndProceedSignup = () => {
+    setShowDisclaimerModal(false);
+    POST(
+      LEGAL_CONSENT_BULK,
+      {
+        phone_number: selectedCountry.dial_code + mobile,
+        consents: [
+          { type: 'privacy_policy', consent_data: { accepted: true } },
+          { type: 'disclaimer', consent_data: { accepted: true } },
+        ],
+      },
+      () => proceedSignup(0),
+      () => proceedSignup(0),
+      () => proceedSignup(0),
+    );
+  };
+
+  const proceedSignup = (retryCount = 0) => {
+    if (!pendingPayload || isLoading) return;
+    setIsLoading(true);
+
+    console.log('Calling signup API with:', { phone: mobile, country: selectedCountry.dial_code });
+    POST(
+      SIGINUP,
+      pendingPayload,
+      response => {
+        console.log('Signup Success Response:', response);
+        setIsLoading(false);
+        navigation?.navigate('Otp', {
+          type: 'signup',
+          mobile: mobile,
+          countryCode: selectedCountry.dial_code,
+          user_id: response?.user_id,
+          testOtp: response?.otp,
+        });
+      },
+      error => {
+        console.log('Signup Error Response:', JSON.stringify(error, null, 2));
+        setIsLoading(false);
+        
+        if (error?.data?.errors?.phone_number) {
+          const errorMsg = Array.isArray(error.data.errors.phone_number) 
+            ? error.data.errors.phone_number[0] 
+            : error.data.errors.phone_number;
+          if (errorMsg.toLowerCase().includes('already') || errorMsg.toLowerCase().includes('taken')) {
+            SimpleToast.show('This number is already registered. Please login.', SimpleToast.LONG);
+            navigation.navigate('Login');
             return;
           }
-          setIsLoading(false);
-          const failMsg = fail?.msg || fail?.message || '';
-          if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
-            setMobileError('Server is busy. Please try again in a moment.');
-          } else {
-            setMobileError('Network error. Please check your connection.');
+          setMobileError(errorMsg);
+        } else if (error?.data?.message) {
+          const msg = error.data.message;
+          if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('taken')) {
+            SimpleToast.show('This number is already registered. Please login.', SimpleToast.LONG);
+            navigation.navigate('Login');
+            return;
           }
+          setMobileError(msg);
+        } else if (error?.message) {
+          setMobileError(error.message);
+        } else {
+          setMobileError('Something went wrong. Please try again.');
         }
-      );
-    }
+      },
+      fail => {
+        console.log('Signup Network Fail:', fail?.code, fail?.message);
+        if (retryCount < 2) {
+          setTimeout(() => proceedSignup(retryCount + 1), 2000);
+          return;
+        }
+        setIsLoading(false);
+        const failMsg = fail?.msg || fail?.message || '';
+        if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
+          setMobileError('Server is busy. Please try again in a moment.');
+        } else {
+          setMobileError('Network error. Please check your connection.');
+        }
+      }
+    );
   };
 
   const handleVerify = () => {
@@ -243,6 +275,33 @@ const SiginUp = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Privacy Policy Modal */}
+      <LegalConsentModal
+        visible={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+        onAccept={() => {
+          setShowPrivacyModal(false);
+          setShowDisclaimerModal(true);
+        }}
+        title="SAHAYYA PRIVACY POLICY"
+        contentSections={PRIVACY_POLICY_CONTENT}
+        checkboxes={PRIVACY_POLICY_CHECKBOXES}
+        acceptButtonText="Accept & Continue"
+      />
+
+      {/* Disclaimer Modal */}
+      <LegalConsentModal
+        visible={showDisclaimerModal}
+        onClose={() => setShowDisclaimerModal(false)}
+        onAccept={() => {
+          logConsentAndProceedSignup();
+        }}
+        title="SAHAYYA DISCLAIMER & LIMITATION OF LIABILITY"
+        contentSections={DISCLAIMER_CONTENT}
+        checkboxes={DISCLAIMER_CHECKBOXES}
+        acceptButtonText="Accept & Sign Up"
+      />
     </CommanView>
   );
 };
