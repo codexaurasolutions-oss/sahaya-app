@@ -209,15 +209,26 @@ const HouseholdSection = ({ index, data, updateField, updatePet, addPet, removeP
       {data.pets.map((pet, petIndex) => (
         <View key={petIndex} style={[styles.row, { marginBottom: 10 }]}>
           <View style={styles.petTypeContainer}>
-            <Input
+            <DropdownComponent
               title={
                 LocalizedStrings.EditProfile?.Pet_Type ||
                 LocalizedStrings.CompleteProfile?.pet_type ||
                 'Type'
               }
-              placeholder=""
+              placeholder="Select Type"
+              width={'100%'}
+              style_dropdown={styles.dropdownStyle}
+              selectedTextStyleNew={styles.selectedTextStyle}
+              marginHorizontal={0}
+              style_title={styles.dropdownTitle}
               value={pet.type}
-              onChange={value => updatePetField(petIndex, 'type', value)}
+              onChange={item => updatePetField(petIndex, 'type', item?.value || '')}
+              data={[
+                { label: 'Dog', value: 'Dog' },
+                { label: 'Cat', value: 'Cat' },
+                { label: 'Bird', value: 'Bird' },
+                { label: 'Other', value: 'Other' },
+              ]}
               error={errors?.[`petType${petIndex}`]}
             />
           </View>

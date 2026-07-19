@@ -1105,10 +1105,22 @@ const HouseholdProfile = ({ navigation, route }) => {
                   style={[styles.row, styles.petRow]}
                 >
                   <View style={styles.petField}>
-                    <Input
+                    <DropdownComponent
                       title={LocalizedStrings.EditProfile.Pet_Type || 'Type'}
+                      placeholder="Select Type"
+                      width={'100%'}
+                      style_dropdown={{ marginHorizontal: 0 }}
+                      selectedTextStyleNew={{ marginLeft: 10 }}
+                      marginHorizontal={0}
+                      style_title={{ textAlign: 'left' }}
                       value={pet.pet_type || pet.type || ''}
-                      onChange={value => updateAddressPet(index, pi, 'pet_type', value)}
+                      onChange={item => updateAddressPet(index, pi, 'pet_type', item?.value || '')}
+                      data={[
+                        { label: 'Dog', value: 'Dog' },
+                        { label: 'Cat', value: 'Cat' },
+                        { label: 'Bird', value: 'Bird' },
+                        { label: 'Other', value: 'Other' },
+                      ]}
                     />
                   </View>
                   <View style={styles.petCountField}>

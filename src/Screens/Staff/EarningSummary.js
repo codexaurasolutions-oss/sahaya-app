@@ -256,20 +256,29 @@ const EarningSummary = ({ route }) => {
     summary2?.payment_status ||
     (summary2 ? 'Paid' : 'Pending');
 
+  const isPending = statusLabel?.toLowerCase() !== 'paid';
+
   const statusStyle =
-    statusLabel?.toLowerCase() === 'paid'
+    !isPending
       ? styles.statusPaid
       : styles.statusPending;
 
-  const totalPayableAmount =
-    Number(summary2?.total_payable_amount) > 0
-      ? Number(summary2?.total_payable_amount)
-      : 0;
+  const monthlySalary = Number(summary2?.salary_summary?.current_monthly_salary || 0);
+  const advanceRepayment = Number(summary2?.deductions?.advance_repayment?.amount || 0);
+  const bonusAmount = Number(summary2?.earnings_breakdown?.performance_bonus?.amount || 0);
+  const overtimeAmount = Number(summary2?.earnings_breakdown?.overtime_pay?.amount || 0);
+
+  let displayedBaseSalary = Number(summary2?.earnings_breakdown?.base_salary?.amount || 0);
+  if (isPending && monthlySalary > 0 && attendanceSummary.daysInMonth > 0) {
+    displayedBaseSalary = (monthlySalary / attendanceSummary.daysInMonth) * attendanceSummary.totalWorked;
+  }
+
+  const totalPayableAmount = isPending 
+    ? Math.max(0, displayedBaseSalary + bonusAmount + overtimeAmount - advanceRepayment)
+    : (Number(summary2?.total_payable_amount) > 0 ? Number(summary2?.total_payable_amount) : 0);
 
   const staffName = userDetail?.name || (userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}`.trim() : 'Staff Member');
   const employerDisplayName = summary2?.employer || userDetail?.employer_name || userDetail?.added_by_user?.name || (userDetail?.added_by_user?.first_name ? `${userDetail.added_by_user.first_name} ${userDetail.added_by_user.last_name || ''}`.trim() : null) || 'Employer';
-  const monthlySalary = Number(summary2?.salary_summary?.current_monthly_salary || 0);
-  const advanceRepayment = Number(summary2?.deductions?.advance_repayment?.amount || 0);
 
   return (
     <CommanView>
@@ -372,24 +381,24 @@ const EarningSummary = ({ route }) => {
         <View style={styles.breakdownRow}>
           <Typography size={13} color="#666">Base Salary</Typography>
           <Typography type={Font.Poppins_Medium} size={13}>
-            {formatCurrency(summary2?.earnings_breakdown?.base_salary?.amount)}
+            {formatCurrency(displayedBaseSalary)}
           </Typography>
         </View>
 
-        {Number(summary2?.earnings_breakdown?.performance_bonus?.amount) > 0 && (
+        {bonusAmount > 0 && (
           <View style={styles.breakdownRow}>
             <Typography size={13} color="#666">Bonus</Typography>
             <Typography type={Font.Poppins_Medium} size={13} color="#4CAF50">
-              +{formatCurrency(summary2?.earnings_breakdown?.performance_bonus?.amount)}
+              +{formatCurrency(bonusAmount)}
             </Typography>
           </View>
         )}
 
-        {Number(summary2?.earnings_breakdown?.overtime_pay?.amount) > 0 && (
+        {overtimeAmount > 0 && (
           <View style={styles.breakdownRow}>
             <Typography size={13} color="#666">Overtime</Typography>
             <Typography type={Font.Poppins_Medium} size={13} color="#4CAF50">
-              +{formatCurrency(summary2?.earnings_breakdown?.overtime_pay?.amount)}
+              +{formatCurrency(overtimeAmount)}
             </Typography>
           </View>
         )}

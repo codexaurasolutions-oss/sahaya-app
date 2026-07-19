@@ -71,14 +71,19 @@ const LocationMap = ({
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [permissionMessage, setPermissionMessage] = useState('');
   const didAutoLocateRef = useRef(false);
+  const mapRef = useRef(null);
 
   useEffect(() => {
     const latitude = parseCoordinate(lat);
     const longitude = parseCoordinate(long);
 
     if (isValidCoordinate(latitude, longitude)) {
-      setRegion(buildRegion(latitude, longitude));
+      const newRegion = buildRegion(latitude, longitude);
+      setRegion(newRegion);
       setSelectedCoordinate({latitude, longitude});
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(newRegion, 500);
+      }
     }
   }, [lat, long]);
 
@@ -88,6 +93,11 @@ const LocationMap = ({
     const nextRegion = buildRegion(latitude, longitude);
     setRegion(nextRegion);
     setSelectedCoordinate({latitude, longitude});
+    
+    if (mapRef.current) {
+      mapRef.current.animateToRegion(nextRegion, 500);
+    }
+    
     onMarkerDragEnd?.({latitude, longitude});
   }, [onMarkerDragEnd]);
 
@@ -169,6 +179,7 @@ const LocationMap = ({
   return (
     <View style={[styles.container, {height}]}>
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         region={region}
