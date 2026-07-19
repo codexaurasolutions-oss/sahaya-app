@@ -11,7 +11,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../Constants/localization';
 import { GET_WITH_TOKEN, POST_FORM_DATA } from '../../Backend/Backend';
-import { myWork, EarningSummary as EarningSummaryRoute, AttendanceStaff } from '../../Backend/api_routes';
+import { myWork, EarningSummary as EarningSummaryRoute, AttendanceStaff, ApprovedJobs } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 
 const formatDate = (dateString) => {
@@ -193,6 +193,8 @@ const MyWork = () => {
           !!myWorkData?.houseowner ||
           !!myWorkData?.employer_details ||
           !!myWorkData?.added_by_user ||
+          !!myWorkData?.addedByUser ||
+          !!myWorkData?.added_by ||
           !!myWorkData?.employer ||
           !!myWorkData?.workplace ||
           !!success?.houseowner ||
@@ -209,6 +211,7 @@ const MyWork = () => {
           buildName(myWorkData?.houseowner) ||
           buildName(myWorkData?.employer_details) ||
           buildName(myWorkData?.added_by_user) ||
+          buildName(myWorkData?.addedByUser) ||
           buildName(success?.houseowner) ||
           buildName(success?.employer) ||
           buildName(success?.current_employer) ||
@@ -224,13 +227,41 @@ const MyWork = () => {
         if (jobId) {
           fetchEarningSummary(jobId);
         }
+
+        // If no work data found, try approved-job as fallback
+        if (!myWorkData || (jobAppsArr.length === 0 && !directlyAdded)) {
+          fetchApprovedJobsFallback();
+        }
       },
       error => {
         setLoading(false);
+        // Try approved-job as fallback when mywork fails
+        fetchApprovedJobsFallback();
       },
       fail => {
         setLoading(false);
+        SimpleToast.show('Network error. Please try again.', SimpleToast.SHORT);
       },
+    );
+  };
+
+  const fetchApprovedJobsFallback = () => {
+    GET_WITH_TOKEN(
+      ApprovedJobs,
+      success => {
+        const jobs = success?.data || [];
+        if (jobs.length > 0) {
+          const firstJob = jobs[0];
+          setWorkData({});
+          setHasActiveJob(true);
+          const name = buildName(firstJob?.employer_details) || firstJob?.employer || null;
+          if (name) setEmployerName(name);
+          const jobId = firstJob?.job_details?.job_id || firstJob?.job_id;
+          if (jobId) fetchEarningSummary(jobId);
+        }
+      },
+      () => {},
+      () => {},
     );
   };
 
