@@ -79,6 +79,7 @@ export const ApplyLeave = 'leave-apply';
 export const LeaveListUser = 'leave-list';
 export const LeaveRejectr = 'leave-reject';
 export const LeaveApprove = 'leave-approve';
+export const ApprovedJobs = 'customer/approved-job';
 
 // ===========================================
 // SALARY MANAGEMENT

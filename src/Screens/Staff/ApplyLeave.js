@@ -17,6 +17,7 @@ import {
   ApplyLeave as ApplyLeaveRoute,
   myWork,
   PROFILE,
+  ApprovedJobs,
 } from '../../Backend/api_routes';
 import SimpleToast from 'react-native-simple-toast';
 import moment from 'moment';
@@ -37,19 +38,26 @@ const ApplyLeave = ({ navigation, route }) => {
   const [activeLeave, setActiveLeave] = useState(null);
   const [checkingLeave, setCheckingLeave] = useState(true);
 
+  // Employer selection for multi-job staff
+  const [employers, setEmployers] = useState([]);
+  const [selectedEmployer, setSelectedEmployer] = useState(null);
+  const [hasMultipleEmployers, setHasMultipleEmployers] = useState(false);
+
   // Error states
   const [errors, setErrors] = useState({
     leaveType: '',
     startDate: '',
     endDate: '',
     reason: '',
+    employer: '',
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchLeaveTypes();
     checkActiveLeave();
-    if (!houseownerId) {
-      // Try userDetail first for houseowner info
+    fetchEmployers();
+    if (!paramHouseownerId) {
       const fromUser =
         userDetail?.added_by ||
         userDetail?.houseowner_id ||
@@ -59,11 +67,10 @@ const ApplyLeave = ({ navigation, route }) => {
       if (fromUser) {
         setHouseownerId(fromUser);
       } else {
-        // Fetch from profile API to get added_by field
         fetchHouseownerFromProfile();
       }
     }
-  }, [isFocused]);
+  }, [isFocused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkActiveLeave = () => {
     setCheckingLeave(true);
@@ -77,8 +84,8 @@ const ApplyLeave = ({ navigation, route }) => {
           const status = leave?.status?.toLowerCase();
           if (status === 'pending') return true;
           if (status === 'approved') {
-            const endDate = moment(leave?.end_date);
-            return endDate.isValid() && endDate.isSameOrAfter(today, 'day');
+            const leaveEndDate = moment(leave?.end_date);
+            return leaveEndDate.isValid() && leaveEndDate.isSameOrAfter(today, 'day');
           }
           return false;
         });
@@ -131,6 +138,40 @@ const ApplyLeave = ({ navigation, route }) => {
     );
   };
 
+  const fetchEmployers = () => {
+    GET_WITH_TOKEN(
+      ApprovedJobs,
+      success => {
+        const jobs = success?.data || [];
+        if (jobs.length > 1) {
+          const mapped = jobs.map((job, index) => ({
+            value: job?.job_details?.job_id || index,
+            label: `${job?.employer || 'Unknown'} - ${job?.role || 'Staff'}`,
+            employerName: job?.employer || 'Unknown',
+            jobId: job?.job_details?.job_id || null,
+            houseownerId: job?.employer_id || job?.job_details?.employer_id || null,
+          }));
+          setEmployers(mapped);
+          setHasMultipleEmployers(true);
+          if (houseownerId && !selectedEmployer) {
+            const match = mapped.find(e => e.houseownerId === houseownerId);
+            if (match) {
+              setSelectedEmployer(match);
+            }
+          }
+        } else if (jobs.length === 1) {
+          const single = jobs[0];
+          const employerId = single?.employer_id || single?.job_details?.employer_id || null;
+          if (employerId && !houseownerId) {
+            setHouseownerId(employerId);
+          }
+        }
+      },
+      () => {},
+      () => {},
+    );
+  };
+
   const fetchLeaveTypes = () => {
     GET_WITH_TOKEN(
       LeaveList,
@@ -166,8 +207,14 @@ const ApplyLeave = ({ navigation, route }) => {
       startDate: '',
       endDate: '',
       reason: '',
+      employer: '',
     };
     let hasError = false;
+
+    if (hasMultipleEmployers && !selectedEmployer) {
+      newErrors.employer = 'Please select an employer';
+      hasError = true;
+    }
 
     // Validate Leave Type
     if (!leaveType || (!leaveType?.value && !leaveType)) {
@@ -424,9 +471,36 @@ const ApplyLeave = ({ navigation, route }) => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
+        nestedScrollEnabled
       >
         <View style={styles.card}>
+          {hasMultipleEmployers && (
+            <DropdownComponent
+              title="Select Employer"
+              placeholder="Select employer"
+              width={'100%'}
+              style_dropdown={{ marginHorizontal: 0 }}
+              selectedTextStyleNew={{
+                marginLeft: 10,
+                fontFamily: Font.Poppins_Regular,
+              }}
+              marginHorizontal={0}
+              style_title={{
+                textAlign: 'left',
+                fontFamily: Font.Poppins_Regular,
+              }}
+              data={employers}
+              value={selectedEmployer}
+              onChange={item => {
+                setSelectedEmployer(item);
+                setHouseownerId(item?.houseownerId || item?.value);
+                clearError('employer');
+              }}
+              error={errors.employer}
+            />
+          )}
+
           <DropdownComponent
             title={
               LocalizedStrings.LeaveApplications?.LeaveType || 'Leave Type'
@@ -535,6 +609,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
     borderWidth: 2,
     borderColor: '#EBEBEA',
+    zIndex: 1,
   },
   footer: {
     position: 'absolute',
