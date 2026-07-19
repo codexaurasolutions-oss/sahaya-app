@@ -77,6 +77,7 @@ const SiginUp = ({ navigation }) => {
 
   const logConsentAndProceedSignup = () => {
     setShowDisclaimerModal(false);
+    setIsLoading(true);
     POST(
       LEGAL_CONSENT_BULK,
       {

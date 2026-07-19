@@ -49,6 +49,8 @@ const Login = ({ navigation }) => {
   };
 
   const handleVerify = () => {
+    if (isLoading) return;
+
     let error = {
       number: validators?.checkPhoneNumberWithFixLength('Mobile', 10, mobile),
     };
@@ -73,6 +75,7 @@ const Login = ({ navigation }) => {
 
   const logConsentAndProceed = () => {
     setShowDisclaimerModal(false);
+    setIsLoading(true);
     POST(
       LEGAL_CONSENT_BULK,
       {
@@ -82,13 +85,13 @@ const Login = ({ navigation }) => {
           { type: 'disclaimer', consent_data: { accepted: true } },
         ],
       },
-      () => proceedLogin(),
-      () => proceedLogin(),
-      () => proceedLogin(),
+      () => proceedLogin(0),
+      () => proceedLogin(0),
+      () => proceedLogin(0),
     );
   };
 
-  const proceedLogin = () => {
+  const proceedLogin = (retryCount = 0) => {
     if (!pendingPayload) return;
     setIsLoading(true);
     POST(
@@ -126,7 +129,11 @@ const Login = ({ navigation }) => {
         }
       },
       fail => {
-        console.log('Login Network Fail:', fail?.code, fail?.message);
+        console.log('Login Network Fail:', fail?.code, fail?.message, 'retry:', retryCount);
+        if (retryCount < 2) {
+          setTimeout(() => proceedLogin(retryCount + 1), 2000);
+          return;
+        }
         setIsLoading(false);
         const failMsg = fail?.msg || fail?.message || '';
         if (failMsg.includes('timeout') || failMsg.includes('taking too long')) {
