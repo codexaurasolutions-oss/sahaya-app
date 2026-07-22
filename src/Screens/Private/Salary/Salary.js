@@ -80,7 +80,7 @@ const StaffManagement = ({ navigation, route }) => {
   const [workedDays, setWorkedDays] = useState(0);
   const [totalDaysInMonth, setTotalDaysInMonth] = useState(30);
   const paymentTypeData = [
-    { value: 'payment', label: 'Payment' },
+    { value: 'payment', label: 'Salary Payment' },
     { value: 'advance', label: 'Advance Payment' },
   ];
   const deductionMethodData = [
