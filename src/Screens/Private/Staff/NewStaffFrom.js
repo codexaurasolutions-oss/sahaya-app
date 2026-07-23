@@ -252,9 +252,18 @@ const NewStaffForm = ({ navigation, route }) => {
         if (address && address.state) setStateName(address.state);
         if (address && address.pincode) setPincode(String(address.pincode));
         if (address && address.area_locality) setAreaLocality(address.area_locality);
-        if (address && address.google_location) setGoogleLocation(address.google_location);
-        if (address && (address.lat || address.latitude)) setLat(String(address.lat || address.latitude));
-        if (address && (address.long || address.longitude)) setLong(String(address.long || address.longitude));
+
+        // Search all addresses for google_location (may not be in addresses[0])
+        let gl = null, latVal = null, longVal = null;
+        for (const addr of data.addresses) {
+          if (!gl && addr?.google_location) gl = addr.google_location;
+          if (!latVal && (addr?.lat || addr?.latitude)) latVal = String(addr.lat || addr.latitude);
+          if (!longVal && (addr?.long || addr?.longitude)) longVal = String(addr.long || addr.longitude);
+        }
+        if (gl) setGoogleLocation(gl);
+        if (latVal) setLat(latVal);
+        if (longVal) setLong(longVal);
+        if (!gl && address?.google_location) setGoogleLocation(address.google_location);
       }
 
       // Relation

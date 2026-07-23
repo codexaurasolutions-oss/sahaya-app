@@ -75,6 +75,10 @@ const buildSafeStaffPayload = (baseUser = {}, verifiedUser = {}) => {
       nextUser?.verification_certificate ||
       prevUser?.verification_certificate ||
       null,
+    relation:
+      nextUser?.relation ||
+      prevUser?.relation ||
+      null,
   };
 };
 
