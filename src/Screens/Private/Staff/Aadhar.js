@@ -41,6 +41,7 @@ const buildSafeStaffPayload = rawUser => {
     aadhar_front: user?.aadhar_front || user?.aadhaar_front || null,
     aadhar_back: user?.aadhar_back || user?.aadhaar_back || null,
     verification_certificate: user?.verification_certificate || null,
+    relation: user?.relation || null,
   };
 };
 
