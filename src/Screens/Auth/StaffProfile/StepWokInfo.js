@@ -939,6 +939,7 @@ const StepWokInfo = forwardRef(({ navigation }, ref) => {
         maxLength={4}
         error={errors.totalExperience}
         showTitle={true}
+        rightAccessory={<Typography size={14} color="#666" style={{marginRight: 12}}>Years</Typography>}
       />
 
       <Input

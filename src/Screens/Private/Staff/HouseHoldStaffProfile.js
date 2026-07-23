@@ -271,18 +271,21 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
   }
 
   // Address: try addresses array, then single address object, then nested structures, then flat fields
-  const addr = data?.addresses?.[0]
-    || data?.address
-    || data?.user_detail?.addresses?.[0]
-    || data?.staff?.addresses?.[0]
-    || data?.user_addresses?.[0]
-    || data?.current_address
-    || {};
+  const allAddresses = data?.addresses || [];
+  const presentAddr = allAddresses.find(a => a.is_primary === 0) || allAddresses[0] || {};
+  const permanentAddr = allAddresses.find(a => a.is_primary === 1) || allAddresses[1] || {};
+  const addr = presentAddr;
   const addrStreet = addr?.street || data?.street || data?.street_address || '';
-  const addrLocality = addr?.locality || addr?.area || data?.locality || data?.area || '';
+  const addrLocality = addr?.area_locality || addr?.locality || addr?.area || data?.locality || data?.area || '';
   const addrCity = addr?.city || data?.city || data?.location || data?.city_name || data?.region || '';
   const addrState = addr?.state || data?.state || data?.state_name || '';
   const addrPincode = addr?.pincode || addr?.zip || data?.pincode || data?.zip_code || data?.postal_code || '';
+  const addrGoogleLocation = addr?.google_location || '';
+  const permStreet = permanentAddr?.street || addr?.street || '';
+  const permLocality = permanentAddr?.area_locality || permanentAddr?.locality || permanentAddr?.area || '';
+  const permCity = permanentAddr?.city || addr?.city || '';
+  const permState = permanentAddr?.state || addr?.state || '';
+  const permPincode = permanentAddr?.pincode || addr?.pincode || '';
   const displayAadharNumber =
     data?.aadhar_number ||
     data?.aadhaar_number ||
@@ -951,6 +954,17 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
                 </View>
               </View>
             )}
+            {data?.user_work_info?.total_experience && (
+              <View style={styles.row}>
+                <Image source={ImageConstant.Briefcase} style={styles.icon} />
+                <View style={styles.textBox}>
+                  <Typography style={styles.label}>Total Experience</Typography>
+                  <Typography style={styles.value}>
+                    {data.user_work_info.total_experience} Years
+                  </Typography>
+                </View>
+              </View>
+            )}
             {data?.user_work_info?.salary && (
               <View style={styles.row}>
                 <Image source={ImageConstant.Dollar} style={styles.icon} />
@@ -1072,7 +1086,7 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
         {!fromFindStaffAI && (
         <View style={styles.card}>
           <Typography style={styles.cardTitle}>
-            {LocalizedStrings.StaffProfile.Residential_Address}
+            Present Address
           </Typography>
           {[
             {
@@ -1094,6 +1108,54 @@ const HouseHoldStaffProfile = ({ navigation, route }) => {
             {
               label: LocalizedStrings.StaffProfile.Pincode,
               value: addrPincode || 'Not Available',
+            },
+          ].map((item, idx, arr) => (
+            <View
+              key={item.label}
+              style={idx === arr.length - 1 ? styles.rowNoBorder : styles.row}
+            >
+              <Image source={ImageConstant.Location} style={styles.icon} />
+              <View style={styles.textBox}>
+                <Typography style={styles.label}>{item.label}</Typography>
+                <Typography style={styles.value}>{item.value}</Typography>
+              </View>
+            </View>
+          ))}
+          {addrGoogleLocation ? (
+            <TouchableOpacity onPress={() => Linking.openURL(addrGoogleLocation)}>
+              <Typography size={13} color="#D98579" style={{marginLeft: 40, marginTop: 4}}>
+                View on Google Maps
+              </Typography>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        )}
+
+        {!fromFindStaffAI && (permanentAddr?.street || permPincode) && (
+        <View style={styles.card}>
+          <Typography style={styles.cardTitle}>
+            Permanent Address (Aadhaar)
+          </Typography>
+          {[
+            {
+              label: LocalizedStrings.StaffProfile.Street,
+              value: permStreet || 'Not Available',
+            },
+            {
+              label: LocalizedStrings.StaffProfile.Locality,
+              value: permLocality || permCity || 'Not Available',
+            },
+            {
+              label: LocalizedStrings.StaffProfile.City,
+              value: permCity || 'Not Available',
+            },
+            {
+              label: LocalizedStrings.StaffProfile.State,
+              value: permState || 'Not Available',
+            },
+            {
+              label: LocalizedStrings.StaffProfile.Pincode,
+              value: permPincode || 'Not Available',
             },
           ].map((item, idx, arr) => (
             <View

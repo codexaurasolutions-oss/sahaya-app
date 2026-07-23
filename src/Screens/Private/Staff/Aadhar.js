@@ -76,6 +76,7 @@ const Aadhar = () => {
         navigation?.navigate('StaffVerifection', {
           adharNumber: adharNumber,
           userData: buildSafeStaffPayload(sucess?.data),
+          otpAlreadySent: true,
         });
       },
       error => {

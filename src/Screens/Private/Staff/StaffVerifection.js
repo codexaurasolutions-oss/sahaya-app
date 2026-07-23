@@ -85,6 +85,7 @@ const buildSafeStaffPayload = (baseUser = {}, verifiedUser = {}) => {
 const StaffVerifection = ({ navigation, route }) => {
   const userData = route?.params?.userData;
   const adharNumber = route?.params?.adharNumber;
+  const otpAlreadySent = route?.params?.otpAlreadySent || false;
 
   const [otp, setOtp] = useState('');
   const [Verify, setVerify] = useState(false);
@@ -94,8 +95,9 @@ const StaffVerifection = ({ navigation, route }) => {
   const last4 = adharNumber?.slice(-4) || '****';
 
   useEffect(() => {
-    // Auto-send OTP on mount when navigated from job application flow
-    if (adharNumber) {
+    // Auto-send OTP on mount ONLY when not already sent (e.g. from ListingJob flow)
+    // When navigated from Aadhar.js, OTP was already sent — skip to avoid double-send
+    if (adharNumber && !otpAlreadySent) {
       const body = {
         aadhar_number: adharNumber,
         is_staff_add: 1,
@@ -117,6 +119,8 @@ const StaffVerifection = ({ navigation, route }) => {
           setResendTimer(0);
         },
       );
+    } else if (otpAlreadySent) {
+      setResendTimer(60);
     }
   }, []);
 

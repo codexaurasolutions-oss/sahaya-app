@@ -545,9 +545,12 @@ export default function ListingJob({ navigation, route }) {
                     : null
                 } />
                 <DetailRow label="Experience" value={
-                  detailItem?.user?.user_work_info?.total_experience ||
-                  detailItem?.user?.user_work_info?.experience ||
-                  detailItem?.experience
+                  (() => {
+                    const exp = detailItem?.user?.user_work_info?.total_experience ||
+                      detailItem?.user?.user_work_info?.experience ||
+                      detailItem?.experience;
+                    return exp ? `${exp} Years` : '';
+                  })()
                 } />
               </View>
 

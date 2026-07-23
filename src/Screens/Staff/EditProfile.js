@@ -1236,6 +1236,7 @@ const EditProfile = ({ navigation, route }) => {
             keyboardType="numeric"
             maxLength={4}
             showTitle={true}
+            rightAccessory={<Typography size={14} color="#666" style={{marginRight: 12}}>Years</Typography>}
           />
         </View>
 

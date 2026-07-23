@@ -315,7 +315,7 @@ const HireMeScreen = ({ navigation }) => {
           </View>
           <View style={styles.infoRow}>
             <Image source={ImageConstant?.Calendar} style={styles.icon} />
-            <Typography size={13} color="#333">Experience: <Typography type={Font?.Poppins_SemiBold} size={13}>{experience} yrs</Typography></Typography>
+            <Typography size={13} color="#333">Experience: <Typography type={Font?.Poppins_SemiBold} size={13}>{experience} Years</Typography></Typography>
           </View>
 
           <TouchableOpacity

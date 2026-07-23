@@ -317,7 +317,10 @@ const FindStaff = ({ navigation, route }) => {
             location: item?.addresses?.[0]?.city || item?.location || item?.city || item?.address?.city || item?.current_address?.city || item?.region || '',
             preferredLocation: item?.preferred_work_location || item?.user_work_info?.preferred_work_location || item?.work_info?.preferred_work_location || '',
             pincode: item?.addresses?.[0]?.pincode || item?.addresses?.[0]?.zip || item?.addresses?.[0]?.postal_code || item?.pincode || '',
-            experience: workInfo?.total_experience || workInfo?.experience || (item?.year_of_experience ? `${item.year_of_experience} Years Experience` : ''),
+            experience: (() => {
+              const exp = workInfo?.total_experience || workInfo?.experience || item?.year_of_experience;
+              return exp ? `${exp} Years` : '';
+            })(),
             verified: item?.is_verified || false,
             policeVerified: !!(
               item?.kycInformation?.police_verification_path ||

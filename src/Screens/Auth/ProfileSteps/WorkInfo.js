@@ -94,6 +94,7 @@ const LastWorkExperience = ({ navigation }) => {
                 keyboardType="numeric"
                 maxLength={2}
                 style={styles.input}
+                rightAccessory={<Typography size={14} color="#666" style={{marginRight: 12}}>Years</Typography>}
             />
 
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Modal } from 'react-native';
+import { View, Image, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Switch, Modal, Linking } from 'react-native';
 import CommanView from '../../Component/CommanView';
 import HeaderForUser from '../../Component/HeaderForUser';
 import { ImageConstant } from '../../Constants/ImageConstant';
@@ -121,11 +121,17 @@ const StaffProfileMain = ({ navigation }) => {
 
     // Get address from userDetails
     const addresses = userDetail?.addresses || [];
-    const currentAddress = addresses.length > 0 ? addresses[0] : {};
-    const street = currentAddress?.street || 'Not Found';
-    const city = currentAddress?.city || 'Not Found';
-    const state = currentAddress?.state || 'Not Found';
-    const pincode = currentAddress?.pincode || 'Not Found';
+    const presentAddress = addresses.find(addr => addr.is_primary === 0) || addresses[0] || {};
+    const permanentAddress = addresses.find(addr => addr.is_primary === 1) || addresses[1] || {};
+    const presentStreet = presentAddress?.street || 'Not Found';
+    const presentCity = presentAddress?.city || 'Not Found';
+    const presentState = presentAddress?.state || 'Not Found';
+    const presentPincode = presentAddress?.pincode || 'Not Found';
+    const presentGoogleLocation = presentAddress?.google_location || '';
+    const permStreet = permanentAddress?.street || presentAddress?.street || 'Not Found';
+    const permCity = permanentAddress?.city || presentAddress?.city || 'Not Found';
+    const permState = permanentAddress?.state || presentAddress?.state || 'Not Found';
+    const permPincode = permanentAddress?.pincode || presentAddress?.pincode || 'Not Found';
 
     // Get Aadhaar details
     const aadhaarNumber = userDetail?.aadhar_number || 'Not Found';
@@ -451,12 +457,37 @@ const StaffProfileMain = ({ navigation }) => {
                 </View>
 
                 <View style={styles.card}>
-                    <Typography style={styles.cardTitle}>{LocalizedStrings.StaffProfile?.Residential_Address || "Residential Address"}</Typography>
+                    <Typography style={styles.cardTitle}>Present Address</Typography>
                     {[
-                        { label: LocalizedStrings.StaffProfile?.Street || 'Street', value: street },
-                        { label: LocalizedStrings.StaffProfile?.City || 'City', value: city },
-                        { label: LocalizedStrings.StaffProfile?.State || 'State', value: state },
-                        { label: LocalizedStrings.StaffProfile?.Pincode || 'Pincode', value: pincode },
+                        { label: 'Street', value: presentStreet },
+                        { label: 'City', value: presentCity },
+                        { label: 'State', value: presentState },
+                        { label: 'Pincode', value: presentPincode },
+                    ].map((item, idx, arr) => (
+                        <View key={item.label} style={idx === arr.length - 1 ? styles.rowNoBorder : styles.row}>
+                            <Image source={ImageConstant.Location} style={styles.icon} />
+                            <View style={styles.textBox}>
+                                <Typography style={styles.label}>{item.label}</Typography>
+                                <Typography style={styles.value}>{item.value}</Typography>
+                            </View>
+                        </View>
+                    ))}
+                    {presentGoogleLocation ? (
+                        <TouchableOpacity onPress={() => Linking.openURL(presentGoogleLocation)}>
+                            <Typography size={13} color="#D98579" style={{marginLeft: 40, marginTop: 4}}>
+                                View on Google Maps
+                            </Typography>
+                        </TouchableOpacity>
+                    ) : null}
+                </View>
+
+                <View style={styles.card}>
+                    <Typography style={styles.cardTitle}>Permanent Address (Aadhaar)</Typography>
+                    {[
+                        { label: 'Street', value: permStreet },
+                        { label: 'City', value: permCity },
+                        { label: 'State', value: permState },
+                        { label: 'Pincode', value: permPincode },
                     ].map((item, idx, arr) => (
                         <View key={item.label} style={idx === arr.length - 1 ? styles.rowNoBorder : styles.row}>
                             <Image source={ImageConstant.Location} style={styles.icon} />
