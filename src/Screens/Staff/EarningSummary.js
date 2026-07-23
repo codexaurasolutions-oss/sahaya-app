@@ -273,8 +273,10 @@ const EarningSummary = ({ route }) => {
     displayedBaseSalary = (monthlySalary / attendanceSummary.daysInMonth) * attendanceSummary.totalWorked;
   }
 
+  const pendingAdvanceDeduction = isPending ? advanceBalance : advanceRepayment;
+
   const totalPayableAmount = isPending 
-    ? Math.max(0, displayedBaseSalary + bonusAmount + overtimeAmount - advanceRepayment)
+    ? Math.max(0, displayedBaseSalary + bonusAmount + overtimeAmount - pendingAdvanceDeduction)
     : (Number(summary2?.total_payable_amount) > 0 ? Number(summary2?.total_payable_amount) : 0);
 
   const staffName = userDetail?.name || (userDetail?.first_name ? `${userDetail.first_name} ${userDetail.last_name || ''}`.trim() : 'Staff Member');
@@ -403,11 +405,11 @@ const EarningSummary = ({ route }) => {
           </View>
         )}
 
-        {advanceRepayment > 0 && (
+        {pendingAdvanceDeduction > 0 && (
           <View style={styles.breakdownRow}>
             <Typography size={13} color="#666">Advance Deducted</Typography>
             <Typography type={Font.Poppins_Medium} size={13} color={Colors.red}>
-              -{formatCurrency(advanceRepayment)}
+              -{formatCurrency(pendingAdvanceDeduction)}
             </Typography>
           </View>
         )}
@@ -435,7 +437,7 @@ const EarningSummary = ({ route }) => {
                 worked_days: attendanceSummary.totalWorked,
                 total_days: attendanceSummary.daysInMonth,
                 salary_breakdown: summary2?.earnings_breakdown || {},
-                advance_payment: advanceRepayment,
+                advance_payment: pendingAdvanceDeduction,
                 status: summary2?.payment_status || 'Pending',
               });
               setShowReceipt(true);
