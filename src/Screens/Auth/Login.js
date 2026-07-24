@@ -1,6 +1,5 @@
 import { StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import React, { useState } from 'react';
-import CheckBox from '@react-native-community/checkbox';
 import CommanView from '../../Component/CommanView';
 import Header from '../../Component/Header';
 import { Font } from '../../Constants/Font';
@@ -11,19 +10,13 @@ import Button from '../../Component/Button';
 import LocalizedStrings from '../../Constants/localization';
 import { validators } from './../../Backend/Validator';
 import { isValidForm } from '../../Backend/Utility';
-import { LOGIN, LEGAL_CONSENT_BULK } from './../../Backend/api_routes';
+import { LOGIN } from './../../Backend/api_routes';
 import { POST } from '../../Backend/Backend';
-import LegalConsentModal from '../../Component/LegalConsentModal';
-import { TERMS_AND_CONDITIONS_CONTENT } from '../../Constants/legalContents';
 
 const Login = ({ navigation }) => {
   const [mobile, setMobile] = useState('');
   const [mobileError, setMobileError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
-  const [termsError, setTermsError] = useState('');
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [pendingPayload, setPendingPayload] = useState(null);
 
   const [selectedCountry, setSelectedCountry] = useState({
     flag: '🇮🇳',
@@ -50,46 +43,20 @@ const Login = ({ navigation }) => {
     };
     setMobileError(error?.number);
 
-    if (!isTermsAccepted) {
-      setTermsError('Please accept Terms & Conditions to continue.');
-      return;
-    } else {
-      setTermsError('');
-    }
-
     if (isValidForm(error)) {
       var payload = {
         phone_number: mobile,
         country_code: selectedCountry.dial_code,
       };
-      setPendingPayload(payload);
-      setShowTermsModal(true);
+      proceedLogin(payload, 0);
     }
   };
 
-  const logConsentAndProceed = () => {
-    setShowTermsModal(false);
-    setIsLoading(true);
-    POST(
-      LEGAL_CONSENT_BULK,
-      {
-        phone_number: selectedCountry.dial_code + mobile,
-        consents: [
-          { type: 'terms_and_conditions', consent_data: { accepted: true } },
-        ],
-      },
-      () => proceedLogin(0),
-      () => proceedLogin(0),
-      () => proceedLogin(0),
-    );
-  };
-
-  const proceedLogin = (retryCount = 0) => {
-    if (!pendingPayload) return;
+  const proceedLogin = (payload, retryCount = 0) => {
     setIsLoading(true);
     POST(
       LOGIN,
-      pendingPayload,
+      payload,
       response => {
         setIsLoading(false);
         if (response?.status === true) {
@@ -124,7 +91,7 @@ const Login = ({ navigation }) => {
       fail => {
         console.log('Login Network Fail:', fail?.code, fail?.message, 'retry:', retryCount);
         if (retryCount < 2) {
-          setTimeout(() => proceedLogin(retryCount + 1), 2000);
+          setTimeout(() => proceedLogin(payload, retryCount + 1), 2000);
           return;
         }
         setIsLoading(false);
@@ -174,53 +141,6 @@ const Login = ({ navigation }) => {
           {LocalizedStrings.Auth.otp_message}
         </Typography>
 
-        <View style={styles.checkboxContainer}>
-          <CheckBox
-            value={isTermsAccepted}
-            onValueChange={value => {
-              setIsTermsAccepted(value);
-              if (value) setTermsError('');
-            }}
-            tintColors={{ true: '#D98579', false: '#B0B0B0' }}
-          />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', flex: 1 }}>
-            <Typography size={12}>
-              {LocalizedStrings.Auth.terms_message}{' '}
-            </Typography>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('Policy', { slug: 'terms-condition' })
-              }
-            >
-              <Typography
-                size={12}
-                style={{ color: '#D98579', textDecorationLine: 'underline' }}
-              >
-                {LocalizedStrings.Auth.term_services}{' '}
-              </Typography>
-            </TouchableOpacity>
-            <Typography size={12}>{LocalizedStrings.Auth.and} </Typography>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('Policy', { slug: 'privacy-policy' })
-              }
-            >
-              <Typography
-                size={12}
-                style={{ color: '#D98579', textDecorationLine: 'underline' }}
-              >
-                {LocalizedStrings.Auth.term_policy}
-              </Typography>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {termsError ? (
-          <Typography size={12} style={{ color: 'red', marginTop: 4 }}>
-            {termsError}
-          </Typography>
-        ) : null}
-
         <Button
           title="Log In"
           onPress={handleVerify}
@@ -244,15 +164,6 @@ const Login = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-
-      <LegalConsentModal
-        visible={showTermsModal}
-        onClose={() => setShowTermsModal(false)}
-        onAccept={logConsentAndProceed}
-        title="Terms and conditions"
-        contentSections={TERMS_AND_CONDITIONS_CONTENT}
-        acceptButtonText="I agree"
-      />
     </CommanView>
   );
 };
@@ -266,11 +177,6 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: '#FF6B6B',
     borderWidth: 1,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 15,
   },
   createAccountContainer: {
     marginTop: 18,
