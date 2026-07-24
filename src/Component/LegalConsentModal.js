@@ -31,14 +31,15 @@ const LegalConsentModal = ({
   title,
   contentSections = [],
   checkboxes = [],
-  acceptButtonText = 'Accept & Continue',
+  acceptButtonText = 'I agree',
 }) => {
   const [checkedState, setCheckedState] = useState(
     checkboxes.map(() => false)
   );
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
 
-  const allChecked = checkedState.every(Boolean);
+  const hasCheckboxes = checkboxes && checkboxes.length > 0;
+  const allChecked = hasCheckboxes ? checkedState.every(Boolean) : true;
 
   const handleScroll = useCallback((event) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
@@ -56,14 +57,18 @@ const LegalConsentModal = ({
   };
 
   const handleAccept = () => {
-    if (!allChecked) return;
+    if (!allChecked || !hasScrolledToBottom) return;
     onAccept && onAccept();
-    setCheckedState(checkboxes.map(() => false));
+    if (hasCheckboxes) {
+      setCheckedState(checkboxes.map(() => false));
+    }
     setHasScrolledToBottom(false);
   };
 
   const handleClose = () => {
-    setCheckedState(checkboxes.map(() => false));
+    if (hasCheckboxes) {
+      setCheckedState(checkboxes.map(() => false));
+    }
     setHasScrolledToBottom(false);
     onClose && onClose();
   };
@@ -81,7 +86,7 @@ const LegalConsentModal = ({
           {/* Header */}
           <View style={styles.header}>
             <Typography
-              size={16}
+              size={18}
               type={Font.Poppins_Bold}
               style={styles.title}
             >
@@ -142,16 +147,18 @@ const LegalConsentModal = ({
           <View style={styles.divider} />
 
           {/* Checkboxes */}
-          <View style={styles.checkboxSection}>
-            {checkboxes.map((cb, idx) => (
-              <Checkbox
-                key={cb.key || idx}
-                checked={checkedState[idx]}
-                onToggle={() => toggleCheckbox(idx)}
-                label={cb.label}
-              />
-            ))}
-          </View>
+          {hasCheckboxes && (
+            <View style={styles.checkboxSection}>
+              {checkboxes.map((cb, idx) => (
+                <Checkbox
+                  key={cb.key || idx}
+                  checked={checkedState[idx]}
+                  onToggle={() => toggleCheckbox(idx)}
+                  label={cb.label}
+                />
+              ))}
+            </View>
+          )}
 
           {/* Scroll hint */}
           {!hasScrolledToBottom && (
@@ -231,11 +238,11 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   scrollArea: {
-    maxHeight: 400,
+    maxHeight: '75%',
     marginBottom: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 12,
+    padding: 2,
   },
   section: {
     marginBottom: 12,
@@ -311,19 +318,22 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   acceptBtn: {
-    backgroundColor: '#D98579',
-    borderRadius: 10,
+    backgroundColor: '#27ae60', // Changed to green like user screenshot
+    borderRadius: 30, // more rounded like screenshot
     paddingVertical: 14,
     alignItems: 'center',
+    marginTop: 10,
   },
   acceptBtnDisabled: {
-    backgroundColor: '#E8C8C3',
+    backgroundColor: '#A0DCA4', // Lighter green for disabled
   },
   acceptBtnText: {
     color: '#fff',
+    fontSize: 16,
   },
   acceptBtnTextDisabled: {
     color: '#fff',
     opacity: 0.6,
   },
 });
+

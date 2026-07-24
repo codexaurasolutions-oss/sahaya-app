@@ -14,12 +14,7 @@ import { isValidForm } from '../../Backend/Utility';
 import { LOGIN, LEGAL_CONSENT_BULK } from './../../Backend/api_routes';
 import { POST } from '../../Backend/Backend';
 import LegalConsentModal from '../../Component/LegalConsentModal';
-import {
-  PRIVACY_POLICY_CONTENT,
-  PRIVACY_POLICY_CHECKBOXES,
-  DISCLAIMER_CONTENT,
-  DISCLAIMER_CHECKBOXES,
-} from '../../Constants/legalContents';
+import { TERMS_AND_CONDITIONS_CONTENT } from '../../Constants/legalContents';
 
 const Login = ({ navigation }) => {
   const [mobile, setMobile] = useState('');
@@ -27,8 +22,7 @@ const Login = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
   const [termsError, setTermsError] = useState('');
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
 
   const [selectedCountry, setSelectedCountry] = useState({
@@ -69,20 +63,19 @@ const Login = ({ navigation }) => {
         country_code: selectedCountry.dial_code,
       };
       setPendingPayload(payload);
-      setShowPrivacyModal(true);
+      setShowTermsModal(true);
     }
   };
 
   const logConsentAndProceed = () => {
-    setShowDisclaimerModal(false);
+    setShowTermsModal(false);
     setIsLoading(true);
     POST(
       LEGAL_CONSENT_BULK,
       {
         phone_number: selectedCountry.dial_code + mobile,
         consents: [
-          { type: 'privacy_policy', consent_data: { accepted: true } },
-          { type: 'disclaimer', consent_data: { accepted: true } },
+          { type: 'terms_and_conditions', consent_data: { accepted: true } },
         ],
       },
       () => proceedLogin(0),
@@ -181,7 +174,6 @@ const Login = ({ navigation }) => {
           {LocalizedStrings.Auth.otp_message}
         </Typography>
 
-        {/* ✅ Terms and Conditions Checkbox */}
         <View style={styles.checkboxContainer}>
           <CheckBox
             value={isTermsAccepted}
@@ -253,31 +245,13 @@ const Login = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Privacy Policy Modal */}
       <LegalConsentModal
-        visible={showPrivacyModal}
-        onClose={() => setShowPrivacyModal(false)}
-        onAccept={() => {
-          setShowPrivacyModal(false);
-          setShowDisclaimerModal(true);
-        }}
-        title="SAHAYYA PRIVACY POLICY"
-        contentSections={PRIVACY_POLICY_CONTENT}
-        checkboxes={PRIVACY_POLICY_CHECKBOXES}
-        acceptButtonText="Accept & Continue"
-      />
-
-      {/* Disclaimer Modal */}
-      <LegalConsentModal
-        visible={showDisclaimerModal}
-        onClose={() => setShowDisclaimerModal(false)}
-        onAccept={() => {
-          logConsentAndProceed();
-        }}
-        title="SAHAYYA DISCLAIMER & LIMITATION OF LIABILITY"
-        contentSections={DISCLAIMER_CONTENT}
-        checkboxes={DISCLAIMER_CHECKBOXES}
-        acceptButtonText="Accept & Login"
+        visible={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={logConsentAndProceed}
+        title="Terms and conditions"
+        contentSections={TERMS_AND_CONDITIONS_CONTENT}
+        acceptButtonText="I agree"
       />
     </CommanView>
   );

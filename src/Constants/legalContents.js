@@ -410,3 +410,16 @@ export const DISCLAIMER_CHECKBOXES = [
       'I agree that Sahayya shall not be liable for disputes, losses, salary issues, theft, misconduct, or damages arising from interactions between users.',
   },
 ];
+
+export const TERMS_AND_CONDITIONS_CONTENT = [
+  {
+    heading: 'Privacy Policy',
+    text: '',
+  },
+  ...PRIVACY_POLICY_CONTENT,
+  {
+    heading: 'Disclaimer & Limitation of Liability',
+    text: '',
+  },
+  ...DISCLAIMER_CONTENT,
+];
