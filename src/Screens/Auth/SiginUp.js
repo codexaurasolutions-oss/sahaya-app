@@ -70,6 +70,11 @@ const SiginUp = ({ navigation }) => {
   };
 
   const logConsentAndProceedSignup = () => {
+    if (!pendingPayload) {
+      setIsTermsAccepted(true);
+      setShowTermsModal(false);
+      return;
+    }
     setShowTermsModal(false);
     setIsLoading(true);
     POST(
@@ -270,7 +275,10 @@ const SiginUp = ({ navigation }) => {
 
       <LegalConsentModal
         visible={showTermsModal}
-        onClose={() => setShowTermsModal(false)}
+        onClose={() => {
+          setShowTermsModal(false);
+          setPendingPayload(null);
+        }}
         onAccept={logConsentAndProceedSignup}
         title="Terms and conditions"
         contentSections={TERMS_AND_CONDITIONS_CONTENT}
