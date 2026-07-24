@@ -12,13 +12,12 @@ import Typography from '../../../Component/UI/Typography';
 import { POST_FORM_DATA } from '../../../Backend/Backend';
 import { ADDRESSES_UPDATE } from '../../../Backend/api_routes';
 import { StyleSheet, View, TouchableOpacity, Image, Alert, Platform, Linking } from 'react-native';
-import Geolocation from '@react-native-community/geolocation';
 import { ImageConstant } from '../../../Constants/ImageConstant';
 import { validators } from '../../../Backend/Validator';
 import { isValidForm, fetchPincodeDetails } from '../../../Backend/Utility';
 import { useSelector } from 'react-redux';
 import LocalizedStrings from '../../../Constants/localization';
-import GooglePlacesInput from '../../../Component/GooglePlacesInput';
+import MapLocationPicker from '../../../Component/MapLocationPicker';
 
 const StepLoactionStaff = forwardRef((props, ref) => {
   const userDetail = useSelector(store => store?.userDetails);
@@ -46,61 +45,42 @@ const StepLoactionStaff = forwardRef((props, ref) => {
   // State for errors
   const [errors, setErrors] = useState({});
   const [loader, setLoader] = useState(false);
-  const [loadingLocation, setLoadingLocation] = useState(false);
-
-  // Function to get location from coordinates using reverse geocoding
-  const getLocationFromCoordinates = async (latitude, longitude) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=en`,
-        {
-          headers: { 'User-Agent': 'SahayaaApp/1.0' }
-        }
-      );
-      const data = await response.json();
-      
-      if (data && data.address) {
-        const address = data.address;
-        const cityName = address.city || address.town || address.village || address.suburb || '';
-        const stateName = address.state || '';
-        const pincode = address.postcode || '';
-        
-        return { city: cityName, state: stateName, pincode: pincode };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching location details:', error);
-      return null;
-    }
+  const handleCurrentPlaceSelected = location => {
+    setCurrentGoogleLocation(location?.google_location || '');
+    setCurrentLat(location?.lat ? String(location.lat) : '');
+    setCurrentLong(location?.long ? String(location.long) : '');
+    const mappedArea = location?.area_locality || location?.street;
+    if (mappedArea) setCurrentAreaLocality(mappedArea);
+    if (location?.city) setCurrentCity(location.city);
+    if (location?.state) setCurrentState(location.state);
+    if (location?.pincode) setCurrentPincode(location.pincode);
+    setErrors(prev => ({
+      ...prev,
+      currentGoogleLocation: null,
+      currentAreaLocality: mappedArea ? null : prev?.currentAreaLocality,
+      currentCity: location?.city ? null : prev?.currentCity,
+      currentState: location?.state ? null : prev?.currentState,
+      currentPincode: location?.pincode ? null : prev?.currentPincode,
+    }));
   };
 
-  const captureLocation = () => {
-    setLoadingLocation(true);
-    Geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const locationDetails = await getLocationFromCoordinates(latitude, longitude);
-        
-        if (locationDetails) {
-          if (locationDetails.city) setCurrentCity(locationDetails.city);
-          if (locationDetails.state) setCurrentState(locationDetails.state);
-          if (locationDetails.pincode) setCurrentPincode(locationDetails.pincode);
-          Alert.alert('Success', 'Location captured successfully!');
-        } else {
-          Alert.alert('Error', 'Could not fetch location details.');
-        }
-        setLoadingLocation(false);
-      },
-      (error) => {
-        setLoadingLocation(false);
-        Alert.alert('Error', 'Could not get your location. Please check permissions.');
-      },
-      { 
-        enableHighAccuracy: false, 
-        timeout: 60000, 
-        maximumAge: 60000 
-      }
-    );
+  const handlePermanentPlaceSelected = location => {
+    setPermanentGoogleLocation(location?.google_location || '');
+    setPermanentLat(location?.lat ? String(location.lat) : '');
+    setPermanentLong(location?.long ? String(location.long) : '');
+    const mappedArea = location?.area_locality || location?.street;
+    if (mappedArea) setPermanentAreaLocality(mappedArea);
+    if (location?.city) setPermanentCity(location.city);
+    if (location?.state) setPermanentState(location.state);
+    if (location?.pincode) setPermanentPincode(location.pincode);
+    setErrors(prev => ({
+      ...prev,
+      permanentGoogleLocation: null,
+      permanentAreaLocality: mappedArea ? null : prev?.permanentAreaLocality,
+      permanentCity: location?.city ? null : prev?.permanentCity,
+      permanentState: location?.state ? null : prev?.permanentState,
+      permanentPincode: location?.pincode ? null : prev?.permanentPincode,
+    }));
   };
 
   const addressesString = useMemo(() => {
@@ -366,269 +346,204 @@ const StepLoactionStaff = forwardRef((props, ref) => {
     <>
       <View style={{ flex: 1 }}>
         <View style={styles.wrap}>
-          <View style={styles.headerWithLocation}>
+          <View style={styles.headerRow}>
             <Typography type={Font?.Poppins_SemiBold} size={18}>
               {LocalizedStrings.EditProfile?.Current_Address || 'Current Address'}
             </Typography>
-            <TouchableOpacity 
-              onPress={captureLocation} 
-              style={styles.locationButton}
-              disabled={loadingLocation}
-            >
-              <Image source={ImageConstant?.Location} style={styles.locationIcon} />
-              <Typography color='rgba(217, 133, 121, 1)' size={12}>
-                {loadingLocation ? 'Detecting...' : 'Use my location'}
-              </Typography>
-            </TouchableOpacity>
           </View>
+          <Typography size={12} color="#707070" style={styles.addressIntro}>
+            Choose the exact location first, then complete your address details.
+          </Typography>
 
-          {/* City and State - Always Visible */}
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Input
-                title={LocalizedStrings.EditProfile?.City || 'City'}
-                placeholder={'Enter city'}
-                value={currentCity}
-                onChange={text => {
-                  setCurrentCity(text);
-                  if (errors.currentCity) setErrors({ ...errors, currentCity: null });
-                }}
-                error={errors.currentCity}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Input
-                title={LocalizedStrings.EditProfile?.State || 'State'}
-                placeholder={'Enter state'}
-                value={currentState}
-                onChange={text => {
-                  setCurrentState(text);
-                  if (errors.currentState) setErrors({ ...errors, currentState: null });
-                }}
-                error={errors.currentState}
-              />
-            </View>
-          </View>
-
-          <Input
-            title="Area / Locality"
-            placeholder="e.g. Phase 1, Model Town"
-            value={currentAreaLocality}
-            onChange={text => {
-              setCurrentAreaLocality(text);
-              if (errors.currentAreaLocality) setErrors({ ...errors, currentAreaLocality: null });
+          <MapLocationPicker
+            title="Pin your exact location"
+            location={{
+              google_location: currentGoogleLocation,
+              lat: currentLat,
+              long: currentLong,
+              street: currentStreet,
+              area_locality: currentAreaLocality,
+              city: currentCity,
+              state: currentState,
+              pincode: currentPincode,
             }}
-            error={errors.currentAreaLocality}
+            selectedLabel={[currentAreaLocality, currentCity, currentState].filter(Boolean).join(', ')}
+            onConfirm={handleCurrentPlaceSelected}
+            error={errors?.currentGoogleLocation}
           />
-
-          {/* Google Location */}
-          <View style={{ zIndex: 100 }}>
-            <GooglePlacesInput
-              title="Search Google Location (Mandatory)"
-              placeholder="Search for your location on Google Maps..."
-              onPlaceSelected={(location) => {
-                setCurrentGoogleLocation(location?.google_location || "");
-                setCurrentLat(location?.lat || "");
-                setCurrentLong(location?.long || "");
-                if (errors.currentGoogleLocation) setErrors({ ...errors, currentGoogleLocation: null });
-                
-                if (location?.hasExtractedData) {
-                  if (!currentStreet && location.street) setCurrentStreet(location.street);
-                  if (!currentCity && location.city) setCurrentCity(location.city);
-                  if (!currentState && location.state) setCurrentState(location.state);
-                  if (!currentPincode && location.pincode) setCurrentPincode(location.pincode);
-                }
-              }}
-              error={errors.currentGoogleLocation}
-            />
-          </View>
 
           {currentGoogleLocation ? (
-            <View style={{ marginBottom: 15 }}>
-              <Typography size={12} color="green">Location Selected âœ“</Typography>
-              <Typography size={11} color="gray">{currentGoogleLocation}</Typography>
+            <View style={styles.addressDetails}>
+              <Typography type={Font.Poppins_SemiBold} size={15}>
+                Complete address
+              </Typography>
+              <Input
+                title="House / Flat / Floor / Block"
+                placeholder="e.g. Flat 12B, 3rd Floor"
+                value={currentStreet}
+                onChange={text => {
+                  setCurrentStreet(text);
+                  if (errors.currentStreet) setErrors({...errors, currentStreet: null});
+                }}
+                error={errors.currentStreet}
+              />
+              <Input
+                title="Apartment / Building / Road / Area"
+                placeholder="e.g. Phase 1, Model Town"
+                value={currentAreaLocality}
+                onChange={text => {
+                  setCurrentAreaLocality(text);
+                  if (errors.currentAreaLocality) setErrors({...errors, currentAreaLocality: null});
+                }}
+                error={errors.currentAreaLocality}
+              />
+              <View style={styles.row}>
+                <View style={styles.cityContainer}>
+                  <Input
+                    title={LocalizedStrings.EditProfile?.City || 'City'}
+                    placeholder="Auto-filled, or enter city"
+                    value={currentCity}
+                    onChange={text => {
+                      setCurrentCity(text);
+                      if (errors.currentCity) setErrors({...errors, currentCity: null});
+                    }}
+                    error={errors.currentCity}
+                  />
+                </View>
+                <View style={styles.stateContainer}>
+                  <Input
+                    title={LocalizedStrings.EditProfile?.State || 'State'}
+                    placeholder="Auto-filled, or enter state"
+                    value={currentState}
+                    onChange={text => {
+                      setCurrentState(text);
+                      if (errors.currentState) setErrors({...errors, currentState: null});
+                    }}
+                    error={errors.currentState}
+                  />
+                </View>
+              </View>
+              <Input
+                title={LocalizedStrings.EditProfile?.Pincode || LocalizedStrings.StaffProfile?.Pincode || 'Pincode'}
+                placeholder="Enter 6-digit pincode"
+                keyboardType="numeric"
+                value={currentPincode}
+                onChange={text => {
+                  const numericValue = text.replace(/[^0-9]/g, '');
+                  setCurrentPincode(numericValue);
+                  if (errors.currentPincode) setErrors({...errors, currentPincode: null});
+                }}
+                error={errors.currentPincode}
+                maxLength={6}
+              />
             </View>
-          ) : null}
-
-          <Input
-            title={
-              LocalizedStrings.EditProfile?.Street ||
-              LocalizedStrings.StaffProfile?.Street ||
-              'Street'
-            }
-            placeholder={
-              LocalizedStrings.EditProfile?.Street || 'Enter street address'
-            }
-            value={currentStreet}
-            onChange={text => {
-              setCurrentStreet(text);
-              if (errors.currentStreet)
-                setErrors({ ...errors, currentStreet: null });
-            }}
-            error={errors.currentStreet}
-          />
-          <Input
-            title={
-              LocalizedStrings.EditProfile?.Pincode ||
-              LocalizedStrings.StaffProfile?.Pincode ||
-              'Pincode'
-            }
-            placeholder={''}
-            keyboardType="numeric"
-            value={currentPincode}
-            onChange={text => {
-              setCurrentPincode(text);
-              if (errors.currentPincode)
-                setErrors({ ...errors, currentPincode: null });
-            }}
-            error={errors.currentPincode}
-            maxLength={6}
-          />
+          ) : (
+            <View style={styles.mapFirstHint}>
+              <Typography size={11} color="#777777">
+                Address fields will appear after you confirm the pin.
+              </Typography>
+            </View>
+          )}
         </View>
       </View>
       <View style={{ flex: 1 }}>
         <View style={styles.wrap}>
-          <Typography type={Font?.Poppins_SemiBold} size={18}>
-            {LocalizedStrings.EditProfile?.Permanent_Address || 'Permanent Address'}
+          <View style={styles.headerRow}>
+            <Typography type={Font?.Poppins_SemiBold} size={18}>
+              {LocalizedStrings.EditProfile?.Permanent_Address || 'Permanent Address'}
+            </Typography>
+          </View>
+          <Typography size={12} color="#707070" style={styles.addressIntro}>
+            Choose the exact location first, then complete your address details.
           </Typography>
 
-          {/* City and State for Permanent - Always Visible */}
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Input
-                title={LocalizedStrings.EditProfile?.City || 'City'}
-                placeholder={'Enter city'}
-                value={permanentCity}
-                onChange={text => {
-                  setPermanentCity(text);
-                  if (errors.permanentCity) setErrors({ ...errors, permanentCity: null });
-                }}
-                error={errors.permanentCity}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: 8 }}>
-              <Input
-                title={LocalizedStrings.EditProfile?.State || 'State'}
-                placeholder={'Enter state'}
-                value={permanentState}
-                onChange={text => {
-                  setPermanentState(text);
-                  if (errors.permanentState) setErrors({ ...errors, permanentState: null });
-                }}
-                error={errors.permanentState}
-              />
-            </View>
-          </View>
-          <Input
-            title="Area / Locality"
-            placeholder="e.g. Phase 1, Model Town"
-            value={permanentAreaLocality}
-            onChange={text => {
-              setPermanentAreaLocality(text);
-              if (errors.permanentAreaLocality) setErrors({ ...errors, permanentAreaLocality: null });
+          <MapLocationPicker
+            title="Pin your exact location"
+            location={{
+              google_location: permanentGoogleLocation,
+              lat: permanentLat,
+              long: permanentLong,
+              street: permanentStreet,
+              area_locality: permanentAreaLocality,
+              city: permanentCity,
+              state: permanentState,
+              pincode: permanentPincode,
             }}
-            error={errors.permanentAreaLocality}
+            selectedLabel={[permanentAreaLocality, permanentCity, permanentState].filter(Boolean).join(', ')}
+            onConfirm={handlePermanentPlaceSelected}
+            error={errors?.permanentGoogleLocation}
           />
-
-          {/* Google Location */}
-          <View style={{ zIndex: 90 }}>
-            <GooglePlacesInput
-              title="Search Google Location (Mandatory)"
-              placeholder="Search for your location on Google Maps..."
-              onPlaceSelected={(location) => {
-                setPermanentGoogleLocation(location?.google_location || "");
-                setPermanentLat(location?.lat || "");
-                setPermanentLong(location?.long || "");
-                if (errors.permanentGoogleLocation) setErrors({ ...errors, permanentGoogleLocation: null });
-                
-                if (location?.hasExtractedData) {
-                  if (!permanentStreet && location.street) setPermanentStreet(location.street);
-                  if (!permanentCity && location.city) setPermanentCity(location.city);
-                  if (!permanentState && location.state) setPermanentState(location.state);
-                  if (!permanentPincode && location.pincode) setPermanentPincode(location.pincode);
-                }
-              }}
-              error={errors.permanentGoogleLocation}
-            />
-          </View>
 
           {permanentGoogleLocation ? (
-            <View style={{ marginBottom: 15 }}>
-              <Typography size={12} color="green">Location Selected âœ“</Typography>
-              <Typography size={11} color="gray">{permanentGoogleLocation}</Typography>
+            <View style={styles.addressDetails}>
+              <Typography type={Font.Poppins_SemiBold} size={15}>
+                Complete address
+              </Typography>
+              <Input
+                title="House / Flat / Floor / Block"
+                placeholder="e.g. Flat 12B, 3rd Floor"
+                value={permanentStreet}
+                onChange={text => {
+                  setPermanentStreet(text);
+                  if (errors.permanentStreet) setErrors({...errors, permanentStreet: null});
+                }}
+                error={errors.permanentStreet}
+              />
+              <Input
+                title="Apartment / Building / Road / Area"
+                placeholder="e.g. Phase 1, Model Town"
+                value={permanentAreaLocality}
+                onChange={text => {
+                  setPermanentAreaLocality(text);
+                  if (errors.permanentAreaLocality) setErrors({...errors, permanentAreaLocality: null});
+                }}
+                error={errors.permanentAreaLocality}
+              />
+              <View style={styles.row}>
+                <View style={styles.cityContainer}>
+                  <Input
+                    title={LocalizedStrings.EditProfile?.City || 'City'}
+                    placeholder="Auto-filled, or enter city"
+                    value={permanentCity}
+                    onChange={text => {
+                      setPermanentCity(text);
+                      if (errors.permanentCity) setErrors({...errors, permanentCity: null});
+                    }}
+                    error={errors.permanentCity}
+                  />
+                </View>
+                <View style={styles.stateContainer}>
+                  <Input
+                    title={LocalizedStrings.EditProfile?.State || 'State'}
+                    placeholder="Auto-filled, or enter state"
+                    value={permanentState}
+                    onChange={text => {
+                      setPermanentState(text);
+                      if (errors.permanentState) setErrors({...errors, permanentState: null});
+                    }}
+                    error={errors.permanentState}
+                  />
+                </View>
+              </View>
+              <Input
+                title={LocalizedStrings.EditProfile?.Pincode || LocalizedStrings.StaffProfile?.Pincode || 'Pincode'}
+                placeholder="Enter 6-digit pincode"
+                keyboardType="numeric"
+                value={permanentPincode}
+                onChange={text => {
+                  const numericValue = text.replace(/[^0-9]/g, '');
+                  setPermanentPincode(numericValue);
+                  if (errors.permanentPincode) setErrors({...errors, permanentPincode: null});
+                }}
+                error={errors.permanentPincode}
+                maxLength={6}
+              />
             </View>
-          ) : null}
-
-          <Input
-            title={
-              LocalizedStrings.EditProfile?.Street ||
-              LocalizedStrings.StaffProfile?.Street ||
-              'Street'
-            }
-            placeholder={
-              LocalizedStrings.EditProfile?.Street || 'Enter street address'
-            }
-            value={permanentStreet}
-            onChange={text => {
-              setPermanentStreet(text);
-              if (errors.permanentStreet)
-                setErrors({ ...errors, permanentStreet: null });
-            }}
-            error={errors.permanentStreet}
-          />
-          <Input
-            title={
-              LocalizedStrings.EditProfile?.Pincode ||
-              LocalizedStrings.StaffProfile?.Pincode ||
-              'Pincode'
-            }
-            placeholder={''}
-            keyboardType="numeric"
-            value={permanentPincode}
-            onChange={text => {
-              setPermanentPincode(text);
-              if (errors.permanentPincode)
-                setErrors({ ...errors, permanentPincode: null });
-            }}
-            error={errors.permanentPincode}
-            maxLength={6}
-          />
-          {permanentPincode.length === 6 && (
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Input
-                  title={
-                    LocalizedStrings.EditProfile?.City ||
-                    LocalizedStrings.StaffProfile?.City ||
-                    'City'
-                  }
-                  placeholder={''}
-                  value={permanentCity}
-                  onChange={text => {
-                    setPermanentCity(text);
-                    if (errors.permanentCity)
-                      setErrors({ ...errors, permanentCity: null });
-                  }}
-                  error={errors.permanentCity}
-                />
-              </View>
-              <View style={{ flex: 1, marginLeft: 8 }}>
-                <Input
-                  title={
-                    LocalizedStrings.EditProfile?.State ||
-                    LocalizedStrings.StaffProfile?.State ||
-                    'State'
-                  }
-                  placeholder={''}
-                  value={permanentState}
-                  onChange={text => {
-                    setPermanentState(text);
-                    if (errors.permanentState)
-                      setErrors({ ...errors, permanentState: null });
-                  }}
-                  error={errors.permanentState}
-                />
-              </View>
+          ) : (
+            <View style={styles.mapFirstHint}>
+              <Typography size={11} color="#777777">
+                Address fields will appear after you confirm the pin.
+              </Typography>
             </View>
           )}
         </View>
@@ -649,34 +564,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  cityContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  stateContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
   wrap: {
     borderWidth: 1,
     borderColor: '#EBEBEA',
     padding: 20,
-    borderRadius: 10,
+    borderRadius: 16,
     marginTop: 20,
+    backgroundColor: '#FFFFFF',
   },
-  headerWithLocation: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
   },
-  locationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(217, 133, 121, 0.3)',
-    backgroundColor: 'rgba(217, 133, 121, 0.05)',
+  addressIntro: {
+    marginTop: 5,
+    marginBottom: 3,
+    lineHeight: 18,
   },
-  locationIcon: {
-    height: 16,
-    width: 16,
-    resizeMode: 'contain',
-    marginRight: 5,
-    tintColor: 'rgba(217, 133, 121, 1)',
+  addressDetails: {
+    marginTop: 8,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#F0E6E4',
   },
+  mapFirstHint: {
+    marginTop: 2,
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: '#F8F8F8',
+  }
 });
